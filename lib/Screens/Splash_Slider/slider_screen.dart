@@ -45,7 +45,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _SlideData(
       title: 'On-time & Reliable',
       subtitle: 'Real-time updates and punctual\narrivals—every time',
-      image: 'assets/03_slider.png',
+      image: 'assets/ontimeupdates.png',
     ),
   ];
 
