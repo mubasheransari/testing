@@ -11,7 +11,6 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  // --- palette ---
   static const Color primary = Color(0xFF7841BA);
   static const Color primaryAlt = Color(0xFF8B59C6);
   static const Color hintBg = Color(0xFFF4F5F7);
@@ -160,7 +159,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           desiredService: const [],
         );
       } else {
-        // -------- BUSINESS → COMPANY (hardcoded IDs) --------
         final repPhone =
             _composeAuPhone(repPhoneCtrl.text); // use same E.164 format
         final abn = _normalizeAbn(abanCtrl.text);

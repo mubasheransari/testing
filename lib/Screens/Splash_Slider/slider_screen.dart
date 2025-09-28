@@ -34,13 +34,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Trained Cleaners',
       subtitle:
           'Verified cleaning pros delivering\nspotless results you can trust',
-      image: 'assets/01_slider.png',
+      image: 'assets/trained_cleaners.png',
     ),
     _SlideData(
       title: 'Background Checked',
       subtitle:
           'Every tasker is identity verified\nand vetted for your peace of mind',
-      image: 'assets/02_slider.png',
+      image: 'assets/bg_check.png',
     ),
     _SlideData(
       title: 'On-time & Reliable',
@@ -307,11 +307,12 @@ class _OnboardPage extends StatelessWidget {
                   Align(
                     alignment: Alignment.bottomCenter,
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.only(bottom: 280),
                       child: Image.asset(
+                        height: 280,
                         data.image,
-                        width: c.maxWidth * .66,
-                        fit: BoxFit.contain,
+                        width: c.maxWidth * .51,
+                        //fit: BoxFit.co,
                       ),
                     ),
                   ),
