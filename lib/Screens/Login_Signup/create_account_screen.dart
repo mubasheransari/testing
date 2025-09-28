@@ -153,7 +153,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         return false;
       }
       final abnOnlyDigits = _normalizeAbn(abanCtrl.text);
-      if (abnOnlyDigits.length < 9) {
+      if (abnOnlyDigits.length < 11) {
         // adjust length rule as per your backend (AU ABN is 11 digits typically)
         toastWidget('Please enter a valid ABN.', Colors.redAccent);
         return false;
