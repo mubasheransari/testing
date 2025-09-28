@@ -5,14 +5,10 @@ import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
 import '../../Models/auth_model.dart';
 import '../../Repository/auth_repository.dart';
-
-
-
-
-
+import '../../widgets/toast_widget.dart';
 
 class CreateAccountScreen extends StatefulWidget {
-  final String role; // 'user' | 'tasker' | 'business'
+  final String role;
   const CreateAccountScreen({super.key, required this.role});
 
   @override
@@ -67,14 +63,121 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   bool get _isTasker => widget.role.toLowerCase() == 'tasker';
   bool get _isUser => widget.role.toLowerCase() == 'user';
 
+  // ---- helpers ----------------------------------------------------
+
+  final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  // Simple password policy (adjust as needed)
+  bool _isStrongPassword(String p) {
+    if (p.length < 8) return false;
+    final hasUpper = p.contains(RegExp(r'[A-Z]'));
+    final hasLower = p.contains(RegExp(r'[a-z]'));
+    final hasDigit = p.contains(RegExp(r'\d'));
+    // final hasSpecial = p.contains(RegExp(r'[!@#\$%\^&\*\(\)\-\_\+=\.\,]'));
+    return hasUpper && hasLower && hasDigit; // relax/tighten as desired
+  }
+
+  // Convert local AU number to +61… (keeps digits only, drops leading 0s)
   String _composeAuPhone(String local) {
     final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
     final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
     return '+61$withoutLeadingZero';
   }
 
-  String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
+  String _normalizeAbn(String raw) =>
+      raw.replaceAll(RegExp(r'[^0-9]'), ''); // only digits
 
+  // ---- validation + toasts ---------------------------------------
+
+  /// Returns true if all checks pass; otherwise shows the **first** error with a toast and returns false.
+  bool _validateAndToast() {
+    // Common required
+    if (!agreed) {
+      toastWidget(
+          'Please agree to the Terms & Privacy to continue.', Colors.redAccent);
+      return false;
+    }
+    if (phoneCtrl.text.trim().isEmpty) {
+      toastWidget('Phone number is required.', Colors.redAccent);
+      return false;
+    }
+    if (emailCtrl.text.trim().isEmpty) {
+      toastWidget('Email address is required.', Colors.redAccent);
+      return false;
+    }
+    if (!_emailRe.hasMatch(emailCtrl.text.trim())) {
+      toastWidget('Please enter a valid email address.', Colors.redAccent);
+      return false;
+    }
+    if (passCtrl.text.trim().isEmpty) {
+      toastWidget('Password is required.', Colors.redAccent);
+      return false;
+    }
+    if (!_isStrongPassword(passCtrl.text)) {
+      toastWidget(
+          'Password must be at least 8 chars with upper, lower, and number.',
+          Colors.redAccent);
+      return false;
+    }
+
+    // Phone quick sanity (after compose we expect at least +61 + 8–9 digits)
+    final composed = _composeAuPhone(phoneCtrl.text);
+    if (!composed.startsWith('+61') || composed.length < 10) {
+      toastWidget(
+          'Please enter a valid Australian phone number.', Colors.redAccent);
+      return false;
+    }
+
+    // Role-specific
+    if (_isUser) {
+      if (nameCtrl.text.trim().isEmpty) {
+        toastWidget('Full Name is required.', Colors.redAccent);
+        return false;
+      }
+    } else if (_isTasker) {
+      if (nameCtrl.text.trim().isEmpty) {
+        toastWidget('Full Name is required.', Colors.redAccent);
+        return false;
+      }
+      if (addrCtrl.text.trim().isEmpty) {
+        toastWidget('Address is required for Tasker.', Colors.redAccent);
+        return false;
+      }
+    } else if (_isBusiness) {
+      if (companyCtrl.text.trim().isEmpty) {
+        toastWidget('Company Name is required.', Colors.redAccent);
+        return false;
+      }
+      if (abanCtrl.text.trim().isEmpty) {
+        toastWidget('ABN is required.', Colors.redAccent);
+        return false;
+      }
+      final abnOnlyDigits = _normalizeAbn(abanCtrl.text);
+      if (abnOnlyDigits.length < 9) {
+        // adjust length rule as per your backend (AU ABN is 11 digits typically)
+        toastWidget('Please enter a valid ABN.', Colors.redAccent);
+        return false;
+      }
+      if (repNameCtrl.text.trim().isEmpty) {
+        toastWidget("Representative Name is required.", Colors.redAccent);
+        return false;
+      }
+      if (repPhoneCtrl.text.trim().isEmpty) {
+        toastWidget("Representative Phone is required.", Colors.redAccent);
+        return false;
+      }
+      final repComposed = _composeAuPhone(repPhoneCtrl.text);
+      if (!repComposed.startsWith('+61') || repComposed.length < 10) {
+        toastWidget("Please enter a valid representative phone number.",
+            Colors.redAccent);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // The old computed `valid` is kept only for button enable/disable
   bool get valid {
     final base = phoneCtrl.text.trim().isNotEmpty &&
         emailCtrl.text.trim().isNotEmpty &&
@@ -96,6 +199,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
     return base;
   }
+
+  // ---- UI bits ---------------------------------------------------
 
   OutlineInputBorder _border([Color c = Colors.transparent]) =>
       OutlineInputBorder(
@@ -137,7 +242,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   void _submit(BuildContext context) {
-    if (!valid) return;
+    // Validate with toast feedback
+    if (!_validateAndToast()) return;
 
     final phone = _composeAuPhone(phoneCtrl.text);
     final email = emailCtrl.text.trim();
@@ -169,7 +275,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       final repPhone = _composeAuPhone(repPhoneCtrl.text);
       final abn = _normalizeAbn(abanCtrl.text);
 
-      // If your server needs real IDs, replace '2'/'3' with real DB IDs.
+      // Replace with real IDs if your backend requires them
       const kCatId = '2';
       const kSubId = '3';
 
@@ -201,12 +307,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         listener: (context, state) {
           if (state.status == AuthStatus.success) {
             final msg = state.response?.message ?? 'Account created';
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(msg)));
+            toastWidget(msg, Colors.green);
           } else if (state.status == AuthStatus.failure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error ?? 'Registration failed')),
-            );
+            toastWidget(state.error ?? 'Registration failed', Colors.redAccent);
           }
         },
         child: Builder(
@@ -224,6 +327,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // header
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -246,6 +350,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       ),
                       const SizedBox(height: 22),
 
+                      // intro & shapes
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -264,6 +369,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       ),
                       const SizedBox(height: 28),
 
+                      // role-specific fields
                       if (_isUser || _isTasker) ...[
                         _label('Full Name'),
                         _filledField(
@@ -299,468 +405,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         const SizedBox(height: 14),
                       ],
 
-                      _label('Phone Number'),
-                      Row(
-                        children: [
-                          Container(
-                            width: 76,
-                            height: 48,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: hintBg,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.transparent),
-                            ),
-                            child: const Text('+61',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black87)),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _filledField(
-                                controller: phoneCtrl,
-                                hint: 'Phone Number',
-                                keyboardType: TextInputType.phone),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-
-                      _label('Email Address'),
-                      _filledField(
-                          controller: emailCtrl,
-                          hint: 'Email Address',
-                          keyboardType: TextInputType.emailAddress),
-                      const SizedBox(height: 14),
-
-                      _label('Password'),
-                      _filledField(
-                        controller: passCtrl,
-                        hint: 'Password',
-                        obscure: obscure,
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => obscure = !obscure),
-                          icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      if (_isTasker) ...[
-                        _label('Address (Required)'),
-                        _filledField(
-                            controller: addrCtrl,
-                            hint: 'Address',
-                            keyboardType: TextInputType.streetAddress),
-                        const SizedBox(height: 14),
-                        _label('Desired Service (Optional)'),
-                        _filledField(
-                            controller: serviceCtrl,
-                            hint: 'Desired Service',
-                            keyboardType: TextInputType.text),
-                        const SizedBox(height: 14),
-                      ],
-
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: () => setState(() => agreed = !agreed),
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                    color: agreed ? primary : const Color(0xFFCBD5E1),
-                                    width: 2),
-                                color: agreed ? primary : Colors.transparent,
-                              ),
-                              child: agreed
-                                  ? const Icon(Icons.check, size: 16, color: Colors.white)
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(text: 'I agree to the ', style: TextStyle(color: Colors.black87)),
-                                  TextSpan(text: 'Terms of Service', style: TextStyle(color: primary, fontWeight: FontWeight.w700)),
-                                  TextSpan(text: ' & ', style: TextStyle(color: Colors.black87)),
-                                  TextSpan(text: 'Privacy', style: TextStyle(color: primary, fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                              style: TextStyle(fontSize: 14.5, height: 1.35),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 22),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-                            foregroundColor: valid ? Colors.white : Colors.black54,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: valid ? 6 : 0,
-                            shadowColor: primary.withOpacity(.35),
-                          ),
-                          onPressed: (valid && !isLoading) ? () => _submit(context) : null,
-                          child: Text(
-                            isLoading ? 'Please wait…' : 'SUBMIT',
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: .2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _DecorShapesPurple extends StatelessWidget {
-  const _DecorShapesPurple();
-
-  @override
-  Widget build(BuildContext context) {
-    const light = Color(0xFFE9DEFF);
-    const mid = Color(0xFFD4C4FF);
-    const dark = Color(0xFF7841BA);
-
-    Widget block(Color c, {double w = 84, double h = 26, double angle = .6}) {
-      return Transform.rotate(
-        angle: angle,
-        child: Container(
-          width: w,
-          height: h,
-          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: 110,
-      height: 90,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(right: -6, top: 0, child: block(light)),
-          Positioned(right: 6, top: 22, child: block(mid, w: 78)),
-          Positioned(right: -12, top: 48, child: block(dark, w: 64, h: 22)),
-        ],
-      ),
-    );
-  }
-}
-
-
-/*class CreateAccountScreen extends StatefulWidget {
-  final String role;
-  const CreateAccountScreen({super.key, required this.role});
-
-  @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-}
-
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  static const Color primary = Color(0xFF7841BA);
-  static const Color hintBg = Color(0xFFF4F5F7);
-
-  // Controllers
-  final nameCtrl = TextEditingController();
-  final companyCtrl = TextEditingController();
-  final abanCtrl = TextEditingController();
-  final repNameCtrl = TextEditingController();
-  final repPhoneCtrl = TextEditingController();
-  final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final addrCtrl = TextEditingController();
-  final serviceCtrl = TextEditingController();
-
-  bool obscure = true;
-  bool agreed = false;
-
-  // Repo for Bloc
-  late final AuthRepositoryHttp _repo;
-
-  @override
-  void initState() {
-    super.initState();
-    _repo = AuthRepositoryHttp(
-      baseUrl: 'http://192.3.3.187:83',
-      endpoint: '/api/auth/signup',
-    );
-  }
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    companyCtrl.dispose();
-    abanCtrl.dispose();
-    repNameCtrl.dispose();
-    repPhoneCtrl.dispose();
-    phoneCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    addrCtrl.dispose();
-    serviceCtrl.dispose();
-    super.dispose();
-  }
-
-  bool get _isBusiness => widget.role.toLowerCase() == 'business';
-  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-  bool get _isUser => widget.role.toLowerCase() == 'user';
-
-  String _composeAuPhone(String local) {
-    final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
-    final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
-    return '+61$withoutLeadingZero';
-  }
-
-  String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
-
-  bool get valid {
-    final base = phoneCtrl.text.trim().isNotEmpty &&
-        emailCtrl.text.trim().isNotEmpty &&
-        passCtrl.text.trim().isNotEmpty &&
-        agreed;
-
-    if (_isUser) {
-      return base && nameCtrl.text.trim().isNotEmpty;
-    } else if (_isTasker) {
-      return base &&
-          nameCtrl.text.trim().isNotEmpty &&
-          addrCtrl.text.trim().isNotEmpty;
-    } else if (_isBusiness) {
-      return base &&
-          companyCtrl.text.trim().isNotEmpty &&
-          abanCtrl.text.trim().isNotEmpty &&
-          repNameCtrl.text.trim().isNotEmpty &&
-          repPhoneCtrl.text.trim().isNotEmpty;
-    }
-    return base;
-  }
-
-  OutlineInputBorder _border([Color c = Colors.transparent]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      );
-
-  Widget _filledField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: hintBg,
-        hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        suffixIcon: suffixIcon,
-        enabledBorder: _border(),
-        focusedBorder: _border(primary.withOpacity(.35)),
-      ),
-      style: const TextStyle(fontWeight: FontWeight.w600),
-    );
-  }
-
-  void _submit(BuildContext context) {
-    if (!valid) return;
-
-    final phone = _composeAuPhone(phoneCtrl.text);
-    final email = emailCtrl.text.trim();
-    final password = passCtrl.text;
-
-    final bloc = context.read<AuthenticationBloc>();
-
-    if (_isUser) {
-      bloc.add(RegisterUserRequested(
-        fullName: nameCtrl.text.trim(),
-        phoneNumber: phone,
-        email: email,
-        password: password,
-        desiredService: const [],
-        companyCategory: const [],
-        companySubCategory: const [],
-        abn: null,
-      ));
-    } else if (_isTasker) {
-      bloc.add(RegisterTaskerRequested(
-        fullName: nameCtrl.text.trim(),
-        phoneNumber: phone,
-        email: email,
-        password: password,
-        address: addrCtrl.text.trim(),
-        desiredService: const [],
-      ));
-    } else {
-      final repPhone = _composeAuPhone(repPhoneCtrl.text);
-      final abn = _normalizeAbn(abanCtrl.text);
-
-      // keep your defaults
-      const kCatId = '2';
-      const kSubId = '3';
-
-      bloc.add(RegisterCompanyRequested(
-        fullName: companyCtrl.text.trim(),
-        phoneNumber: phone,
-        email: email,
-        password: password,
-        desiredService: const [],
-        companyCategory: const [
-          SelectableItem(id: kCatId, name: 'Default', isSelected: true),
-        ],
-        companySubCategory: const [
-          SelectableItem(id: kSubId, name: 'Default', isSelected: true),
-        ],
-        abn: abn,
-        representativeName: repNameCtrl.text.trim(),
-        representativeNumber: repPhone,
-      ));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => AuthenticationBloc(_repo),
-      child: BlocListener<AuthenticationBloc, AuthenticationState>(
-        listenWhen: (p, c) => p.status != c.status,
-        listener: (context, state) {
-          if (state.status == AuthStatus.success) {
-            final msg = state.response?.message ?? 'Account created';
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(msg)));
-            // TODO: navigate if needed
-          } else if (state.status == AuthStatus.failure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error ?? 'Registration failed')),
-            );
-          }
-        },
-        child: Builder(
-          builder: (context) {
-            final role = widget.role.toUpperCase();
-            final status =
-                context.select((AuthenticationBloc b) => b.state.status);
-            final isLoading = status == AuthStatus.loading;
-
-            return Scaffold(
-              backgroundColor: Colors.white,
-              body: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('CREATE ACCOUNT — $role',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 4),
-                          const SizedBox(
-                            width: 60,
-                            height: 3,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Color(0xFF7841BA),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(2)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-
-                      // Intro & shapes
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.role.toLowerCase() == 'business'
-                                  ? 'Tell us about your company to get started.'
-                                  : widget.role.toLowerCase() == 'tasker'
-                                      ? 'Create your account to start earning.'
-                                      : 'Create your account to get tasks done.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                          const _DecorShapesPurple(),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-
-                      // Role-specific fields (unchanged)
-                      if (_isUser || _isTasker) ...[
-                        _label('Full Name'),
-                        _filledField(
-                            controller: _isUser ? nameCtrl : nameCtrl,
-                            hint: 'Full Name',
-                            keyboardType: TextInputType.name),
-                        const SizedBox(height: 14),
-                      ],
-                      if (_isBusiness) ...[
-                        _label('Company Name'),
-                        _filledField(
-                            controller: companyCtrl,
-                            hint: 'Company Name',
-                            keyboardType: TextInputType.name),
-                        const SizedBox(height: 14),
-                        _label('ABN'),
-                        _filledField(
-                            controller: abanCtrl,
-                            hint: 'ABN',
-                            keyboardType: TextInputType.text),
-                        const SizedBox(height: 14),
-                        _label("Company's Representative Name"),
-                        _filledField(
-                            controller: repNameCtrl,
-                            hint: "Representative Name",
-                            keyboardType: TextInputType.name),
-                        const SizedBox(height: 14),
-                        _label("Company's Representative Phone Number"),
-                        _filledField(
-                            controller: repPhoneCtrl,
-                            hint: "Representative Phone Number",
-                            keyboardType: TextInputType.phone),
-                        const SizedBox(height: 14),
-                      ],
-
-                      // Common fields
+                      // common fields
                       _label('Phone Number'),
                       Row(
                         children: [
@@ -825,7 +470,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         const SizedBox(height: 14),
                       ],
 
-                      // Agreement
+                      // agreement
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -838,12 +483,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
                                     color: agreed
-                                        ? const Color(0xFF7841BA)
+                                        ? primary
                                         : const Color(0xFFCBD5E1),
                                     width: 2),
-                                color: agreed
-                                    ? const Color(0xFF7841BA)
-                                    : Colors.transparent,
+                                color: agreed ? primary : Colors.transparent,
                               ),
                               child: agreed
                                   ? const Icon(Icons.check,
@@ -862,7 +505,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   TextSpan(
                                       text: 'Terms of Service',
                                       style: TextStyle(
-                                          color: Color(0xFF7841BA),
+                                          color: primary,
                                           fontWeight: FontWeight.w700)),
                                   TextSpan(
                                       text: ' & ',
@@ -870,7 +513,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   TextSpan(
                                       text: 'Privacy',
                                       style: TextStyle(
-                                          color: Color(0xFF7841BA),
+                                          color: primary,
                                           fontWeight: FontWeight.w700)),
                                 ],
                               ),
@@ -882,22 +525,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                       const SizedBox(height: 22),
 
-                      // Submit
+                      // submit
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: valid
-                                ? const Color(0xFF7841BA)
-                                : const Color(0xFFECEFF3),
+                            backgroundColor:
+                                valid ? primary : const Color(0xFFECEFF3),
                             foregroundColor:
                                 valid ? Colors.white : Colors.black54,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             elevation: valid ? 6 : 0,
-                            shadowColor:
-                                const Color(0xFF7841BA).withOpacity(.35),
+                            shadowColor: primary.withOpacity(.35),
                           ),
                           onPressed: (valid && !isLoading)
                               ? () => _submit(context)
@@ -958,972 +599,11 @@ class _DecorShapesPurple extends StatelessWidget {
     );
   }
 }
-*/
 
-/*class CreateAccountScreen extends StatefulWidget {
-  final String role; // 'user' | 'tasker' | 'business'
-  const CreateAccountScreen({super.key, required this.role});
-
-  @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-}
-
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  static const Color primary = Color(0xFF7841BA);
-  static const Color primaryAlt = Color(0xFF8B59C6);
-  static const Color hintBg = Color(0xFFF4F5F7);
-
-  // Controllers
-  final nameCtrl = TextEditingController();
-  final companyCtrl = TextEditingController();
-  final abanCtrl = TextEditingController();
-  final repNameCtrl = TextEditingController();
-  final repPhoneCtrl = TextEditingController();
-  final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final addrCtrl = TextEditingController();
-  final serviceCtrl = TextEditingController();
-
-  bool obscure = true;
-  bool agreed = false;
-  bool _loading = false;
-
-  // Repo -> your base
-  final _repo = AuthRepositoryHttp(
-    baseUrl: 'http://192.3.3.187:83',
-    endpoint: '/api/auth/signup',
-  );
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    companyCtrl.dispose();
-    abanCtrl.dispose();
-    repNameCtrl.dispose();
-    repPhoneCtrl.dispose();
-    phoneCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    addrCtrl.dispose();
-    serviceCtrl.dispose();
-    super.dispose();
-  }
-
-  bool get _isBusiness => widget.role.toLowerCase() == 'business';
-  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-  bool get _isUser => widget.role.toLowerCase() == 'user';
-
-  // Phone to +61E.164; keep to match your UI (+61 chip)
-  String _composeAuPhone(String local) {
-    final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
-    final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
-    return '+61$withoutLeadingZero';
-  }
-
-  String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
-
-  bool get valid {
-    final base = phoneCtrl.text.trim().isNotEmpty &&
-        emailCtrl.text.trim().isNotEmpty &&
-        passCtrl.text.trim().isNotEmpty &&
-        agreed;
-
-    if (_isUser) {
-      return base && nameCtrl.text.trim().isNotEmpty;
-    } else if (_isTasker) {
-      return base &&
-          nameCtrl.text.trim().isNotEmpty &&
-          addrCtrl.text.trim().isNotEmpty;
-    } else if (_isBusiness) {
-      return base &&
-          companyCtrl.text.trim().isNotEmpty &&
-          abanCtrl.text.trim().isNotEmpty &&
-          repNameCtrl.text.trim().isNotEmpty &&
-          repPhoneCtrl.text.trim().isNotEmpty;
-    }
-    return base;
-  }
-
-  OutlineInputBorder _border([Color c = Colors.transparent]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      );
-
-  Widget _filledField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: hintBg,
-        hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        suffixIcon: suffixIcon,
-        enabledBorder: _border(),
-        focusedBorder: _border(primary.withOpacity(.35)),
-      ),
-      style: const TextStyle(fontWeight: FontWeight.w600),
-    );
-  }
-
-  Future<void> _submit() async {
-    if (_loading || !valid) return;
-
-    setState(() => _loading = true);
-
-    final phone = _composeAuPhone(phoneCtrl.text);
-    final email = emailCtrl.text.trim();
-    final password = passCtrl.text;
-
-    Result<RegistrationResponse> res;
-
-    try {
-      if (_isUser) {
-        res = await _repo.registerUser(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          desiredService: const [],
-          companyCategory: const [],
-          companySubCategory: const [],
-          abn: null,
-        );
-      } else if (_isTasker) {
-        res = await _repo.registerTasker(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          address: addrCtrl.text.trim(),
-          desiredService: const [],
-        );
-      } else {
-        final repPhone =
-            _composeAuPhone(repPhoneCtrl.text); // use same E.164 format
-        final abn = _normalizeAbn(abanCtrl.text);
-
-        // CHANGE THESE TWO STRINGS to your real IDs if needed
-        const kCatId = '2'; // required by your backend
-        const kSubId = '3'; // often required
-
-        res = await _repo.registerCompany(
-          fullName: companyCtrl.text.trim(), // goes to "fullname"
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          desiredService: const [], // usually optional for COMPANY
-          companyCategory: const [
-            SelectableItem(id: kCatId, name: 'Default', isSelected: true),
-          ],
-          companySubCategory: const [
-            SelectableItem(id: kSubId, name: 'Default', isSelected: true),
-          ],
-          abn: abn,
-          representativeName: repNameCtrl.text.trim(),
-          representativeNumber: repPhone,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-
-    if (!mounted) return;
-
-    if (res.isSuccess) {
-      final msg = res.data!.message ?? 'Account created';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      // TODO: navigate next
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.failure!.message)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final role = widget.role.toUpperCase();
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('CREATE ACCOUNT — $role',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  const SizedBox(
-                    width: 60,
-                    height: 3,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.all(Radius.circular(2)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Intro & shapes
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isBusiness
-                          ? 'Tell us about your company to get started.'
-                          : _isTasker
-                              ? 'Create your account to start earning.'
-                              : 'Create your account to get tasks done.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const _DecorShapesPurple(),
-                ],
-              ),
-              const SizedBox(height: 28),
-
-              // Role-specific
-              if (_isUser || _isTasker) ...[
-                _label('Full Name'),
-                _filledField(
-                    controller: nameCtrl,
-                    hint: 'Full Name',
-                    keyboardType: TextInputType.name),
-                const SizedBox(height: 14),
-              ],
-              if (_isBusiness) ...[
-                _label('Company Name'),
-                _filledField(
-                    controller: companyCtrl,
-                    hint: 'Company Name',
-                    keyboardType: TextInputType.name),
-                const SizedBox(height: 14),
-                _label('ABN'),
-                _filledField(
-                    controller: abanCtrl,
-                    hint: 'ABN',
-                    keyboardType: TextInputType.text),
-                const SizedBox(height: 14),
-                _label("Company's Representative Name"),
-                _filledField(
-                    controller: repNameCtrl,
-                    hint: "Representative Name",
-                    keyboardType: TextInputType.name),
-                const SizedBox(height: 14),
-                _label("Company's Representative Phone Number"),
-                _filledField(
-                    controller: repPhoneCtrl,
-                    hint: "Representative Phone Number",
-                    keyboardType: TextInputType.phone),
-                const SizedBox(height: 14),
-              ],
-
-              // Common fields
-              _label('Phone Number'),
-              Row(
-                children: [
-                  Container(
-                    width: 76,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hintBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.transparent),
-                    ),
-                    child: const Text('+61',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black87)),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _filledField(
-                        controller: phoneCtrl,
-                        hint: 'Phone Number',
-                        keyboardType: TextInputType.phone),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              _label('Email Address'),
-              _filledField(
-                  controller: emailCtrl,
-                  hint: 'Email Address',
-                  keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 14),
-
-              _label('Password'),
-              _filledField(
-                controller: passCtrl,
-                hint: 'Password',
-                obscure: obscure,
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => obscure = !obscure),
-                  icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              if (_isTasker) ...[
-                _label('Address (Required)'),
-                _filledField(
-                    controller: addrCtrl,
-                    hint: 'Address',
-                    keyboardType: TextInputType.streetAddress),
-                const SizedBox(height: 14),
-                _label('Desired Service (Optional)'),
-                _filledField(
-                    controller: serviceCtrl,
-                    hint: 'Desired Service',
-                    keyboardType: TextInputType.text),
-                const SizedBox(height: 14),
-              ],
-
-              // Agreement
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => agreed = !agreed),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                            color: agreed ? primary : const Color(0xFFCBD5E1),
-                            width: 2),
-                        color: agreed ? primary : Colors.transparent,
-                      ),
-                      child: agreed
-                          ? const Icon(Icons.check,
-                              size: 16, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                              text: 'I agree to the ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Terms of Service',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                          TextSpan(
-                              text: ' & ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Privacy',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      style: TextStyle(fontSize: 14.5, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              // Submit
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-                    foregroundColor: valid ? Colors.white : Colors.black54,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: valid ? 6 : 0,
-                    shadowColor: primary.withOpacity(.35),
-                  ),
-                  onPressed: valid && !_loading ? _submit : null,
-                  child: Text(
-                    _loading ? 'Please wait…' : 'SUBMIT',
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: .2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Decorative shapes (unchanged)
-class _DecorShapesPurple extends StatelessWidget {
-  const _DecorShapesPurple();
-
-  @override
-  Widget build(BuildContext context) {
-    const light = Color(0xFFE9DEFF);
-    const mid = Color(0xFFD4C4FF);
-    const dark = Color(0xFF7841BA);
-
-    Widget block(Color c, {double w = 84, double h = 26, double angle = .6}) {
-      return Transform.rotate(
-        angle: angle,
-        child: Container(
-          width: w,
-          height: h,
-          decoration:
-              BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: 110,
-      height: 90,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(right: -6, top: 0, child: block(light)),
-          Positioned(right: 6, top: 22, child: block(mid, w: 78)),
-          Positioned(right: -12, top: 48, child: block(dark, w: 64, h: 22)),
-        ],
-      ),
-    );
-  }
-}
-*/
-
-/*class CreateAccountScreen extends StatefulWidget {
-  final String role; // 'user' | 'tasker' | 'business'
-  const CreateAccountScreen({super.key, required this.role});
-
-  @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-}
-
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  static const Color primary = Color(0xFF7841BA);
-  static const Color primaryAlt = Color(0xFF8B59C6);
-  static const Color hintBg = Color(0xFFF4F5F7);
-
-  // Controllers
-  final nameCtrl = TextEditingController();
-  final companyCtrl = TextEditingController(); // company name (business)
-  final abanCtrl = TextEditingController(); // ABN (business)
-  final repNameCtrl = TextEditingController(); // representative name (business)
-  final repPhoneCtrl =
-      TextEditingController(); // representative phone (business)
-  final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final addrCtrl = TextEditingController(); // (tasker)
-  final serviceCtrl = TextEditingController(); // (tasker - free text, optional)
-
-  bool obscure = true;
-  bool agreed = false;
-  bool _loading = false;
-
-  // Repo instance — points to your base + signup path
-  final _repo = AuthRepositoryHttp(
-    baseUrl: 'http://192.3.3.187:83',
-    endpoint: '/api/auth/signup',
-  );
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    companyCtrl.dispose();
-    abanCtrl.dispose();
-    repNameCtrl.dispose();
-    repPhoneCtrl.dispose();
-    phoneCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    addrCtrl.dispose();
-    serviceCtrl.dispose();
-    super.dispose();
-  }
-
-  bool get _isBusiness => widget.role.toLowerCase() == 'business';
-  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-  bool get _isUser => widget.role.toLowerCase() == 'user';
-
-  // Primary phone: keep your current behavior (+61). If your server expects +92 etc, change here.
-  String _composeAuPhone(String local) {
-    final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
-    final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
-    return '+61$withoutLeadingZero';
-  }
-
-  // Rep phone: many APIs require digits-only (no '+')
-  String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
-
-  // ABN: digits only
-  String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
-
-  bool get valid {
-    final base = phoneCtrl.text.trim().isNotEmpty &&
-        emailCtrl.text.trim().isNotEmpty &&
-        passCtrl.text.trim().isNotEmpty &&
-        agreed;
-
-    if (_isUser) {
-      return base && nameCtrl.text.trim().isNotEmpty;
-    } else if (_isTasker) {
-      // Address required; desiredService optional until you wire real IDs
-      return base &&
-          nameCtrl.text.trim().isNotEmpty &&
-          addrCtrl.text.trim().isNotEmpty;
-    } else if (_isBusiness) {
-      return base &&
-          companyCtrl.text.trim().isNotEmpty &&
-          abanCtrl.text.trim().isNotEmpty &&
-          repNameCtrl.text.trim().isNotEmpty &&
-          repPhoneCtrl.text.trim().isNotEmpty;
-    }
-    return base;
-  }
-
-  OutlineInputBorder _border([Color c = Colors.transparent]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      );
-
-  Widget _filledField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: hintBg,
-        hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        suffixIcon: suffixIcon,
-        enabledBorder: _border(),
-        focusedBorder: _border(primary.withOpacity(.35)),
-      ),
-      style: const TextStyle(fontWeight: FontWeight.w600),
-    );
-  }
-
-  Future<void> _submit() async {
-    if (_loading || !valid) return;
-
-    setState(() => _loading = true);
-
-    final phone = _composeAuPhone(phoneCtrl.text);
-    final email = emailCtrl.text.trim();
-    final password = passCtrl.text;
-
-    Result<RegistrationResponse> res;
-
-    try {
-      if (_isUser) {
-        res = await _repo.registerUser(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          desiredService: const [], // UI has no selector yet
-          companyCategory: const [],
-          companySubCategory: const [],
-          abn: null,
-        );
-      } else if (_isTasker) {
-        res = await _repo.registerTasker(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          address: addrCtrl.text.trim(), // required
-          desiredService: const [], // keep empty (or set kDefaultServiceId)
-        );
-      } else {
-        // BUSINESS → COMPANY
-        final repPhoneDigits = _digitsOnly(repPhoneCtrl.text);
-        final abnDigits = _normalizeAbn(abanCtrl.text);
-
-        res = await _repo.registerCompany(
-          fullName: companyCtrl.text.trim(), // goes to "fullname"
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          // leave these empty; repo injects defaults using kDefaultCompanyCategoryId / kDefaultCompanySubCategoryId
-          desiredService: const [], // usually optional for COMPANY
-          companyCategory: const [],
-          companySubCategory: const [],
-          abn: abnDigits,
-          representativeName: repNameCtrl.text.trim(),
-          representativeNumber:
-              repPhoneDigits, // digits-only for stricter validators
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-
-    if (!mounted) return;
-
-    if (res.isSuccess) {
-      final msg = res.data!.message ?? 'Account created';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      // TODO: navigate next (OTP / login)
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.failure!.message)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final role = widget.role.toUpperCase();
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CREATE ACCOUNT — $role',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const SizedBox(
-                    width: 60,
-                    height: 3,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.all(Radius.circular(2)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Intro & shapes
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isBusiness
-                          ? 'Tell us about your company to get started.'
-                          : _isTasker
-                              ? 'Create your account to start earning.'
-                              : 'Create your account to get tasks done.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const _DecorShapesPurple(),
-                ],
-              ),
-              const SizedBox(height: 28),
-
-              // Role-specific
-              if (_isUser || _isTasker) ...[
-                _label('Full Name'),
-                _filledField(
-                  controller: nameCtrl,
-                  hint: 'Full Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              if (_isBusiness) ...[
-                _label('Company Name'),
-                _filledField(
-                  controller: companyCtrl,
-                  hint: 'Company Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label('ABN'),
-                _filledField(
-                  controller: abanCtrl,
-                  hint: 'ABN',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Name"),
-                _filledField(
-                  controller: repNameCtrl,
-                  hint: "Representative Name",
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Phone Number"),
-                _filledField(
-                  controller: repPhoneCtrl,
-                  hint: "Representative Phone Number",
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Common fields
-              _label('Phone Number'),
-              Row(
-                children: [
-                  Container(
-                    width: 76,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hintBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.transparent),
-                    ),
-                    child: const Text(
-                      '+61',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _filledField(
-                      controller: phoneCtrl,
-                      hint: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              _label('Email Address'),
-              _filledField(
-                controller: emailCtrl,
-                hint: 'Email Address',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-
-              _label('Password'),
-              _filledField(
-                controller: passCtrl,
-                hint: 'Password',
-                obscure: obscure,
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => obscure = !obscure),
-                  icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              if (_isTasker) ...[
-                _label('Address (Required)'),
-                _filledField(
-                  controller: addrCtrl,
-                  hint: 'Address',
-                  keyboardType: TextInputType.streetAddress,
-                ),
-                const SizedBox(height: 14),
-                _label('Desired Service (Optional)'),
-                _filledField(
-                  controller: serviceCtrl,
-                  hint: 'Desired Service',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Agreement
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => agreed = !agreed),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: agreed ? primary : const Color(0xFFCBD5E1),
-                          width: 2,
-                        ),
-                        color: agreed ? primary : Colors.transparent,
-                      ),
-                      child: agreed
-                          ? const Icon(Icons.check,
-                              size: 16, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                              text: 'I agree to the ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Terms of Service',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                          TextSpan(
-                              text: ' & ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Privacy',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      style: TextStyle(fontSize: 14.5, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              // Submit
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-                    foregroundColor: valid ? Colors.white : Colors.black54,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: valid ? 6 : 0,
-                    shadowColor: primary.withOpacity(.35),
-                  ),
-                  onPressed: valid && !_loading ? _submit : null,
-                  child: Text(
-                    _loading ? 'Please wait…' : 'SUBMIT',
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: .2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Decorative shapes (unchanged)
-class _DecorShapesPurple extends StatelessWidget {
-  const _DecorShapesPurple();
-
-  @override
-  Widget build(BuildContext context) {
-    const light = Color(0xFFE9DEFF);
-    const mid = Color(0xFFD4C4FF);
-    const dark = Color(0xFF7841BA);
-
-    Widget block(Color c, {double w = 84, double h = 26, double angle = .6}) {
-      return Transform.rotate(
-        angle: angle,
-        child: Container(
-          width: w,
-          height: h,
-          decoration:
-              BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: 110,
-      height: 90,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(right: -6, top: 0, child: block(light)),
-          Positioned(right: 6, top: 22, child: block(mid, w: 78)),
-          Positioned(right: -12, top: 48, child: block(dark, w: 64, h: 22)),
-        ],
-      ),
-    );
-  }
-}*/
 
 
 // class CreateAccountScreen extends StatefulWidget {
-//   final String role; // 'user' | 'tasker' | 'business'
+//   final String role; 
 //   const CreateAccountScreen({super.key, required this.role});
 
 //   @override
@@ -1931,33 +611,33 @@ class _DecorShapesPurple extends StatelessWidget {
 // }
 
 // class _CreateAccountScreenState extends State<CreateAccountScreen> {
-//   // --- Taskoon purple palette ---
 //   static const Color primary = Color(0xFF7841BA);
-//   static const Color primaryAlt = Color(0xFF8B59C6);
 //   static const Color hintBg = Color(0xFFF4F5F7);
 
-//   // Controllers
 //   final nameCtrl = TextEditingController();
-//   final companyCtrl = TextEditingController(); // company name (business)
-//   final abanCtrl = TextEditingController(); // ABN (business)
-//   final repNameCtrl = TextEditingController(); // representative name (business)
-//   final repPhoneCtrl =
-//       TextEditingController(); // representative phone (business)
+//   final companyCtrl = TextEditingController();
+//   final abanCtrl = TextEditingController();
+//   final repNameCtrl = TextEditingController();
+//   final repPhoneCtrl = TextEditingController();
 //   final phoneCtrl = TextEditingController();
 //   final emailCtrl = TextEditingController();
 //   final passCtrl = TextEditingController();
-//   final addrCtrl = TextEditingController(); // (tasker)
-//   final serviceCtrl = TextEditingController(); // (tasker - free text, optional)
+//   final addrCtrl = TextEditingController();
+//   final serviceCtrl = TextEditingController();
 
 //   bool obscure = true;
 //   bool agreed = false;
-//   bool _loading = false;
 
-//   // Repo instance — points to your staging + signup path
-//   final _repo = AuthRepositoryHttp(
-//     baseUrl: 'http://192.3.3.187:83',
-//     endpoint: '/api/auth/signup',
-//   );
+//   late final AuthRepositoryHttp _repo;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _repo = AuthRepositoryHttp(
+//       baseUrl: 'http://192.3.3.187:83',
+//       endpoint: '/api/auth/signup',
+//     );
+//   }
 
 //   @override
 //   void dispose() {
@@ -1978,14 +658,12 @@ class _DecorShapesPurple extends StatelessWidget {
 //   bool get _isTasker => widget.role.toLowerCase() == 'tasker';
 //   bool get _isUser => widget.role.toLowerCase() == 'user';
 
-//   // Normalize phone to +61E.164 (prevents +61 duplication & strips leading zeroes)
 //   String _composeAuPhone(String local) {
 //     final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
 //     final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
 //     return '+61$withoutLeadingZero';
 //   }
 
-//   // Keep only digits for ABN; server will enforce exact format/length
 //   String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
 
 //   bool get valid {
@@ -1997,7 +675,6 @@ class _DecorShapesPurple extends StatelessWidget {
 //     if (_isUser) {
 //       return base && nameCtrl.text.trim().isNotEmpty;
 //     } else if (_isTasker) {
-//       // Address required; desiredService optional until you wire real IDs
 //       return base &&
 //           nameCtrl.text.trim().isNotEmpty &&
 //           addrCtrl.text.trim().isNotEmpty;
@@ -2019,10 +696,8 @@ class _DecorShapesPurple extends StatelessWidget {
 
 //   Widget _label(String text) => Padding(
 //         padding: const EdgeInsets.only(bottom: 8),
-//         child: Text(
-//           text,
-//           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-//         ),
+//         child: Text(text,
+//             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
 //       );
 
 //   Widget _filledField({
@@ -2052,325 +727,299 @@ class _DecorShapesPurple extends StatelessWidget {
 //     );
 //   }
 
-//   Future<void> _submit() async {
-//     if (_loading || !valid) return;
-
-//     setState(() => _loading = true);
+//   void _submit(BuildContext context) {
+//     if (!valid) return;
 
 //     final phone = _composeAuPhone(phoneCtrl.text);
 //     final email = emailCtrl.text.trim();
 //     final password = passCtrl.text;
 
-//     Result<RegistrationResponse> res;
+//     final bloc = context.read<AuthenticationBloc>();
 
-//     try {
-//       if (_isUser) {
-//         res = await _repo.registerUser(
-//           fullName: nameCtrl.text.trim(),
-//           phoneNumber: phone,
-//           emailAddress: email,
-//           password: password,
-//           desiredService: const [], // UI has no selector yet
-//           companyCategory: const [],
-//           companySubCategory: const [],
-//           abn: null,
-//         );
-//       } else if (_isTasker) {
-//         res = await _repo.registerTasker(
-//           fullName: nameCtrl.text.trim(),
-//           phoneNumber: phone,
-//           emailAddress: email,
-//           password: password,
-//           address: addrCtrl.text.trim(), // required
-//           desiredService: const [], // keep empty (or set kDefaultServiceId in repo)
-//         );
-//       } else {
-//         // BUSINESS → COMPANY
-//         final repPhone = _composeAuPhone(repPhoneCtrl.text);
-//         final abn = _normalizeAbn(abanCtrl.text);
-
-//         res = await _repo.registerCompany(
-//           fullName: companyCtrl.text.trim(), // goes to "fullname"
-//           phoneNumber: phone,
-//           emailAddress: email,
-//           password: password,
-//           companyCategory: const [], // repo can add default if kDefaultCompanyCategoryId set
-//           companySubCategory: const [],
-//           abn: abn,
-//           representativeName: repNameCtrl.text.trim(),
-//           representativeNumber: repPhone,
-//         );
-//       }
-//     } finally {
-//       if (mounted) setState(() => _loading = false);
-//     }
-
-//     if (!mounted) return;
-
-//     if (res.isSuccess) {
-//       final msg = res.data!.message ?? 'Account created';
-//       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-//       // TODO: navigate next (OTP / login)
+//     if (_isUser) {
+//       bloc.add(RegisterUserRequested(
+//         fullName: nameCtrl.text.trim(),
+//         phoneNumber: phone,
+//         email: email,
+//         password: password,
+//         desiredService: const [],
+//         companyCategory: const [],
+//         companySubCategory: const [],
+//         abn: null,
+//       ));
+//     } else if (_isTasker) {
+//       bloc.add(RegisterTaskerRequested(
+//         fullName: nameCtrl.text.trim(),
+//         phoneNumber: phone,
+//         email: email,
+//         password: password,
+//         address: addrCtrl.text.trim(),
+//         desiredService: const [],
+//       ));
 //     } else {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text(res.failure!.message)),
-//       );
+//       final repPhone = _composeAuPhone(repPhoneCtrl.text);
+//       final abn = _normalizeAbn(abanCtrl.text);
+
+//       const kCatId = '2';
+//       const kSubId = '3';
+
+//       bloc.add(RegisterCompanyRequested(
+//         fullName: companyCtrl.text.trim(),
+//         phoneNumber: phone,
+//         email: email,
+//         password: password,
+//         desiredService: const [],
+//         companyCategory: const [
+//           SelectableItem(id: kCatId, name: 'Default', isSelected: true),
+//         ],
+//         companySubCategory: const [
+//           SelectableItem(id: kSubId, name: 'Default', isSelected: true),
+//         ],
+//         abn: abn,
+//         representativeName: repNameCtrl.text.trim(),
+//         representativeNumber: repPhone,
+//       ));
 //     }
 //   }
 
 //   @override
 //   Widget build(BuildContext context) {
-//     final role = widget.role.toUpperCase();
+//     return BlocProvider(
+//       create: (_) => AuthenticationBloc(_repo),
+//       child: BlocListener<AuthenticationBloc, AuthenticationState>(
+//         listenWhen: (p, c) => p.status != c.status,
+//         listener: (context, state) {
+//           if (state.status == AuthStatus.success) {
+//             final msg = state.response?.message ?? 'Account created';
+//             ScaffoldMessenger.of(context)
+//                 .showSnackBar(SnackBar(content: Text(msg)));
+//           } else if (state.status == AuthStatus.failure) {
+//             ScaffoldMessenger.of(context).showSnackBar(
+//               SnackBar(content: Text(state.error ?? 'Registration failed')),
+//             );
+//           }
+//         },
+//         child: Builder(
+//           builder: (context) {
+//             final role = widget.role.toUpperCase();
+//             final status =
+//                 context.select((AuthenticationBloc b) => b.state.status);
+//             final isLoading = status == AuthStatus.loading;
 
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: SafeArea(
-//         child: SingleChildScrollView(
-//           padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               // Header
-//               Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     'CREATE ACCOUNT — $role',
-//                     style: const TextStyle(
-//                       fontSize: 18,
-//                       fontWeight: FontWeight.w700,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 4),
-//                   const SizedBox(
-//                     width: 60,
-//                     height: 3,
-//                     child: DecoratedBox(
-//                       decoration: BoxDecoration(
-//                         color: primary,
-//                         borderRadius: BorderRadius.all(Radius.circular(2)),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 22),
-
-//               // Intro & shapes
-//               Row(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Expanded(
-//                     child: Text(
-//                       _isBusiness
-//                           ? 'Tell us about your company to get started.'
-//                           : _isTasker
-//                               ? 'Create your account to start earning.'
-//                               : 'Create your account to get tasks done.',
-//                       style: Theme.of(context).textTheme.bodyMedium,
-//                     ),
-//                   ),
-//                   const _DecorShapesPurple(),
-//                 ],
-//               ),
-//               const SizedBox(height: 28),
-
-//               // Role-specific
-//               if (_isUser || _isTasker) ...[
-//                 _label('Full Name'),
-//                 _filledField(
-//                   controller: nameCtrl,
-//                   hint: 'Full Name',
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               if (_isBusiness) ...[
-//                 _label('Company Name'),
-//                 _filledField(
-//                   controller: companyCtrl,
-//                   hint: 'Company Name',
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label('ABN'),
-//                 _filledField(
-//                   controller: abanCtrl,
-//                   hint: 'ABN',
-//                   keyboardType: TextInputType.text,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label("Company's Representative Name"),
-//                 _filledField(
-//                   controller: repNameCtrl,
-//                   hint: "Representative Name",
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label("Company's Representative Phone Number"),
-//                 _filledField(
-//                   controller: repPhoneCtrl,
-//                   hint: "Representative Phone Number",
-//                   keyboardType: TextInputType.phone,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               // Common fields
-//               _label('Phone Number'),
-//               Row(
-//                 children: [
-//                   Container(
-//                     width: 76,
-//                     height: 48,
-//                     alignment: Alignment.center,
-//                     decoration: BoxDecoration(
-//                       color: hintBg,
-//                       borderRadius: BorderRadius.circular(10),
-//                       border: Border.all(color: Colors.transparent),
-//                     ),
-//                     child: const Text(
-//                       '+61',
-//                       style: TextStyle(
-//                         fontWeight: FontWeight.w800,
-//                         color: Colors.black87,
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(width: 10),
-//                   Expanded(
-//                     child: _filledField(
-//                       controller: phoneCtrl,
-//                       hint: 'Phone Number',
-//                       keyboardType: TextInputType.phone,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 14),
-
-//               _label('Email Address'),
-//               _filledField(
-//                 controller: emailCtrl,
-//                 hint: 'Email Address',
-//                 keyboardType: TextInputType.emailAddress,
-//               ),
-//               const SizedBox(height: 14),
-
-//               _label('Password'),
-//               _filledField(
-//                 controller: passCtrl,
-//                 hint: 'Password',
-//                 obscure: obscure,
-//                 suffixIcon: IconButton(
-//                   onPressed: () => setState(() => obscure = !obscure),
-//                   icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-//                 ),
-//               ),
-//               const SizedBox(height: 14),
-
-//               if (_isTasker) ...[
-//                 _label('Address (Required)'),
-//                 _filledField(
-//                   controller: addrCtrl,
-//                   hint: 'Address',
-//                   keyboardType: TextInputType.streetAddress,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label('Desired Service (Optional)'),
-//                 _filledField(
-//                   controller: serviceCtrl,
-//                   hint: 'Desired Service',
-//                   keyboardType: TextInputType.text,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               // Agreement
-//               Row(
-//                 crossAxisAlignment: CrossAxisAlignment.center,
-//                 children: [
-//                   GestureDetector(
-//                     onTap: () => setState(() => agreed = !agreed),
-//                     child: Container(
-//                       width: 22,
-//                       height: 22,
-//                       decoration: BoxDecoration(
-//                         borderRadius: BorderRadius.circular(4),
-//                         border: Border.all(
-//                           color: agreed ? primary : const Color(0xFFCBD5E1),
-//                           width: 2,
-//                         ),
-//                         color: agreed ? primary : Colors.transparent,
-//                       ),
-//                       child: agreed
-//                           ? const Icon(Icons.check,
-//                               size: 16, color: Colors.white)
-//                           : null,
-//                     ),
-//                   ),
-//                   const SizedBox(width: 10),
-//                   const Expanded(
-//                     child: Text.rich(
-//                       TextSpan(
+//             return Scaffold(
+//               backgroundColor: Colors.white,
+//               body: SafeArea(
+//                 child: SingleChildScrollView(
+//                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
 //                         children: [
-//                           TextSpan(
-//                               text: 'I agree to the ',
-//                               style: TextStyle(color: Colors.black87)),
-//                           TextSpan(
-//                               text: 'Terms of Service',
-//                               style: TextStyle(
-//                                   color: primary, fontWeight: FontWeight.w700)),
-//                           TextSpan(
-//                               text: ' & ',
-//                               style: TextStyle(color: Colors.black87)),
-//                           TextSpan(
-//                               text: 'Privacy',
-//                               style: TextStyle(
-//                                   color: primary, fontWeight: FontWeight.w700)),
+//                           Text('CREATE ACCOUNT — $role',
+//                               style: const TextStyle(
+//                                   fontSize: 18, fontWeight: FontWeight.w700)),
+//                           const SizedBox(height: 4),
+//                           const SizedBox(
+//                             width: 60,
+//                             height: 3,
+//                             child: DecoratedBox(
+//                               decoration: BoxDecoration(
+//                                 color: Color(0xFF7841BA),
+//                                 borderRadius:
+//                                     BorderRadius.all(Radius.circular(2)),
+//                               ),
+//                             ),
+//                           ),
 //                         ],
 //                       ),
-//                       style: TextStyle(fontSize: 14.5, height: 1.35),
-//                     ),
-//                   ),
-//                 ],
-//               ),
+//                       const SizedBox(height: 22),
 
-//               const SizedBox(height: 22),
+//                       Row(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Expanded(
+//                             child: Text(
+//                               widget.role.toLowerCase() == 'business'
+//                                   ? 'Tell us about your company to get started.'
+//                                   : widget.role.toLowerCase() == 'tasker'
+//                                       ? 'Create your account to start earning.'
+//                                       : 'Create your account to get tasks done.',
+//                               style: Theme.of(context).textTheme.bodyMedium,
+//                             ),
+//                           ),
+//                           const _DecorShapesPurple(),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 28),
 
-//               // Submit
-//               SizedBox(
-//                 width: double.infinity,
-//                 height: 52,
-//                 child: FilledButton(
-//                   style: FilledButton.styleFrom(
-//                     backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-//                     foregroundColor: valid ? Colors.white : Colors.black54,
-//                     shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(12)),
-//                     elevation: valid ? 6 : 0,
-//                     shadowColor: primary.withOpacity(.35),
-//                   ),
-//                   onPressed: valid && !_loading ? _submit : null,
-//                   child: Text(
-//                     _loading ? 'Please wait…' : 'SUBMIT',
-//                     style: const TextStyle(
-//                         fontSize: 17,
-//                         fontWeight: FontWeight.w600,
-//                         letterSpacing: .2),
+//                       if (_isUser || _isTasker) ...[
+//                         _label('Full Name'),
+//                         _filledField(
+//                             controller: nameCtrl,
+//                             hint: 'Full Name',
+//                             keyboardType: TextInputType.name),
+//                         const SizedBox(height: 14),
+//                       ],
+//                       if (_isBusiness) ...[
+//                         _label('Company Name'),
+//                         _filledField(
+//                             controller: companyCtrl,
+//                             hint: 'Company Name',
+//                             keyboardType: TextInputType.name),
+//                         const SizedBox(height: 14),
+//                         _label('ABN'),
+//                         _filledField(
+//                             controller: abanCtrl,
+//                             hint: 'ABN',
+//                             keyboardType: TextInputType.text),
+//                         const SizedBox(height: 14),
+//                         _label("Company's Representative Name"),
+//                         _filledField(
+//                             controller: repNameCtrl,
+//                             hint: "Representative Name",
+//                             keyboardType: TextInputType.name),
+//                         const SizedBox(height: 14),
+//                         _label("Company's Representative Phone Number"),
+//                         _filledField(
+//                             controller: repPhoneCtrl,
+//                             hint: "Representative Phone Number",
+//                             keyboardType: TextInputType.phone),
+//                         const SizedBox(height: 14),
+//                       ],
+
+//                       _label('Phone Number'),
+//                       Row(
+//                         children: [
+//                           Container(
+//                             width: 76,
+//                             height: 48,
+//                             alignment: Alignment.center,
+//                             decoration: BoxDecoration(
+//                               color: hintBg,
+//                               borderRadius: BorderRadius.circular(10),
+//                               border: Border.all(color: Colors.transparent),
+//                             ),
+//                             child: const Text('+61',
+//                                 style: TextStyle(
+//                                     fontWeight: FontWeight.w800,
+//                                     color: Colors.black87)),
+//                           ),
+//                           const SizedBox(width: 10),
+//                           Expanded(
+//                             child: _filledField(
+//                                 controller: phoneCtrl,
+//                                 hint: 'Phone Number',
+//                                 keyboardType: TextInputType.phone),
+//                           ),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 14),
+
+//                       _label('Email Address'),
+//                       _filledField(
+//                           controller: emailCtrl,
+//                           hint: 'Email Address',
+//                           keyboardType: TextInputType.emailAddress),
+//                       const SizedBox(height: 14),
+
+//                       _label('Password'),
+//                       _filledField(
+//                         controller: passCtrl,
+//                         hint: 'Password',
+//                         obscure: obscure,
+//                         suffixIcon: IconButton(
+//                           onPressed: () => setState(() => obscure = !obscure),
+//                           icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+//                         ),
+//                       ),
+//                       const SizedBox(height: 14),
+
+//                       if (_isTasker) ...[
+//                         _label('Address (Required)'),
+//                         _filledField(
+//                             controller: addrCtrl,
+//                             hint: 'Address',
+//                             keyboardType: TextInputType.streetAddress),
+//                         const SizedBox(height: 14),
+//                         _label('Desired Service (Optional)'),
+//                         _filledField(
+//                             controller: serviceCtrl,
+//                             hint: 'Desired Service',
+//                             keyboardType: TextInputType.text),
+//                         const SizedBox(height: 14),
+//                       ],
+
+//                       Row(
+//                         crossAxisAlignment: CrossAxisAlignment.center,
+//                         children: [
+//                           GestureDetector(
+//                             onTap: () => setState(() => agreed = !agreed),
+//                             child: Container(
+//                               width: 22,
+//                               height: 22,
+//                               decoration: BoxDecoration(
+//                                 borderRadius: BorderRadius.circular(4),
+//                                 border: Border.all(
+//                                     color: agreed ? primary : const Color(0xFFCBD5E1),
+//                                     width: 2),
+//                                 color: agreed ? primary : Colors.transparent,
+//                               ),
+//                               child: agreed
+//                                   ? const Icon(Icons.check, size: 16, color: Colors.white)
+//                                   : null,
+//                             ),
+//                           ),
+//                           const SizedBox(width: 10),
+//                           const Expanded(
+//                             child: Text.rich(
+//                               TextSpan(
+//                                 children: [
+//                                   TextSpan(text: 'I agree to the ', style: TextStyle(color: Colors.black87)),
+//                                   TextSpan(text: 'Terms of Service', style: TextStyle(color: primary, fontWeight: FontWeight.w700)),
+//                                   TextSpan(text: ' & ', style: TextStyle(color: Colors.black87)),
+//                                   TextSpan(text: 'Privacy', style: TextStyle(color: primary, fontWeight: FontWeight.w700)),
+//                                 ],
+//                               ),
+//                               style: TextStyle(fontSize: 14.5, height: 1.35),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+
+//                       const SizedBox(height: 22),
+
+//                       SizedBox(
+//                         width: double.infinity,
+//                         height: 52,
+//                         child: FilledButton(
+//                           style: FilledButton.styleFrom(
+//                             backgroundColor: valid ? primary : const Color(0xFFECEFF3),
+//                             foregroundColor: valid ? Colors.white : Colors.black54,
+//                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+//                             elevation: valid ? 6 : 0,
+//                             shadowColor: primary.withOpacity(.35),
+//                           ),
+//                           onPressed: (valid && !isLoading) ? () => _submit(context) : null,
+//                           child: Text(
+//                             isLoading ? 'Please wait…' : 'SUBMIT',
+//                             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: .2),
+//                           ),
+//                         ),
+//                       ),
+//                     ],
 //                   ),
 //                 ),
 //               ),
-//             ],
-//           ),
+//             );
+//           },
 //         ),
 //       ),
 //     );
 //   }
 // }
 
-// /// Decorative shapes (unchanged)
 // class _DecorShapesPurple extends StatelessWidget {
 //   const _DecorShapesPurple();
 
@@ -2386,8 +1035,7 @@ class _DecorShapesPurple extends StatelessWidget {
 //         child: Container(
 //           width: w,
 //           height: h,
-//           decoration:
-//               BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
+//           decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
 //         ),
 //       );
 //     }
@@ -2407,1663 +1055,3 @@ class _DecorShapesPurple extends StatelessWidget {
 //   }
 // }
 
-
-/*class CreateAccountScreen extends StatefulWidget {
-  final String role; // 'user' | 'tasker' | 'business'
-  const CreateAccountScreen({super.key, required this.role});
-
-  @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-}
-
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  // --- Taskoon purple palette ---
-  static const Color primary = Color(0xFF7841BA);
-  static const Color primaryAlt = Color(0xFF8B59C6);
-  static const Color hintBg = Color(0xFFF4F5F7);
-
-  // Controllers
-  final nameCtrl = TextEditingController();
-  final companyCtrl = TextEditingController(); // company name (business)
-  final abanCtrl = TextEditingController(); // ABN (business)
-  final repNameCtrl = TextEditingController(); // representative name (business)
-  final repPhoneCtrl =
-      TextEditingController(); // representative phone (business)
-  final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final addrCtrl = TextEditingController(); // (tasker)
-  final serviceCtrl = TextEditingController(); // (tasker - free text, optional)
-
-  bool obscure = true;
-  bool agreed = false;
-  bool _loading = false;
-
-  // Repo instance
-  final _repo = AuthRepositoryHttp(
-    baseUrl: 'http://192.3.3.187:83',
-    endpoint: '/api/auth/signup',
-  );
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    companyCtrl.dispose();
-    abanCtrl.dispose();
-    repNameCtrl.dispose();
-    repPhoneCtrl.dispose();
-    phoneCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    addrCtrl.dispose();
-    serviceCtrl.dispose();
-    super.dispose();
-  }
-
-  bool get _isBusiness => widget.role.toLowerCase() == 'business';
-  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-  bool get _isUser => widget.role.toLowerCase() == 'user';
-
-  // Normalize phone to +61E.164 (prevents +61 duplication & strips leading zeroes)
-  String _composeAuPhone(String local) {
-    final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
-    final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
-    return '+61$withoutLeadingZero';
-  }
-
-  bool get valid {
-    final base = phoneCtrl.text.trim().isNotEmpty &&
-        emailCtrl.text.trim().isNotEmpty &&
-        passCtrl.text.trim().isNotEmpty &&
-        agreed;
-
-    if (_isUser) {
-      return base && nameCtrl.text.trim().isNotEmpty;
-    } else if (_isTasker) {
-      // Address required; desiredService optional until you wire real IDs
-      return base &&
-          nameCtrl.text.trim().isNotEmpty &&
-          addrCtrl.text.trim().isNotEmpty;
-    } else if (_isBusiness) {
-      return base &&
-          companyCtrl.text.trim().isNotEmpty &&
-          abanCtrl.text.trim().isNotEmpty &&
-          repNameCtrl.text.trim().isNotEmpty &&
-          repPhoneCtrl.text.trim().isNotEmpty;
-    }
-    return base;
-  }
-
-  OutlineInputBorder _border([Color c = Colors.transparent]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      );
-
-  Widget _filledField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: hintBg,
-        hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        suffixIcon: suffixIcon,
-        enabledBorder: _border(),
-        focusedBorder: _border(primary.withOpacity(.35)),
-      ),
-      style: const TextStyle(fontWeight: FontWeight.w600),
-    );
-  }
-
-  Future<void> _submit() async {
-    if (_loading || !valid) return;
-
-    setState(() => _loading = true);
-
-    final phone = _composeAuPhone(phoneCtrl.text);
-    final email = emailCtrl.text.trim();
-    final password = passCtrl.text;
-
-    Result<RegistrationResponse> res;
-
-    try {
-      if (_isUser) {
-        res = await _repo.registerUser(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          desiredService: const [], // UI has no selector yet
-          companyCategory: const [],
-          companySubCategory: const [],
-          abn: null,
-        );
-      } else if (_isTasker) {
-        // address required; desiredService optional (repo can add default if kDefaultServiceId set)
-        res = await _repo.registerTasker(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          address: addrCtrl.text.trim(),
-          desiredService: const [], // keep empty until you have real IDs
-        );
-      } else {
-        // BUSINESS → COMPANY
-        res = await _repo.registerCompany(
-          fullName: companyCtrl.text.trim(), // goes to "fullname"
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          companyCategory: const [], // keep empty; repo can add default if kDefaultCompanyCategoryId set
-          companySubCategory: const [],
-          abn: abanCtrl.text.trim(),
-          representativeName: repNameCtrl.text.trim(),
-          representativeNumber: repPhoneCtrl.text.trim(),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-
-    if (!mounted) return;
-
-    if (res.isSuccess) {
-      final msg = res.data!.message ?? 'Account created';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      // TODO: navigate next (OTP / login)
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.failure!.message)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final role = widget.role.toUpperCase();
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CREATE ACCOUNT — $role',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const SizedBox(
-                    width: 60,
-                    height: 3,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.all(Radius.circular(2)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Intro & shapes
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isBusiness
-                          ? 'Tell us about your company to get started.'
-                          : _isTasker
-                              ? 'Create your account to start earning.'
-                              : 'Create your account to get tasks done.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const _DecorShapesPurple(),
-                ],
-              ),
-              const SizedBox(height: 28),
-
-              // Role-specific
-              if (_isUser || _isTasker) ...[
-                _label('Full Name'),
-                _filledField(
-                  controller: nameCtrl,
-                  hint: 'Full Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              if (_isBusiness) ...[
-                _label('Company Name'),
-                _filledField(
-                  controller: companyCtrl,
-                  hint: 'Company Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label('ABN'),
-                _filledField(
-                  controller: abanCtrl,
-                  hint: 'ABN',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Name"),
-                _filledField(
-                  controller: repNameCtrl,
-                  hint: "Representative Name",
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Phone Number"),
-                _filledField(
-                  controller: repPhoneCtrl,
-                  hint: "Representative Phone Number",
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Common fields
-              _label('Phone Number'),
-              Row(
-                children: [
-                  Container(
-                    width: 76,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hintBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.transparent),
-                    ),
-                    child: const Text(
-                      '+61',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _filledField(
-                      controller: phoneCtrl,
-                      hint: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              _label('Email Address'),
-              _filledField(
-                controller: emailCtrl,
-                hint: 'Email Address',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-
-              _label('Password'),
-              _filledField(
-                controller: passCtrl,
-                hint: 'Password',
-                obscure: obscure,
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => obscure = !obscure),
-                  icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              if (_isTasker) ...[
-                _label('Address (Required)'),
-                _filledField(
-                  controller: addrCtrl,
-                  hint: 'Address',
-                  keyboardType: TextInputType.streetAddress,
-                ),
-                const SizedBox(height: 14),
-                _label('Desired Service (Optional)'),
-                _filledField(
-                  controller: serviceCtrl,
-                  hint: 'Desired Service',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Agreement
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => agreed = !agreed),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: agreed ? primary : const Color(0xFFCBD5E1),
-                          width: 2,
-                        ),
-                        color: agreed ? primary : Colors.transparent,
-                      ),
-                      child: agreed
-                          ? const Icon(Icons.check,
-                              size: 16, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                              text: 'I agree to the ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Terms of Service',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                          TextSpan(
-                              text: ' & ',
-                              style: TextStyle(color: Colors.black87)),
-                          TextSpan(
-                              text: 'Privacy',
-                              style: TextStyle(
-                                  color: primary, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      style: TextStyle(fontSize: 14.5, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              // Submit
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-                    foregroundColor: valid ? Colors.white : Colors.black54,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: valid ? 6 : 0,
-                    shadowColor: primary.withOpacity(.35),
-                  ),
-                  onPressed: valid && !_loading ? _submit : null,
-                  child: Text(
-                    _loading ? 'Please wait…' : 'SUBMIT',
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: .2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Decorative shapes (unchanged)
-class _DecorShapesPurple extends StatelessWidget {
-  const _DecorShapesPurple();
-
-  @override
-  Widget build(BuildContext context) {
-    const light = Color(0xFFE9DEFF);
-    const mid = Color(0xFFD4C4FF);
-    const dark = Color(0xFF7841BA);
-
-    Widget block(Color c, {double w = 84, double h = 26, double angle = .6}) {
-      return Transform.rotate(
-        angle: angle,
-        child: Container(
-          width: w,
-          height: h,
-          decoration:
-              BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: 110,
-      height: 90,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(right: -6, top: 0, child: block(light)),
-          Positioned(right: 6, top: 22, child: block(mid, w: 78)),
-          Positioned(right: -12, top: 48, child: block(dark, w: 64, h: 22)),
-        ],
-      ),
-    );
-  }
-}
-*/
-
-/*class CreateAccountScreen extends StatefulWidget {
-  final String role; // 'user' | 'tasker' | 'business'
-  const CreateAccountScreen({super.key, required this.role});
-
-  @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-}
-
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  // --- Taskoon purple palette (same as LoginScreen) ---
-  static const Color primary = Color(0xFF7841BA);
-  static const Color primaryAlt = Color(0xFF8B59C6);
-  static const Color hintBg = Color(0xFFF4F5F7);
-
-  // Controllers
-  final nameCtrl = TextEditingController();
-  final companyCtrl = TextEditingController(); // company name (business)
-  final abanCtrl = TextEditingController(); // ABN (business)
-  final repNameCtrl = TextEditingController(); // representative name (business)
-  final repPhoneCtrl =
-      TextEditingController(); // representative phone (business)
-  final phoneCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final addrCtrl = TextEditingController(); // (tasker - optional)
-  final serviceCtrl = TextEditingController(); // (tasker - desired service)
-
-  bool obscure = true;
-  bool agreed = false;
-  bool _loading = false; // <-- added
-
-  // Create a repo instance (points to your staging + signup path)
-  final _repo = AuthRepositoryHttp(
-    baseUrl: 'http://192.3.3.187:83',
-    endpoint: '/api/auth/signup',
-  );
-
-  @override
-  void dispose() {
-    nameCtrl.dispose();
-    companyCtrl.dispose();
-    abanCtrl.dispose();
-    repNameCtrl.dispose();
-    repPhoneCtrl.dispose();
-    phoneCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    addrCtrl.dispose();
-    serviceCtrl.dispose();
-    super.dispose();
-  }
-
-  bool get _isBusiness => widget.role.toLowerCase() == 'business';
-  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-  bool get _isUser => widget.role.toLowerCase() == 'user';
-
-  bool get valid {
-    final base = phoneCtrl.text.trim().isNotEmpty &&
-        emailCtrl.text.trim().isNotEmpty &&
-        passCtrl.text.trim().isNotEmpty &&
-        agreed;
-
-    if (_isUser) {
-      return base && nameCtrl.text.trim().isNotEmpty;
-    } else if (_isTasker) {
-      return base &&
-          nameCtrl.text.trim().isNotEmpty &&
-          serviceCtrl.text.trim().isNotEmpty; // address optional
-    } else if (_isBusiness) {
-      return base &&
-          companyCtrl.text.trim().isNotEmpty &&
-          abanCtrl.text.trim().isNotEmpty &&
-          repNameCtrl.text.trim().isNotEmpty &&
-          repPhoneCtrl.text.trim().isNotEmpty;
-    }
-    return base;
-  }
-
-  OutlineInputBorder _border([Color c = Colors.transparent]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: c),
-      );
-
-  Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      );
-
-  Widget _filledField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: hintBg,
-        hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        suffixIcon: suffixIcon,
-        enabledBorder: _border(),
-        focusedBorder: _border(primary.withOpacity(.35)),
-      ),
-      style: const TextStyle(fontWeight: FontWeight.w600),
-    );
-  }
-
-  Future<void> _submit() async {
-    if (_loading) return;
-    if (!valid) return;
-
-    setState(() => _loading = true);
-
-    // Compose phone with +61 prefix block + field text
-    final phone = '+61${phoneCtrl.text.trim()}';
-    final email = emailCtrl.text.trim();
-    final password = passCtrl.text;
-
-    Result<RegistrationResponse> res;
-
-    try {
-      if (_isUser) {
-        // USER: fullname from nameCtrl, no desiredService picker yet → send empty list
-        res = await _repo.registerUser(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          desiredService: const [], // UI has no selection yet
-          companyCategory: const [], // keep arrays present but empty
-          companySubCategory: const [],
-          abn: null,
-        );
-      } else if (_isTasker) {
-        // TASKER: fullname + desiredService from the single text field
-        final ds = <SelectableItem>[
-          SelectableItem(
-              id: '', name: serviceCtrl.text.trim(), isSelected: true),
-        ];
-
-        res = await _repo.registerTasker(
-          fullName: nameCtrl.text.trim(),
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(),
-          desiredService: ds,
-        );
-      } else {
-        // BUSINESS → COMPANY type
-        res = await _repo.registerCompany(
-          fullName: companyCtrl.text.trim(), // maps to "fullname" in payload
-          phoneNumber: phone,
-          emailAddress: email,
-          password: password,
-          companyCategory: const [], // UI has no picker → send empty
-          companySubCategory: const [],
-          abn: abanCtrl.text.trim(),
-          representativeName: repNameCtrl.text.trim(),
-          representativeNumber: repPhoneCtrl.text.trim(),
-        );
-      }
-    } finally {
-      setState(() => _loading = false);
-    }
-
-    if (!mounted) return;
-
-    if (res.isSuccess) {
-      final msg = res.data!.message ?? 'Account created';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      // TODO: navigate next (OTP, login, etc.)
-    } else {
-      final err = res.failure!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err.message)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final role = widget.role.toUpperCase();
-    // ... UI BELOW IS THE SAME AS YOU POSTED (no visual changes) ...
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CREATE ACCOUNT — $role',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const SizedBox(
-                    width: 60,
-                    height: 3,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.all(Radius.circular(2)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-
-              // Welcome + shapes
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isBusiness
-                          ? 'Tell us about your company to get started.'
-                          : _isTasker
-                              ? 'Create your account to start earning.'
-                              : 'Create your account to get tasks done.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  //  _DecorShapesPurple(),
-                ],
-              ),
-              const SizedBox(height: 28),
-
-              // Role-specific
-              if (_isUser || _isTasker) ...[
-                _label('Full Name'),
-                _filledField(
-                  controller: nameCtrl,
-                  hint: 'Full Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              if (_isBusiness) ...[
-                _label('Company Name'),
-                _filledField(
-                  controller: companyCtrl,
-                  hint: 'Company Name',
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label('ABAN'),
-                _filledField(
-                  controller: abanCtrl,
-                  hint: 'ABAN',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Name"),
-                _filledField(
-                  controller: repNameCtrl,
-                  hint: "Representative Name",
-                  keyboardType: TextInputType.name,
-                ),
-                const SizedBox(height: 14),
-                _label("Company's Representative Phone Number"),
-                _filledField(
-                  controller: repPhoneCtrl,
-                  hint: "Representative Phone Number",
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Common fields
-              _label('Phone Number'),
-              Row(
-                children: [
-                  Container(
-                    width: 76,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hintBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.transparent),
-                    ),
-                    child: const Text(
-                      '+61',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _filledField(
-                      controller: phoneCtrl,
-                      hint: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              _label('Email Address'),
-              _filledField(
-                controller: emailCtrl,
-                hint: 'Email Address',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-
-              _label('Password'),
-              _filledField(
-                controller: passCtrl,
-                hint: 'Password',
-                obscure: obscure,
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => obscure = !obscure),
-                  icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              if (_isTasker) ...[
-                _label('Address (Optional)'),
-                _filledField(
-                  controller: addrCtrl,
-                  hint: 'Address (Optional)',
-                  keyboardType: TextInputType.streetAddress,
-                ),
-                const SizedBox(height: 14),
-                _label('Desired Service'),
-                _filledField(
-                  controller: serviceCtrl,
-                  hint: 'Desired Service',
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // Agreement
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => agreed = !agreed),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: agreed ? primary : const Color(0xFFCBD5E1),
-                          width: 2,
-                        ),
-                        color: agreed ? primary : Colors.transparent,
-                      ),
-                      child: agreed
-                          ? const Icon(Icons.check,
-                              size: 16, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'I agree to the ',
-                            style: TextStyle(color: Colors.black87),
-                          ),
-                          TextSpan(
-                            text: 'Terms of Service',
-                            style: TextStyle(
-                              color: primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' & ',
-                            style: TextStyle(color: Colors.black87),
-                          ),
-                          TextSpan(
-                            text: 'Privacy',
-                            style: TextStyle(
-                              color: primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: TextStyle(fontSize: 14.5, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              // Submit (same visuals)
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-                    foregroundColor: valid ? Colors.white : Colors.black54,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: valid ? 6 : 0,
-                    shadowColor: primary.withOpacity(.35),
-                  ),
-                  onPressed: valid && !_loading ? _submit : null, // <-- wired
-                  child: Text(
-                    _loading ? 'Please wait…' : 'SUBMIT',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: .2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-*/
-
-// class CreateAccountScreen extends StatefulWidget {
-//   final String role; // 'user' | 'tasker' | 'business'
-//   const CreateAccountScreen({super.key, required this.role});
-
-//   @override
-//   State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-// }
-
-// class _CreateAccountScreenState extends State<CreateAccountScreen> {
-//   // --- Taskoon purple palette (same as LoginScreen) ---
-//   static const Color primary = Color(0xFF7841BA); // main purple
-//   static const Color primaryAlt =
-//       Color(0xFF8B59C6); // lighter purple (kept for future)
-//   static const Color hintBg = Color(0xFFF4F5F7);
-
-//   // Controllers
-//   final nameCtrl = TextEditingController();
-//   final companyCtrl = TextEditingController(); // company name (business)
-//   final abanCtrl = TextEditingController(); // ABAN (business)
-//   final repNameCtrl = TextEditingController(); // representative name (business)
-//   final repPhoneCtrl =
-//       TextEditingController(); // representative phone (business)
-//   final phoneCtrl = TextEditingController();
-//   final emailCtrl = TextEditingController();
-//   final passCtrl = TextEditingController();
-//   final addrCtrl = TextEditingController(); // optional (tasker)
-//   final serviceCtrl = TextEditingController(); // desired service (tasker)
-
-//   bool obscure = true;
-//   bool agreed = false;
-
-//   @override
-//   void dispose() {
-//     nameCtrl.dispose();
-//     companyCtrl.dispose();
-//     abanCtrl.dispose();
-//     repNameCtrl.dispose();
-//     repPhoneCtrl.dispose();
-//     phoneCtrl.dispose();
-//     emailCtrl.dispose();
-//     passCtrl.dispose();
-//     addrCtrl.dispose();
-//     serviceCtrl.dispose();
-//     super.dispose();
-//   }
-
-//   bool get _isBusiness => widget.role.toLowerCase() == 'business';
-//   bool get _isTasker => widget.role.toLowerCase() == 'tasker';
-//   bool get _isUser => widget.role.toLowerCase() == 'user';
-
-//   bool get valid {
-//     final base = phoneCtrl.text.trim().isNotEmpty &&
-//         emailCtrl.text.trim().isNotEmpty &&
-//         passCtrl.text.trim().isNotEmpty &&
-//         agreed;
-
-//     if (_isUser) {
-//       return base && nameCtrl.text.trim().isNotEmpty;
-//     } else if (_isTasker) {
-//       return base &&
-//           nameCtrl.text.trim().isNotEmpty &&
-//           serviceCtrl.text.trim().isNotEmpty; // address optional
-//     } else if (_isBusiness) {
-//       return base &&
-//           companyCtrl.text.trim().isNotEmpty &&
-//           abanCtrl.text.trim().isNotEmpty &&
-//           repNameCtrl.text.trim().isNotEmpty &&
-//           repPhoneCtrl.text.trim().isNotEmpty;
-//     }
-//     return base;
-//   }
-
-//   OutlineInputBorder _border([Color c = Colors.transparent]) =>
-//       OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(10),
-//         borderSide: BorderSide(color: c),
-//       );
-
-//   Widget _label(String text) => Padding(
-//         padding: const EdgeInsets.only(bottom: 8),
-//         child: Text(
-//           text,
-//           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-//         ),
-//       );
-
-//   Widget _filledField({
-//     required TextEditingController controller,
-//     required String hint,
-//     TextInputType? keyboardType,
-//     bool obscure = false,
-//     Widget? suffixIcon,
-//   }) {
-//     return TextFormField(
-//       controller: controller,
-//       keyboardType: keyboardType,
-//       obscureText: obscure,
-//       onChanged: (_) => setState(() {}),
-//       decoration: InputDecoration(
-//         isDense: true,
-//         filled: true,
-//         fillColor: hintBg,
-//         hintText: hint,
-//         contentPadding:
-//             const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-//         suffixIcon: suffixIcon,
-//         enabledBorder: _border(),
-//         focusedBorder: _border(primary.withOpacity(.35)),
-//       ),
-//       style: const TextStyle(fontWeight: FontWeight.w600),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final role = widget.role.toUpperCase();
-
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: SafeArea(
-//         child: SingleChildScrollView(
-//           padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               // Header + purple underline (matches LoginScreen)
-//               Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     'CREATE ACCOUNT — $role',
-//                     style: const TextStyle(
-//                       fontSize: 18,
-//                       fontWeight: FontWeight.w700,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 4),
-//                   const SizedBox(
-//                     width: 60,
-//                     height: 3,
-//                     child: DecoratedBox(
-//                       decoration: BoxDecoration(
-//                         color: primary,
-//                         borderRadius: BorderRadius.all(Radius.circular(2)),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-
-//               const SizedBox(height: 22),
-
-//               // Welcome + decorative purple blocks
-//               Row(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Expanded(
-//                     child: Text(
-//                       _isBusiness
-//                           ? 'Tell us about your company to get started.'
-//                           : _isTasker
-//                               ? 'Create your account to start earning.'
-//                               : 'Create your account to get tasks done.',
-//                       style: Theme.of(context).textTheme.bodyMedium,
-//                     ),
-//                   ),
-//                   const _DecorShapesPurple(),
-//                 ],
-//               ),
-
-//               const SizedBox(height: 28),
-
-//               // --- Role-specific fields --------------------------------------------------
-
-//               // User/Tasker: Full Name
-//               if (_isUser || _isTasker) ...[
-//                 _label('Full Name'),
-//                 _filledField(
-//                   controller: nameCtrl,
-//                   hint: 'Full Name',
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               // Business: Company Name
-//               if (_isBusiness) ...[
-//                 _label('Company Name'),
-//                 _filledField(
-//                   controller: companyCtrl,
-//                   hint: 'Company Name',
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label('ABAN'),
-//                 _filledField(
-//                   controller: abanCtrl,
-//                   hint: 'ABAN',
-//                   keyboardType: TextInputType.text,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label("Company's Representative Name"),
-//                 _filledField(
-//                   controller: repNameCtrl,
-//                   hint: "Representative Name",
-//                   keyboardType: TextInputType.name,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label("Company's Representative Phone Number"),
-//                 _filledField(
-//                   controller: repPhoneCtrl,
-//                   hint: "Representative Phone Number",
-//                   keyboardType: TextInputType.phone,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               // --- Common fields ---------------------------------------------------------
-
-//               _label('Phone Number'),
-//               Row(
-//                 children: [
-//                   Container(
-//                     width: 76,
-//                     height: 48,
-//                     alignment: Alignment.center,
-//                     decoration: BoxDecoration(
-//                       color: hintBg,
-//                       borderRadius: BorderRadius.circular(10),
-//                       border: Border.all(color: Colors.transparent),
-//                     ),
-//                     child: const Text(
-//                       '+61',
-//                       style: TextStyle(
-//                         fontWeight: FontWeight.w800,
-//                         color: Colors.black87,
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(width: 10),
-//                   Expanded(
-//                     child: _filledField(
-//                       controller: phoneCtrl,
-//                       hint: 'Phone Number',
-//                       keyboardType: TextInputType.phone,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 14),
-
-//               _label('Email Address'),
-//               _filledField(
-//                 controller: emailCtrl,
-//                 hint: 'Email Address',
-//                 keyboardType: TextInputType.emailAddress,
-//               ),
-//               const SizedBox(height: 14),
-
-//               _label('Password'),
-//               _filledField(
-//                 controller: passCtrl,
-//                 hint: 'Password',
-//                 obscure: obscure,
-//                 suffixIcon: IconButton(
-//                   onPressed: () => setState(() => obscure = !obscure),
-//                   icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-//                 ),
-//               ),
-//               const SizedBox(height: 14),
-
-//               // Tasker extras
-//               if (_isTasker) ...[
-//                 _label('Address (Optional)'),
-//                 _filledField(
-//                   controller: addrCtrl,
-//                   hint: 'Address (Optional)',
-//                   keyboardType: TextInputType.streetAddress,
-//                 ),
-//                 const SizedBox(height: 14),
-//                 _label('Desired Service'),
-//                 _filledField(
-//                   controller: serviceCtrl,
-//                   hint: 'Desired Service',
-//                   keyboardType: TextInputType.text,
-//                 ),
-//                 const SizedBox(height: 14),
-//               ],
-
-//               // Agreement
-//               Row(
-//                 crossAxisAlignment: CrossAxisAlignment.center,
-//                 children: [
-//                   GestureDetector(
-//                     onTap: () => setState(() => agreed = !agreed),
-//                     child: Container(
-//                       width: 22,
-//                       height: 22,
-//                       decoration: BoxDecoration(
-//                         borderRadius: BorderRadius.circular(4),
-//                         border: Border.all(
-//                           color: agreed ? primary : const Color(0xFFCBD5E1),
-//                           width: 2,
-//                         ),
-//                         color: agreed ? primary : Colors.transparent,
-//                       ),
-//                       child: agreed
-//                           ? const Icon(Icons.check,
-//                               size: 16, color: Colors.white)
-//                           : null,
-//                     ),
-//                   ),
-//                   const SizedBox(width: 10),
-//                   const Expanded(
-//                     child: Text.rich(
-//                       TextSpan(
-//                         children: [
-//                           TextSpan(
-//                             text: 'I agree to the ',
-//                             style: TextStyle(color: Colors.black87),
-//                           ),
-//                           TextSpan(
-//                             text: 'Terms of Service',
-//                             style: TextStyle(
-//                               color: primary,
-//                               fontWeight: FontWeight.w700,
-//                             ),
-//                           ),
-//                           TextSpan(
-//                             text: ' & ',
-//                             style: TextStyle(color: Colors.black87),
-//                           ),
-//                           TextSpan(
-//                             text: 'Privacy',
-//                             style: TextStyle(
-//                               color: primary,
-//                               fontWeight: FontWeight.w700,
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                       style: TextStyle(fontSize: 14.5, height: 1.35),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-
-//               const SizedBox(height: 22),
-
-//               // Submit
-//               SizedBox(
-//                 width: double.infinity,
-//                 height: 52,
-//                 child: FilledButton(
-//                   style: FilledButton.styleFrom(
-//                     backgroundColor: valid ? primary : const Color(0xFFECEFF3),
-//                     foregroundColor: valid ? Colors.white : Colors.black54,
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     elevation: valid ? 6 : 0,
-//                     shadowColor: primary.withOpacity(.35),
-//                   ),
-//                   onPressed: valid
-//                       ? () {
-//                           // TODO: Submit payload or navigate next
-//                           // Example: Navigator.pop(context);
-//                           ScaffoldMessenger.of(context).showSnackBar(
-//                             const SnackBar(content: Text('Account submitted')),
-//                           );
-//                         }
-//                       : null,
-//                   child: const Text(
-//                     'SUBMIT',
-//                     style: TextStyle(
-//                       fontSize: 17,
-//                       fontWeight: FontWeight.w600,
-//                       letterSpacing: .2,
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// /// Top-right decorative angled rectangles — purple tones (same visual family as LoginScreen).
-// class _DecorShapesPurple extends StatelessWidget {
-//   const _DecorShapesPurple();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     const light = Color(0xFFE9DEFF); // light lavender
-//     const mid = Color(0xFFD4C4FF); // mid lavender
-//     const dark = Color(0xFF7841BA); // primary purple
-
-//     Widget block(Color c, {double w = 84, double h = 26, double angle = .6}) {
-//       return Transform.rotate(
-//         angle: angle, // ~34°
-//         child: Container(
-//           width: w,
-//           height: h,
-//           decoration: BoxDecoration(
-//             color: c,
-//             borderRadius: BorderRadius.circular(6),
-//           ),
-//         ),
-//       );
-//     }
-
-//     return SizedBox(
-//       width: 110,
-//       height: 90,
-//       child: Stack(
-//         clipBehavior: Clip.none,
-//         children: [
-//           Positioned(right: -6, top: 0, child: block(light)),
-//           Positioned(right: 6, top: 22, child: block(mid, w: 78)),
-//           Positioned(right: -12, top: 48, child: block(dark, w: 64, h: 22)),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-// class CreateAccountScreen extends StatefulWidget {
-//   String role;
-//   CreateAccountScreen({super.key, required this.role});
-
-//   @override
-//   State<CreateAccountScreen> createState() => _CreateAccountScreenState();
-// }
-
-// class _CreateAccountScreenState extends State<CreateAccountScreen> {
-//   static const purple = Color(0xFF5B21B6);
-//   static const cream = Color(0xFFFFF7E8); // soft beige like screenshot
-//   static const gold = Color(0xFFB98F22);
-
-//   final nameCtrl = TextEditingController();
-//   final phoneCtrl = TextEditingController();
-//   final emailCtrl = TextEditingController();
-//   final passCtrl = TextEditingController();
-//   final addrCtrl = TextEditingController();
-//   final serviceCtrl = TextEditingController();
-//   bool agreed = false;
-
-//   bool get valid =>
-//       nameCtrl.text.trim().isNotEmpty &&
-//       phoneCtrl.text.trim().isNotEmpty &&
-//       emailCtrl.text.trim().isNotEmpty &&
-//       passCtrl.text.trim().isNotEmpty &&
-//       serviceCtrl.text.trim().isNotEmpty &&
-//       agreed;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: SafeArea(
-//         child: ListView(
-//           padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-//           children: [
-//             // Logo
-//             Center(
-//               child: Image.asset(
-//                 'assets/taskoon_logo.png',
-//                 height: 108,
-//                 width: 108,
-//               ),
-//             ),
-//             //  const SizedBox(height: 18),
-
-//             // Title
-//             const Text(
-//               'CREATE YOUR ACCOUNT',
-//               textAlign: TextAlign.center,
-//               style: TextStyle(
-//                 color: Colors.deepPurple,
-//                 fontSize: 22,
-//                 letterSpacing: .5,
-//                 fontWeight: FontWeight.w900,
-//               ),
-//             ),
-//             const SizedBox(height: 18),
-
-//             // Full name
-//             widget.role == "user" || widget.role == "tasker"
-//                 ? _filledField(
-//                     controller: nameCtrl,
-//                     hint: 'Full Name',
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             const SizedBox(height: 12),
-
-//             widget.role == "business"
-//                 ? _filledField(
-//                     controller: nameCtrl,
-//                     hint: 'Company Name',
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             widget.role == "business" ? const SizedBox(height: 18) : SizedBox(),
-
-//             widget.role == "business"
-//                 ? _filledField(
-//                     controller: nameCtrl,
-//                     hint: 'ABAN',
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             widget.role == "business" ? const SizedBox(height: 18) : SizedBox(),
-//             // Phone (country code + input)
-//             Row(
-//               children: [
-//                 Container(
-//                   width: 84,
-//                   height: 54,
-//                   alignment: Alignment.center,
-//                   decoration: BoxDecoration(
-//                     color: cream,
-//                     borderRadius: BorderRadius.circular(12),
-//                     border: Border.all(color: gold.withOpacity(.45)),
-//                   ),
-//                   child: const Text(
-//                     '+61',
-//                     style: TextStyle(
-//                       fontWeight: FontWeight.w800,
-//                       color: Colors.black87,
-//                     ),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 10),
-//                 Expanded(
-//                   child: _filledField(
-//                     controller: phoneCtrl,
-//                     hint: 'Phone Number',
-//                     keyboardType: TextInputType.phone,
-//                     onChanged: (_) => setState(() {}),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             widget.role == "business" ? const SizedBox(height: 12) : SizedBox(),
-
-//             widget.role == "business"
-//                 ? _filledField(
-//                     controller: emailCtrl,
-//                     hint: "Company's Representative Name",
-//                     keyboardType: TextInputType.emailAddress,
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-
-//             const SizedBox(height: 12),
-//             widget.role == "business"
-//                 ? _filledField(
-//                     controller: emailCtrl,
-//                     hint: "Company's Representative Phone Number",
-//                     keyboardType: TextInputType.emailAddress,
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             const SizedBox(height: 12),
-//             _filledField(
-//               controller: emailCtrl,
-//               hint: 'Email Address',
-//               keyboardType: TextInputType.emailAddress,
-//               onChanged: (_) => setState(() {}),
-//             ),
-//             const SizedBox(height: 12),
-
-//             _filledField(
-//               controller: passCtrl,
-//               hint: 'Password',
-//               obscure: true,
-//               onChanged: (_) => setState(() {}),
-//             ),
-//             const SizedBox(height: 12),
-
-//             widget.role == "tasker"
-//                 ? _filledField(
-//                     controller: addrCtrl,
-//                     hint: 'Address (Optional)',
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             widget.role == "tasker" ? const SizedBox(height: 12) : SizedBox(),
-
-//             widget.role == "tasker"
-//                 ? _filledField(
-//                     controller: serviceCtrl,
-//                     hint: 'Desired Service',
-//                     onChanged: (_) => setState(() {}),
-//                   )
-//                 : SizedBox(),
-//             const SizedBox(height: 16),
-
-//             // Agreement
-//             Row(
-//               crossAxisAlignment: CrossAxisAlignment.center,
-//               children: [
-//                 GestureDetector(
-//                   onTap: () => setState(() => agreed = !agreed),
-//                   child: Container(
-//                     width: 22,
-//                     height: 22,
-//                     decoration: BoxDecoration(
-//                       borderRadius: BorderRadius.circular(4),
-//                       border: Border.all(
-//                         color: agreed ? purple : const Color(0xFFCBD5E1),
-//                         width: 2,
-//                       ),
-//                       color: agreed ? purple : Colors.transparent,
-//                     ),
-//                     child: agreed
-//                         ? const Icon(Icons.check, size: 16, color: Colors.white)
-//                         : null,
-//                   ),
-//                 ),
-//                 const SizedBox(width: 10),
-//                 Expanded(
-//                   child: RichText(
-//                     text: TextSpan(
-//                       style: const TextStyle(
-//                         color: Colors.black87,
-//                         fontSize: 14.5,
-//                         height: 1.35,
-//                       ),
-//                       children: const [
-//                         TextSpan(text: 'I agree to the '),
-//                         TextSpan(
-//                           text: 'Terms of Service',
-//                           style: TextStyle(
-//                             color: Color(0xFFB98F22),
-//                             fontWeight: FontWeight.w800,
-//                           ),
-//                         ),
-//                         TextSpan(text: ' & '),
-//                         TextSpan(
-//                           text: 'Privacy',
-//                           style: TextStyle(
-//                             color: Color(0xFFB98F22),
-//                             fontWeight: FontWeight.w800,
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 18),
-
-//             // Continue
-//             SizedBox(
-//               height: 52,
-//               child: ElevatedButton(
-//                 style: ElevatedButton.styleFrom(
-//                   elevation: 0,
-//                   backgroundColor: Colors
-//                       .deepPurple, //valid ? purple : const Color(0xFFECEFF3),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(16),
-//                   ),
-//                 ),
-//                 onPressed: () {},
-//                 // onPressed: valid
-//                 //     ? () {
-//                 //         // TODO: submit
-//                 //       }
-//                 //     : null,
-//                 child: Text('Sumbit',
-//                     style: TextStyle(
-//                         color: Colors.white,
-//                         fontWeight: FontWeight.w500,
-//                         letterSpacing: 0.1,
-//                         fontSize: 18)),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _filledField({
-//     required TextEditingController controller,
-//     required String hint,
-//     TextInputType? keyboardType,
-//     bool obscure = false,
-//     required ValueChanged<String> onChanged,
-//   }) {
-//     return TextField(
-//       controller: controller,
-//       keyboardType: keyboardType,
-//       obscureText: obscure,
-//       onChanged: onChanged,
-//       decoration: InputDecoration(
-//         hintText: hint,
-//         filled: true,
-//         fillColor: cream,
-//         contentPadding:
-//             const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-//         enabledBorder: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           borderSide: BorderSide(color: gold.withOpacity(.45)),
-//         ),
-//         focusedBorder: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           borderSide: const BorderSide(color: gold, width: 1.6),
-//         ),
-//       ),
-//       style: const TextStyle(fontWeight: FontWeight.w700),
-//     );
-//   }
-// }
