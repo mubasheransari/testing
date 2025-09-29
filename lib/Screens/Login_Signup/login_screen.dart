@@ -6,6 +6,7 @@ import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
 import '../../Repository/auth_repository.dart';
 import '../../widgets/toast_widget.dart';
+import '../Tasker_Onboarding/capture_selfie_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,12 +70,14 @@ class _LoginScreenState extends State<LoginScreen> {
             final token = state.loginResponse?.result?.accessToken ?? '';
             final msg = state.loginResponse?.message ?? 'Login success';
             toastWidget(msg, Colors.green);
+                        Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => SelfieCaptureScreen()));
 
             // Save token if needed
             // final box = GetStorage();
             // box.write('accessToken', token);
 
-            // Navigate to home/dashboard
+            // Navigate to home/dashboard Testing@123
             // Navigator.pushReplacement(context,
             //     MaterialPageRoute(builder: (_) => const HomeScreen())); Testing@123
           } else if (state.status == AuthStatus.failure) {

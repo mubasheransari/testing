@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Screens/Login_Signup/login_screen.dart';
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
@@ -306,8 +307,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         listenWhen: (p, c) => p.status != c.status,
         listener: (context, state) {
           if (state.status == AuthStatus.success) {
-            final msg = state.response?.message ?? 'Account created';
+            final msg = state.response?.message ?? 'Account created';//Testing@123
             toastWidget(msg, Colors.green);
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          LoginScreen()));
           } else if (state.status == AuthStatus.failure) {
             toastWidget(state.error ?? 'Registration failed', Colors.redAccent);
           }
