@@ -5,16 +5,25 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../Models/auth_model.dart';
-import '../Service/api_basehelper.dart';
+import '../Models/login_responnse.dart';
 
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'package:http/http.dart' as http;
 
-import '../Service/api_basehelper.dart';
 
+class ApiConfig {
+  static const String baseUrl = 'http://192.3.3.187:83';
+
+  // endpoints
+  static const String signupEndpoint = '/api/auth/signup';
+  static const String signInEndpoint = '/api/Auth/SignIn';
+}
+
+
+
+
+
+/// Abstraction
 abstract class AuthRepository {
+  // ---------- Registration ----------
   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
 
   Future<Result<RegistrationResponse>> registerUser({
@@ -49,154 +58,105 @@ abstract class AuthRepository {
     String? address,
     List<SelectableItem>? desiredService,
   });
+
+  // ---------- Login ----------
+  Future<Result<LoginResponse>> signIn({
+    required String email,
+    required String password,
+  });
 }
 
+/// Concrete HTTP implementation
 class AuthRepositoryHttp implements AuthRepository {
-  final Uri _endpointUri;
+  final Uri _signupUri;
   final Duration timeout;
-  final ApiBaseHelper _api = ApiBaseHelper();
-
-  AuthRepositoryHttp.fullUrl(String fullUrl,
-      {this.timeout = const Duration(seconds: 30)})
-      : _endpointUri = Uri.parse(fullUrl);
 
   AuthRepositoryHttp({
-    String baseUrl = 'http://192.3.3.187:83',
-    String endpoint = '/api/auth/signup',
+    String baseUrl = ApiConfig.baseUrl,
+    String endpoint = ApiConfig.signupEndpoint,
     this.timeout = const Duration(seconds: 30),
-  }) : _endpointUri = Uri.parse('$baseUrl$endpoint');
+  }) : _signupUri = Uri.parse('$baseUrl$endpoint');
 
-  Failure? _validateEmail(String email) {
-    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-    return ok
-        ? null
-        : Failure(code: 'validation', message: 'Invalid email format');
-  }
+  AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
+      : _signupUri = Uri.parse(fullUrl);
 
-  Failure? _validateRequired(String label, String value) {
-    if (value.trim().isEmpty)
-      return Failure(code: 'validation', message: '$label is required');
-    return null;
-  }
-
-  Future<Result<RegistrationResponse>> _postJson(
-      Map<String, dynamic> body) async {
-    try {
-      // Use the exact full URL (matches your previous working code)
-      final headers = <String, String>{
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+  Map<String, String> _headers() => const {
+        HttpHeaders.acceptHeader: 'application/json',
+        HttpHeaders.contentTypeHeader: 'application/json',
         'X-Request-For': '::1',
       };
 
-      print('>>> POST ${_endpointUri.toString()}');
+  Failure? _validateEmail(String email) {
+    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
+  }
+
+  Failure? _validateRequired(String label, String value) {
+    if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
+    return null;
+  }
+
+  // ---------------- Shared POST helper (registration) ----------------
+  Future<Result<RegistrationResponse>> _postRegistration(Map<String, dynamic> body) async {
+    try {
+      print('>>> POST $_signupUri');
       print('>>> REQUEST: ${jsonEncode(body)}');
 
-      final http.Response res = await http
-          .post(_endpointUri, headers: headers, body: jsonEncode(body))
+      final res = await http
+          .post(_signupUri, headers: _headers(), body: jsonEncode(body))
           .timeout(timeout);
 
       print('<<< STATUS: ${res.statusCode}');
       print('<<< BODY: ${res.body}');
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        final data = jsonDecode(res.body);
-        if (data is Map<String, dynamic>) {
-          final resp = RegistrationResponse.fromJson(data);
-
-          if (!resp.isSuccess) {
-            // Build best-possible error message (bubbles to UI)
-            String msg = resp.message ?? 'Verification failed';
-            if (resp.errors.isNotEmpty) {
-              final first = resp.errors.first;
-              msg =
-                  '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
-            } else {
-              final sc = res.statusCode;
-              String message = 'Server error ($sc)';
-              String bodyText = res.body;
-              // Try to extract a useful message
-              try {
-                final obj = jsonDecode(res.body);
-                if (obj is Map && obj['message'] != null) {
-                  message = obj['message'].toString();
-                } else if (obj is Map && obj['error'] != null) {
-                  message = obj['error'].toString();
-                }
-              } catch (_) {
-                // keep bodyText for visibility below
-              }
-
-              // Log everything for debugging and surface a short tail to the UI
-              print('<<< SERVER ERROR $sc');
-              print('<<< HEADERS: ${res.headers}');
-              print('<<< BODY: ${res.body}');
-
-              final tail = (bodyText.length > 500)
-                  ? bodyText.substring(0, 500) + '…'
-                  : bodyText;
-              return Result.fail(
-                Failure(
-                    code: 'server', message: '$message\n$tail', statusCode: sc),
-              );
-            }
-
-            // else {
-            //   final errors = data['errors'];
-            //   if (errors is Map && errors.isNotEmpty) {
-            //     final kv = errors.entries.first;
-            //     final v = kv.value;
-            //     if (v is List && v.isNotEmpty) {
-            //       msg = '${kv.key}: ${v.first}';
-            //     } else {
-            //       msg = errors.toString();
-            //     }
-            //   }
-            // }
-            print('<<< VERIFICATION FAILED: $msg');
-            return Result.fail(Failure(
-                code: 'validation', message: msg, statusCode: res.statusCode));
-          }
-
-          return Result.ok(resp);
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
         }
-        return Result.fail(Failure(
-            code: 'parse',
-            message: 'Invalid response format',
-            statusCode: res.statusCode));
+
+        final resp = RegistrationResponse.fromJson(parsed);
+
+        if (!resp.isSuccess) {
+          // prefer server message / first field error
+          String msg = resp.message ?? 'Verification failed';
+          if (resp.errors.isNotEmpty) {
+            final first = resp.errors.first;
+            msg = '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
+          }
+          return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
+        }
+
+        return Result.ok(resp);
       }
 
-      String message = 'Server error';
+      // Non-2xx
+      String message = 'Server error (${res.statusCode})';
       try {
         final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null)
-          message = err['message'].toString();
+        if (err is Map && err['message'] != null) message = err['message'].toString();
       } catch (_) {}
-      return Result.fail(Failure(
-          code: 'server', message: message, statusCode: res.statusCode));
+      return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
     } on SocketException {
-      return Result.fail(
-          Failure(code: 'network', message: 'No internet connection'));
+      return Result.fail(Failure(code: 'network', message: 'No internet connection'));
     } on TimeoutException {
-      return Result.fail(
-          Failure(code: 'timeout', message: 'Request timed out'));
+      return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
     } catch (e) {
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
   }
 
+  // ---------------- Registration API ----------------
   @override
-  Future<Result<RegistrationResponse>> register(
-      RegistrationRequest request) async {
+  Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
     final e1 = _validateRequired('Phone number', request.phoneNumber);
     if (e1 != null) return Result.fail(e1);
     final e2 = _validateRequired('Password', request.password);
     if (e2 != null) return Result.fail(e2);
-    final e3 = _validateRequired('Email', request.emailAddress) ??
-        _validateEmail(request.emailAddress);
+    final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
     if (e3 != null) return Result.fail(e3);
 
-    return _postJson(request.toJson());
+    return _postRegistration(request.toJson());
   }
 
   @override
@@ -270,116 +230,56 @@ class AuthRepositoryHttp implements AuthRepository {
     );
     return register(req);
   }
-}
 
-
-
-/*abstract class AuthRepository {
-  Future<Result<RegistrationResponse>> register(RegistrationRequest request);
-
-  Future<Result<RegistrationResponse>> registerUser({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
+  // ---------------- Login API ----------------
+  @override
+  Future<Result<LoginResponse>> signIn({
+    required String email,
     required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-  });
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.signInEndpoint}');
+    // ✅ Your working request used these keys (email + password + phoneNumber:'')
+    final body = {
+      "email": email,          // If backend expects "emailAddress", change to that key
+      "password": password,
+      "phoneNumber": ""
+    };
 
-  Future<Result<RegistrationResponse>> registerCompany({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-    String? representativeName,
-    String? representativeNumber,
-  });
-
-  Future<Result<RegistrationResponse>> registerTasker({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    String? address,
-    List<SelectableItem>? desiredService,
-  });
-}
-
-/// Keeps the SAME class name & constructor used by your UI.
-class AuthRepositoryHttp implements AuthRepository {
-  final Uri _endpointUri;
-  final Duration timeout;
-  final ApiBaseHelper _api;
-
-  AuthRepositoryHttp.fullUrl(
-    String fullUrl, {
-    this.timeout = const Duration(seconds: 30),
-    ApiBaseHelper? api,
-  })  : _endpointUri = Uri.parse(fullUrl),
-        _api = api ?? ApiBaseHelper();
-
-  AuthRepositoryHttp({
-    String baseUrl = 'http://192.3.3.187:83',
-    String endpoint = '/api/auth/signup',
-    this.timeout = const Duration(seconds: 30),
-    ApiBaseHelper? api,
-  })  : _endpointUri = Uri.parse('$baseUrl$endpoint'),
-        _api = api ?? ApiBaseHelper();
-
-  Failure? _validateEmail(String email) {
-    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-    return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
-  }
-
-  Failure? _validateRequired(String label, String value) {
-    if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
-    return null;
-  }
-
-  Future<Result<RegistrationResponse>> _postJson(Map<String, dynamic> body) async {
     try {
-      final http.Response res = await _api
-          .post(baseUrl: _endpointUri.authority, path: _endpointUri.path, body: body)
+      print('>>> LOGIN POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
           .timeout(timeout);
 
+      print('<<< LOGIN STATUS: ${res.statusCode}');
+      print('<<< LOGIN BODY: ${res.body}');
+
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        final data = jsonDecode(res.body);
-        if (data is Map<String, dynamic>) {
-          final resp = RegistrationResponse.fromJson(data);
-
-          if (!resp.isSuccess) {
-            String msg = resp.message ?? 'Validation failed';
-            if (resp.errors.isNotEmpty) {
-              final first = resp.errors.first;
-              msg = '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
-            } else {
-              final errors = data['errors'];
-              if (errors is Map && errors.isNotEmpty) {
-                final kv = errors.entries.first;
-                final v = kv.value;
-                if (v is List && v.isNotEmpty) msg = '${kv.key}: ${v.first}';
-              }
-            }
-            return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
-          }
-
-          return Result.ok(resp);
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
         }
-        return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
+
+        final resp = LoginResponse.fromJson(parsed);
+
+        if (!resp.isSuccess) {
+          return Result.fail(Failure(
+            code: 'validation',
+            message: resp.message ?? 'Login failed',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        return Result.ok(resp);
       }
 
-      String message = 'Server error';
-      try {
-        final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null) message = err['message'].toString();
-      } catch (_) {}
-      return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+      return Result.fail(Failure(
+        code: 'server',
+        message: 'Server error ${res.statusCode}',
+        statusCode: res.statusCode,
+      ));
     } on SocketException {
       return Result.fail(Failure(code: 'network', message: 'No internet connection'));
     } on TimeoutException {
@@ -388,357 +288,10 @@ class AuthRepositoryHttp implements AuthRepository {
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
   }
-
-  @override
-  Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
-    final e1 = _validateRequired('Phone number', request.phoneNumber);
-    if (e1 != null) return Result.fail(e1);
-    final e2 = _validateRequired('Password', request.password);
-    if (e2 != null) return Result.fail(e2);
-    final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
-    if (e3 != null) return Result.fail(e3);
-
-    return _postJson(request.toJson());
-  }
-
-  @override
-  Future<Result<RegistrationResponse>> registerUser({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-  }) => register(RegistrationRequest.user(
-        fullName: fullName,
-        phoneNumber: phoneNumber,
-        emailAddress: emailAddress,
-        password: password,
-        desiredService: desiredService,
-        companyCategory: companyCategory,
-        companySubCategory: companySubCategory,
-        abn: abn,
-      ));
-
-  @override
-  Future<Result<RegistrationResponse>> registerCompany({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-    String? representativeName,
-    String? representativeNumber,
-  }) => register(RegistrationRequest.company(
-        fullName: fullName,
-        phoneNumber: phoneNumber,
-        emailAddress: emailAddress,
-        password: password,
-        desiredService: desiredService,
-        companyCategory: companyCategory,
-        companySubCategory: companySubCategory,
-        abn: abn,
-        representativeName: representativeName,
-        representativeNumber: representativeNumber,
-      ));
-
-  @override
-  Future<Result<RegistrationResponse>> registerTasker({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    String? address,
-    List<SelectableItem>? desiredService,
-  }) => register(RegistrationRequest.tasker(
-        fullName: fullName,
-        phoneNumber: phoneNumber,
-        emailAddress: emailAddress,
-        password: password,
-        address: address,
-        desiredService: desiredService,
-      ));
 }
-*/
 
 
 
-// import 'dart:async';
-// import 'dart:convert';
-// import 'dart:io';
-// import 'package:http/http.dart' as http;
-
-
-
-
-// const String? kDefaultServiceId = null;            // e.g. '1' for TASKER
-// const String? kDefaultCompanyCategoryId = null;    // e.g. '2' (unused now)
-// const String? kDefaultCompanySubCategoryId = null; // e.g. '3' (unused now)
-// const String? kDefaultCompanyDesiredServiceId = null; // usually not needed
-
-// /// ===============================
-// /// Helpers: Result / Failure
-// /// ===============================
-// class Result<T> {
-//   final T? data;
-//   final Failure? failure;
-//   const Result._({this.data, this.failure});
-//   bool get isSuccess => failure == null;
-//   bool get isFailure => !isSuccess;
-//   static Result<T> ok<T>(T data) => Result._(data: data);
-//   static Result<T> fail<T>(Failure failure) => Result._(failure: failure);
-// }
-
-// class Failure {
-//   final String code; // 'network' | 'timeout' | 'server' | 'parse' | 'validation' | 'unknown'
-//   final String message;
-//   final int? statusCode;
-//   const Failure({required this.code, required this.message, this.statusCode});
-//   @override
-//   String toString() => 'Failure($code, $statusCode): $message';
-// }
-
-// /// ===============================
-// /// Models
-// /// ===============================
-// enum AccountType { USER, COMPANY, TASKER }
-// String accountTypeToApi(AccountType t) => t.name; // USER | COMPANY | TASKER
-
-// class SelectableItem {
-//   final String id;
-//   final String name;
-//   final bool isSelected;
-//   const SelectableItem({required this.id, required this.name, this.isSelected = false});
-
-//   factory SelectableItem.fromJson(Map<String, dynamic> json) => SelectableItem(
-//         id: (json['id'] ?? '').toString(),
-//         name: (json['name'] ?? '').toString(),
-//         isSelected: (json['isSelected'] ?? false) == true,
-//       );
-
-//   Map<String, dynamic> toJson() => {
-//         'id': id,
-//         'name': name,
-//         'isSelected': isSelected,
-//       };
-// }
-
-// class RegistrationRequest {
-//   final AccountType type;
-
-//   // Common
-//   final String fullName;
-//   final String phoneNumber;
-//   final String emailAddress;
-//   final String password;
-
-//   // Collections
-//   final List<SelectableItem>? desiredService;
-//   final List<SelectableItem>? companyCategory;
-//   final List<SelectableItem>? companySubCategory;
-
-//   // Company-only
-//   final String? abn;
-//   final String? representativeName;
-//   final String? representativeNumber;
-
-//   // Tasker-only
-//   final String? address;
-
-//   RegistrationRequest._({
-//     required this.type,
-//     required this.fullName,
-//     required this.phoneNumber,
-//     required this.emailAddress,
-//     required this.password,
-//     this.desiredService,
-//     this.companyCategory,
-//     this.companySubCategory,
-//     this.abn,
-//     this.representativeName,
-//     this.representativeNumber,
-//     this.address,
-//   });
-
-//   // USER
-//   factory RegistrationRequest.user({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.USER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//     );
-//   }
-
-//   // COMPANY
-//   factory RegistrationRequest.company({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.COMPANY,
-//       fullName: fullName, // company name
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//       representativeName: representativeName,
-//       representativeNumber: representativeNumber,
-//     );
-//   }
-
-//   // TASKER
-//   factory RegistrationRequest.tasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.TASKER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       address: address,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: const [],
-//       companySubCategory: const [],
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     final base = <String, dynamic>{
-//       'type': accountTypeToApi(type),
-//       'fullname': fullName,
-//       'phoneNumber': phoneNumber,
-//       'emailAddress': emailAddress,
-//       'password': password,
-//     };
-
-//     List<Map<String, dynamic>>? mapList(List<SelectableItem>? l) =>
-//         l?.map((e) => e.toJson()).toList();
-
-//     switch (type) {
-//       case AccountType.USER:
-//         base['desiredService'] = mapList(desiredService ?? []);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);
-//         base['abn'] = (abn ?? '');
-//         break;
-
-//       case AccountType.COMPANY:
-//         base['desiredService'] = mapList(desiredService ?? []);        // usually optional
-//         base['companyCategory'] = mapList(companyCategory ?? []);      // must have valid IDs
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);// often required
-//         base['abn'] = (abn ?? '');
-//         base['representativeName'] = representativeName ?? '';
-//         base['representativeNumber'] = representativeNumber ?? '';
-//         break;
-
-//       case AccountType.TASKER:
-//         base['address'] = address ?? '';
-//         base['desiredService'] = mapList(desiredService ?? []);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);
-//         base['abn'] = '';
-//         base['representativeName'] = '';
-//         base['representativeNumber'] = '';
-//         break;
-//     }
-//     return base;
-//   }
-// }
-
-// class ApiErrorItem {
-//   final String field;
-//   final String error;
-//   ApiErrorItem({required this.field, required this.error});
-//   factory ApiErrorItem.fromJson(Map<String, dynamic> json) => ApiErrorItem(
-//         field: (json['field'] ?? '').toString(),
-//         error: (json['error'] ?? '').toString(),
-//       );
-// }
-
-// class RegistrationResult {
-//   final String? userId;
-//   final String? token;
-//   RegistrationResult({this.userId, this.token});
-//   factory RegistrationResult.fromJson(Map<String, dynamic>? json) {
-//     if (json == null) return RegistrationResult();
-//     return RegistrationResult(
-//       userId: json['userId']?.toString(),
-//       token: json['token']?.toString(),
-//     );
-//   }
-// }
-
-// class RegistrationResponse {
-//   final bool isSuccess;
-//   final String? message;
-//   final RegistrationResult? result;
-//   final List<ApiErrorItem> errors;
-//   final int? statusCode;
-
-//   RegistrationResponse({
-//     required this.isSuccess,
-//     this.message,
-//     this.result,
-//     this.errors = const [],
-//     this.statusCode,
-//   });
-
-//   factory RegistrationResponse.fromJson(Map<String, dynamic> json) {
-//     return RegistrationResponse(
-//       isSuccess: json['isSuccess'] == true,
-//       message: json['message']?.toString(),
-//       result: RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
-//       errors: ((json['errors'] ?? []) as List)
-//           .whereType<Map<String, dynamic>>()
-//           .map(ApiErrorItem.fromJson)
-//           .toList(),
-//       statusCode: json['statusCode'] is int
-//           ? json['statusCode'] as int
-//           : int.tryParse('${json['statusCode'] ?? ''}'),
-//     );
-//   }
-// }
-
-// /// ===============================
-// /// Repository (http) — points to /api/auth/signup
-// /// ===============================
 // abstract class AuthRepository {
 //   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
 
@@ -774,1140 +327,185 @@ class AuthRepositoryHttp implements AuthRepository {
 //     String? address,
 //     List<SelectableItem>? desiredService,
 //   });
-// }
 
-// class AuthRepositoryHttp implements AuthRepository {
-//   final Uri _endpointUri;
-//   final Duration timeout;
+//   Future<Result<LoginResponse>> signIn({
+//     required String email,
+//     required String password,
+//   }) async {
+//     final body = {"email": email, "password": password, 'phoneNumber': ''};
 
-//   /// Pass full absolute URL if you like:
-//   /// AuthRepositoryHttp.fullUrl('http://192.3.3.187:83/api/auth/signup')
-//   AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
-//       : _endpointUri = Uri.parse(fullUrl);
+//     final uri = Uri.parse('http://192.3.3.187:83/api/Auth/SignIn');
 
-//   /// Or base + endpoint
-//   AuthRepositoryHttp({
-//     String baseUrl = 'http://192.3.3.187:83',     // <-- your base URL
-//     String endpoint = '/api/auth/signup',
-//     this.timeout = const Duration(seconds: 30),
-//   }) : _endpointUri = Uri.parse('$baseUrl$endpoint');
-
-//   Map<String, String> _headers() => {
-//         HttpHeaders.acceptHeader: 'application/json',
-//         HttpHeaders.contentTypeHeader: 'application/json',
-//       };
-
-//   Failure? _validateEmail(String email) {
-//     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-//     return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
-//   }
-
-//   Failure? _validateRequired(String label, String value) {
-//     if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
-//     return null;
-//   }
-
-//   Future<Result<RegistrationResponse>> _postJson(Map<String, dynamic> body) async {
 //     try {
-//       // DEBUG: log request
-//       print('>>> POST $_endpointUri');
-//       print('>>> REQUEST: ${jsonEncode(body)}');
-
 //       final res = await http
-//           .post(_endpointUri, headers: _headers(), body: jsonEncode(body))
-//           .timeout(timeout);
+//           .post(uri,
+//               headers: {
+//                 'Accept': 'application/json',
+//                 'Content-Type': 'application/json',
+//                 'X-Request-For': '::1',
+//               },
+//               body: jsonEncode(body));
 
-//       // DEBUG: log response
-//       print('<<< RESPONSE (${res.statusCode}): ${res.body}');
+//       print('<<< LOGIN (${res.statusCode}): ${res.body}');
 
 //       if (res.statusCode >= 200 && res.statusCode < 300) {
 //         final data = jsonDecode(res.body);
-//         if (data is Map<String, dynamic>) {
-//           final resp = RegistrationResponse.fromJson(data);
-
-//           // Treat isSuccess=false as failure with friendly message
-//           if (resp.isSuccess == false) {
-//             String msg = resp.message ?? 'Validation failed';
-//             if (resp.errors.isNotEmpty) {
-//               final first = resp.errors.first;
-//               final field = (first.field.isEmpty ? '' : '${first.field}: ');
-//               msg = '$field${first.error}'.trim();
-//             } else {
-//               final errors = data['errors'];
-//               if (errors is Map && errors.isNotEmpty) {
-//                 final kv = errors.entries.first;
-//                 final v = kv.value;
-//                 if (v is List && v.isNotEmpty) {
-//                   msg = '${kv.key}: ${v.first}';
-//                 } else {
-//                   msg = '$errors';
-//                 }
-//               }
-//             }
-//             return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
-//           }
-
-//           return Result.ok(resp);
+//         final resp = LoginResponse.fromJson(data);
+//         if (!resp.isSuccess) {
+//           return Result.fail(Failure(
+//               code: 'validation',
+//               message: resp.message ?? 'Login failed',
+//               statusCode: res.statusCode));
 //         }
-//         return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
+//         return Result.ok(resp);
 //       } else {
-//         String message = 'Server error';
-//         try {
-//           final err = jsonDecode(res.body);
-//           if (err is Map && err['message'] != null) message = err['message'].toString();
-//         } catch (_) {}
-//         return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+//         return Result.fail(Failure(
+//             code: 'server',
+//             message: 'Server error ${res.statusCode}',
+//             statusCode: res.statusCode));
 //       }
 //     } on SocketException {
-//       return Result.fail(Failure(code: 'network', message: 'No internet connection'));
-//     } on HttpException {
-//       return Result.fail(Failure(code: 'network', message: 'HTTP error'));
-//     } on FormatException {
-//       return Result.fail(Failure(code: 'parse', message: 'Bad response format'));
+//       return Result.fail(
+//           Failure(code: 'network', message: 'No internet connection'));
 //     } on TimeoutException {
-//       return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+//       return Result.fail(
+//           Failure(code: 'timeout', message: 'Request timed out'));
 //     } catch (e) {
 //       return Result.fail(Failure(code: 'unknown', message: e.toString()));
 //     }
 //   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
-//     final e1 = _validateRequired('Phone number', request.phoneNumber);
-//     if (e1 != null) return Result.fail(e1);
-//     final e2 = _validateRequired('Password', request.password);
-//     if (e2 != null) return Result.fail(e2);
-//     final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
-//     if (e3 != null) return Result.fail(e3);
-
-//     return _postJson(request.toJson());
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerUser({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   }) {
-//     final req = RegistrationRequest.user(
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//     );
-//     return register(req);
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerCompany({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   }) {
-//     // Use provided lists; (defaults are disabled because UI now sends explicit IDs)
-//     final req = RegistrationRequest.company(
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//       representativeName: representativeName,
-//       representativeNumber: representativeNumber,
-//     );
-
-//     // Early fail if category is empty
-//     if (req.companyCategory == null || req.companyCategory!.isEmpty) {
-//       return Future.value(Result.fail(
-//         Failure(code: 'validation', message: 'Please select a company category (id).'),
-//       ));
-//     }
-//     // If your backend also requires subcategory:
-//     if (req.companySubCategory == null || req.companySubCategory!.isEmpty) {
-//       // Not failing here by default; uncomment if required:
-//       // return Future.value(Result.fail(
-//       //   Failure(code: 'validation', message: 'Please select a company sub category (id).'),
-//       // ));
-//     }
-
-//     return register(req);
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerTasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   }) {
-//     final ds = <SelectableItem>[];
-//     if (desiredService != null && desiredService.isNotEmpty) {
-//       ds.addAll(desiredService);
-//     } else if (kDefaultServiceId != null) {
-//       ds.add(SelectableItem(id: kDefaultServiceId!, name: 'Default', isSelected: true));
-//     }
-
-//     final req = RegistrationRequest.tasker(
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       address: address,
-//       desiredService: ds,
-//     );
-//     return register(req);
-//   }
 // }
 
-// /*
-// // lib/auth_repository_http.dart
-// import 'dart:async'; // TimeoutException
-// import 'dart:convert';
-// import 'dart:io';
-// import 'package:http/http.dart' as http;
-
-// /// ------------------------------------------------------------
-// /// OPTIONAL DEFAULTS (set real IDs from your DB if needed)
-// /// ------------------------------------------------------------
-// /// If your backend requires a valid desiredService id for TASKER
-// /// and/or a valid companyCategory / companySubCategory id for COMPANY, set these.
-// /// Leave as null to send empty arrays (you'll then see the API's exact
-// /// validation error in the snackbar).
-// const String? kDefaultServiceId = null;            // e.g. '1' for TASKER
-// const String? kDefaultCompanyCategoryId = '2';     // <-- hardcoded as requested
-// const String? kDefaultCompanySubCategoryId = '3';  // <-- change to a real ID if required
-// const String? kDefaultCompanyDesiredServiceId = null; // rarely required for COMPANY
-
-// /// ===============================
-// /// Helpers: Result / Failure
-// /// ===============================
-// class Result<T> {
-//   final T? data;
-//   final Failure? failure;
-//   const Result._({this.data, this.failure});
-//   bool get isSuccess => failure == null;
-//   bool get isFailure => !isSuccess;
-//   static Result<T> ok<T>(T data) => Result._(data: data);
-//   static Result<T> fail<T>(Failure failure) => Result._(failure: failure);
-// }
-
-// class Failure {
-//   final String code; // 'network' | 'timeout' | 'server' | 'parse' | 'validation' | 'unknown'
-//   final String message;
-//   final int? statusCode;
-//   const Failure({required this.code, required this.message, this.statusCode});
-//   @override
-//   String toString() => 'Failure($code, $statusCode): $message';
-// }
-
-// /// ===============================
-// /// Models
-// /// ===============================
-// enum AccountType { USER, COMPANY, TASKER }
-// String accountTypeToApi(AccountType t) => t.name; // USER | COMPANY | TASKER
-
-// class SelectableItem {
-//   final String id;
-//   final String name;
-//   final bool isSelected;
-//   const SelectableItem({required this.id, required this.name, this.isSelected = false});
-
-//   factory SelectableItem.fromJson(Map<String, dynamic> json) => SelectableItem(
-//         id: (json['id'] ?? '').toString(),
-//         name: (json['name'] ?? '').toString(),
-//         isSelected: (json['isSelected'] ?? false) == true,
-//       );
-
-//   Map<String, dynamic> toJson() => {
-//         'id': id,
-//         'name': name,
-//         'isSelected': isSelected,
-//       };
-// }
-
-// class RegistrationRequest {
-//   final AccountType type;
-
-//   // Common
-//   final String fullName;
-//   final String phoneNumber;
-//   final String emailAddress;
-//   final String password;
-
-//   // Collections
-//   final List<SelectableItem>? desiredService;
-//   final List<SelectableItem>? companyCategory;
-//   final List<SelectableItem>? companySubCategory;
-
-//   // Company-only
-//   final String? abn;
-//   final String? representativeName;
-//   final String? representativeNumber;
-
-//   // Tasker-only
-//   final String? address;
-
-//   RegistrationRequest._({
-//     required this.type,
-//     required this.fullName,
-//     required this.phoneNumber,
-//     required this.emailAddress,
-//     required this.password,
-//     this.desiredService,
-//     this.companyCategory,
-//     this.companySubCategory,
-//     this.abn,
-//     this.representativeName,
-//     this.representativeNumber,
-//     this.address,
-//   });
-
-//   // USER
-//   factory RegistrationRequest.user({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.USER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//     );
-//   }
-
-//   // COMPANY
-//   factory RegistrationRequest.company({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.COMPANY,
-//       fullName: fullName, // company name
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//       representativeName: representativeName,
-//       representativeNumber: representativeNumber,
-//     );
-//   }
-
-//   // TASKER
-//   factory RegistrationRequest.tasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.TASKER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       address: address,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: const [],
-//       companySubCategory: const [],
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     final base = <String, dynamic>{
-//       'type': accountTypeToApi(type),
-//       'fullname': fullName,
-//       'phoneNumber': phoneNumber,
-//       'emailAddress': emailAddress,
-//       'password': password,
-//     };
-
-//     List<Map<String, dynamic>>? mapList(List<SelectableItem>? l) =>
-//         l?.map((e) => e.toJson()).toList();
-
-//     switch (type) {
-//       case AccountType.USER:
-//         base['desiredService'] = mapList(desiredService ?? []);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);
-//         base['abn'] = (abn ?? '');
-//         break;
-
-//       case AccountType.COMPANY:
-//         base['desiredService'] = mapList(desiredService ?? []);        // empty ok (usually)
-//         base['companyCategory'] = mapList(companyCategory ?? []);      // must be non-empty w/ valid ID
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);// may be required by your API
-//         base['abn'] = (abn ?? '');
-//         base['representativeName'] = representativeName ?? '';
-//         base['representativeNumber'] = representativeNumber ?? '';
-//         break;
-
-//       case AccountType.TASKER:
-//         base['address'] = address ?? '';
-//         base['desiredService'] = mapList(desiredService ?? []);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);
-//         base['abn'] = '';
-//         base['representativeName'] = '';
-//         base['representativeNumber'] = '';
-//         break;
-//     }
-//     return base;
-//   }
-// }
-
-// class ApiErrorItem {
-//   final String field;
-//   final String error;
-//   ApiErrorItem({required this.field, required this.error});
-//   factory ApiErrorItem.fromJson(Map<String, dynamic> json) => ApiErrorItem(
-//         field: (json['field'] ?? '').toString(),
-//         error: (json['error'] ?? '').toString(),
-//       );
-// }
-
-// class RegistrationResult {
-//   final String? userId;
-//   final String? token;
-//   RegistrationResult({this.userId, this.token});
-//   factory RegistrationResult.fromJson(Map<String, dynamic>? json) {
-//     if (json == null) return RegistrationResult();
-//     return RegistrationResult(
-//       userId: json['userId']?.toString(),
-//       token: json['token']?.toString(),
-//     );
-//   }
-// }
-
-// class RegistrationResponse {
-//   final bool isSuccess;
-//   final String? message;
-//   final RegistrationResult? result;
-//   final List<ApiErrorItem> errors;
-//   final int? statusCode;
-
-//   RegistrationResponse({
-//     required this.isSuccess,
-//     this.message,
-//     this.result,
-//     this.errors = const [],
-//     this.statusCode,
-//   });
-
-//   factory RegistrationResponse.fromJson(Map<String, dynamic> json) {
-//     return RegistrationResponse(
-//       isSuccess: json['isSuccess'] == true,
-//       message: json['message']?.toString(),
-//       result: RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
-//       errors: ((json['errors'] ?? []) as List)
-//           .whereType<Map<String, dynamic>>()
-//           .map(ApiErrorItem.fromJson)
-//           .toList(),
-//       statusCode: json['statusCode'] is int
-//           ? json['statusCode'] as int
-//           : int.tryParse('${json['statusCode'] ?? ''}'),
-//     );
-//   }
-// }
-
-// /// ===============================
-// /// Repository (http) — points to /api/auth/signup
-// /// ===============================
-// abstract class AuthRepository {
-//   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
-
-//   Future<Result<RegistrationResponse>> registerUser({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   });
-
-//   Future<Result<RegistrationResponse>> registerCompany({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   });
-
-//   Future<Result<RegistrationResponse>> registerTasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   });
-// }
-
-// class AuthRepositoryHttp implements AuthRepository {
+//  class AuthRepositoryHttp implements AuthRepository {
 //   final Uri _endpointUri;
 //   final Duration timeout;
+//   final ApiBaseHelper _api = ApiBaseHelper();
 
-//   /// Pass full absolute URL if you like:
-//   /// AuthRepositoryHttp.fullUrl('http://192.3.3.187:83/api/auth/signup')
-//   AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
+//   AuthRepositoryHttp.fullUrl(String fullUrl,
+//       {this.timeout = const Duration(seconds: 30)})
 //       : _endpointUri = Uri.parse(fullUrl);
 
-//   /// Or base + endpoint
-//   AuthRepositoryHttp({
-//     String baseUrl = 'http://192.3.3.187:83',     // <-- your base URL
-//     String endpoint = '/api/auth/signup',
-//     this.timeout = const Duration(seconds: 30),
-//   }) : _endpointUri = Uri.parse('$baseUrl$endpoint');
-
-//   Map<String, String> _headers() => {
-//         HttpHeaders.acceptHeader: 'application/json',
-//         HttpHeaders.contentTypeHeader: 'application/json',
-//       };
-
-//   Failure? _validateEmail(String email) {
-//     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-//     return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
-//   }
-
-//   Failure? _validateRequired(String label, String value) {
-//     if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
-//     return null;
-//   }
-
-//   Future<Result<RegistrationResponse>> _postJson(Map<String, dynamic> body) async {
-//     try {
-//       final res = await http
-//           .post(_endpointUri, headers: _headers(), body: jsonEncode(body))
-//           .timeout(timeout);
-
-//       if (res.statusCode >= 200 && res.statusCode < 300) {
-//         final data = jsonDecode(res.body);
-//         if (data is Map<String, dynamic>) {
-//           final resp = RegistrationResponse.fromJson(data);
-
-//           // If API returns isSuccess=false, bubble up a validation failure
-//           if (resp.isSuccess == false) {
-//             String msg = resp.message ?? 'Validation failed';
-//             if (resp.errors.isNotEmpty) {
-//               final first = resp.errors.first;
-//               final field = (first.field.isEmpty ? '' : '${first.field}: ');
-//               msg = '$field${first.error}'.trim();
-//             } else {
-//               final errors = data['errors'];
-//               if (errors is Map && errors.isNotEmpty) {
-//                 final kv = errors.entries.first;
-//                 final v = kv.value;
-//                 if (v is List && v.isNotEmpty) {
-//                   msg = '${kv.key}: ${v.first}';
-//                 } else {
-//                   msg = '$errors';
-//                 }
-//               }
-//             }
-//             return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
-//           }
-
-//           return Result.ok(resp);
-//         }
-//         return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
-//       } else {
-//         String message = 'Server error';
-//         try {
-//           final err = jsonDecode(res.body);
-//           if (err is Map && err['message'] != null) message = err['message'].toString();
-//         } catch (_) {}
-//         return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
-//       }
-//     } on SocketException {
-//       return Result.fail(Failure(code: 'network', message: 'No internet connection'));
-//     } on HttpException {
-//       return Result.fail(Failure(code: 'network', message: 'HTTP error'));
-//     } on FormatException {
-//       return Result.fail(Failure(code: 'parse', message: 'Bad response format'));
-//     } on TimeoutException {
-//       return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
-//     } catch (e) {
-//       return Result.fail(Failure(code: 'unknown', message: e.toString()));
-//     }
-//   }
-
-//   /// Generic register (minimal checks aligned with your current form)
-//   @override
-//   Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
-//     final e1 = _validateRequired('Phone number', request.phoneNumber);
-//     if (e1 != null) return Result.fail(e1);
-//     final e2 = _validateRequired('Password', request.password);
-//     if (e2 != null) return Result.fail(e2);
-//     final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
-//     if (e3 != null) return Result.fail(e3);
-
-//     return _postJson(request.toJson());
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerUser({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   }) {
-//     final req = RegistrationRequest.user(
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//     );
-//     return register(req);
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerCompany({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   }) {
-//     // Ensure category/subcategory lists with defaults if required
-//     final cc = <SelectableItem>[];
-//     if (companyCategory != null && companyCategory.isNotEmpty) {
-//       cc.addAll(companyCategory);
-//     } else if (kDefaultCompanyCategoryId != null) {
-//       cc.add(SelectableItem(id: kDefaultCompanyCategoryId!, name: 'Default', isSelected: true));
-//     }
-
-//     final csc = <SelectableItem>[];
-//     if (companySubCategory != null && companySubCategory.isNotEmpty) {
-//       csc.addAll(companySubCategory);
-//     } else if (kDefaultCompanySubCategoryId != null) {
-//       // Only add a default if your backend requires subcategory
-//       csc.add(SelectableItem(id: kDefaultCompanySubCategoryId!, name: 'Default', isSelected: true));
-//     }
-
-//     final ds = <SelectableItem>[];
-//     if (desiredService != null && desiredService.isNotEmpty) {
-//       ds.addAll(desiredService);
-//     } else if (kDefaultCompanyDesiredServiceId != null) {
-//       ds.add(SelectableItem(id: kDefaultCompanyDesiredServiceId!, name: 'Default', isSelected: true));
-//     }
-
-//     // Early fail if category is still empty (backend requires it)
-//     if (cc.isEmpty) {
-//       return Future.value(Result.fail(
-//         Failure(code: 'validation', message: 'Please select a company category (id).'),
-//       ));
-//     }
-
-//     final req = RegistrationRequest.company(
-//       fullName: fullName, // company name as 'fullname'
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: ds,
-//       companyCategory: cc,
-//       companySubCategory: csc,
-//       abn: abn,
-//       representativeName: representativeName,
-//       representativeNumber: representativeNumber,
-//     );
-
-//     return register(req);
-//   }
-
-//   @override
-//   Future<Result<RegistrationResponse>> registerTasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   }) {
-//     // If backend requires at least one desiredService with valid ID
-//     final ds = <SelectableItem>[];
-//     if (desiredService != null && desiredService.isNotEmpty) {
-//       ds.addAll(desiredService);
-//     } else if (kDefaultServiceId != null) {
-//       ds.add(SelectableItem(id: kDefaultServiceId!, name: 'Default', isSelected: true));
-//     }
-
-//     final req = RegistrationRequest.tasker(
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       address: address,
-//       desiredService: ds,
-//     );
-//     return register(req);
-//   }
-// }
-
-// */
-
-// /// ===============================
-// /// Helpers: Result / Failure
-// /// ===============================
-// /*class Result<T> {
-//   final T? data;
-//   final Failure? failure;
-//   const Result._({this.data, this.failure});
-//   bool get isSuccess => failure == null;
-//   bool get isFailure => !isSuccess;
-//   static Result<T> ok<T>(T data) => Result._(data: data);
-//   static Result<T> fail<T>(Failure failure) => Result._(failure: failure);
-// }
-
-// class Failure {
-//   final String code; // 'network' | 'timeout' | 'server' | 'parse' | 'validation' | 'unknown'
-//   final String message;
-//   final int? statusCode;
-//   const Failure({required this.code, required this.message, this.statusCode});
-//   @override
-//   String toString() => 'Failure($code, $statusCode): $message';
-// }
-
-// /// ===============================
-// /// Models
-// /// ===============================
-// enum AccountType { USER, COMPANY, TASKER }
-// String accountTypeToApi(AccountType t) => t.name; // USER | COMPANY | TASKER
-
-// class SelectableItem {
-//   final String id;
-//   final String name;
-//   final bool isSelected;
-//   const SelectableItem({required this.id, required this.name, this.isSelected = false});
-
-//   factory SelectableItem.fromJson(Map<String, dynamic> json) => SelectableItem(
-//         id: (json['id'] ?? '').toString(),
-//         name: (json['name'] ?? '').toString(),
-//         isSelected: (json['isSelected'] ?? false) == true,
-//       );
-
-//   Map<String, dynamic> toJson() => {
-//         'id': id,
-//         'name': name,
-//         'isSelected': isSelected,
-//       };
-// }
-
-// class RegistrationRequest {
-//   final AccountType type;
-
-//   // Common
-//   final String fullName;
-//   final String phoneNumber;
-//   final String emailAddress;
-//   final String password;
-
-//   // Collections
-//   final List<SelectableItem>? desiredService;
-//   final List<SelectableItem>? companyCategory;
-//   final List<SelectableItem>? companySubCategory;
-
-//   // Company-only
-//   final String? abn;
-//   final String? representativeName;
-//   final String? representativeNumber;
-
-//   // Tasker-only
-//   final String? address;
-
-//   RegistrationRequest._({
-//     required this.type,
-//     required this.fullName,
-//     required this.phoneNumber,
-//     required this.emailAddress,
-//     required this.password,
-//     this.desiredService,
-//     this.companyCategory,
-//     this.companySubCategory,
-//     this.abn,
-//     this.representativeName,
-//     this.representativeNumber,
-//     this.address,
-//   });
-
-//   // USER
-//   factory RegistrationRequest.user({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.USER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: desiredService ?? const [], // UI has no picker yet
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//     );
-//   }
-
-//   // COMPANY
-//   factory RegistrationRequest.company({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.COMPANY,
-//       fullName: fullName, // company name
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       desiredService: const [],
-//       companyCategory: companyCategory ?? const [],
-//       companySubCategory: companySubCategory ?? const [],
-//       abn: abn,
-//       representativeName: representativeName,
-//       representativeNumber: representativeNumber,
-//     );
-//   }
-
-//   // TASKER
-//   factory RegistrationRequest.tasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   }) {
-//     return RegistrationRequest._(
-//       type: AccountType.TASKER,
-//       fullName: fullName,
-//       phoneNumber: phoneNumber,
-//       emailAddress: emailAddress,
-//       password: password,
-//       address: address,
-//       desiredService: desiredService ?? const [],
-//       companyCategory: const [],
-//       companySubCategory: const [],
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     final base = <String, dynamic>{
-//       'type': accountTypeToApi(type),
-//       'fullname': fullName,
-//       'phoneNumber': phoneNumber,
-//       'emailAddress': emailAddress,
-//       'password': password,
-//     };
-
-//     List<Map<String, dynamic>>? mapList(List<SelectableItem>? l) =>
-//         l?.map((e) => e.toJson()).toList();
-
-//     switch (type) {
-//       case AccountType.USER:
-//         base['desiredService'] = mapList(desiredService ?? []);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? []);
-//         base['abn'] = (abn ?? '');
-//         break;
-
-//       case AccountType.COMPANY:
-//         base['desiredService'] = mapList(desiredService ?? [
-//           const SelectableItem(id: '', name: '', isSelected: false)
-//         ]);
-//         base['companyCategory'] = mapList(companyCategory ?? []);
-//         base['companySubCategory'] = mapList(companySubCategory ?? [
-//           const SelectableItem(id: '', name: '', isSelected: false)
-//         ]);
-//         base['abn'] = (abn ?? '');
-//         base['representativeName'] = representativeName ?? '';
-//         base['representativeNumber'] = representativeNumber ?? '';
-//         break;
-
-//       case AccountType.TASKER:
-//         base['address'] = address ?? '';
-//         base['desiredService'] = mapList(desiredService ?? [
-//           const SelectableItem(id: '', name: '', isSelected: false)
-//         ]);
-//         base['companyCategory'] = mapList(companyCategory ?? [
-//           const SelectableItem(id: '', name: '', isSelected: false)
-//         ]);
-//         base['companySubCategory'] = mapList(companySubCategory ?? [
-//           const SelectableItem(id: '', name: '', isSelected: false)
-//         ]);
-//         base['abn'] = '';
-//         base['representativeName'] = '';
-//         base['representativeNumber'] = '';
-//         break;
-//     }
-//     return base;
-//   }
-// }
-
-// class ApiErrorItem {
-//   final String field;
-//   final String error;
-//   ApiErrorItem({required this.field, required this.error});
-//   factory ApiErrorItem.fromJson(Map<String, dynamic> json) => ApiErrorItem(
-//         field: (json['field'] ?? '').toString(),
-//         error: (json['error'] ?? '').toString(),
-//       );
-// }
-
-// class RegistrationResult {
-//   final String? userId;
-//   final String? token;
-//   RegistrationResult({this.userId, this.token});
-//   factory RegistrationResult.fromJson(Map<String, dynamic>? json) {
-//     if (json == null) return RegistrationResult();
-//     return RegistrationResult(
-//       userId: json['userId']?.toString(),
-//       token: json['token']?.toString(),
-//     );
-//   }
-// }
-
-// class RegistrationResponse {
-//   final bool isSuccess;
-//   final String? message;
-//   final RegistrationResult? result;
-//   final List<ApiErrorItem> errors;
-//   final int? statusCode;
-
-//   RegistrationResponse({
-//     required this.isSuccess,
-//     this.message,
-//     this.result,
-//     this.errors = const [],
-//     this.statusCode,
-//   });
-
-//   factory RegistrationResponse.fromJson(Map<String, dynamic> json) {
-//     return RegistrationResponse(
-//       isSuccess: json['isSuccess'] == true,
-//       message: json['message']?.toString(),
-//       result: RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
-//       errors: ((json['errors'] ?? []) as List)
-//           .whereType<Map<String, dynamic>>()
-//           .map(ApiErrorItem.fromJson)
-//           .toList(),
-//       statusCode: json['statusCode'] is int
-//           ? json['statusCode'] as int
-//           : int.tryParse('${json['statusCode'] ?? ''}'),
-//     );
-//   }
-// }
-
-// /// ===============================
-// /// Repository (http) — points to /api/auth/signup
-// /// ===============================
-// abstract class AuthRepository {
-//   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
-
-//   Future<Result<RegistrationResponse>> registerUser({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? desiredService,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//   });
-
-//   Future<Result<RegistrationResponse>> registerCompany({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     List<SelectableItem>? companyCategory,
-//     List<SelectableItem>? companySubCategory,
-//     String? abn,
-//     String? representativeName,
-//     String? representativeNumber,
-//   });
-
-//   Future<Result<RegistrationResponse>> registerTasker({
-//     required String fullName,
-//     required String phoneNumber,
-//     required String emailAddress,
-//     required String password,
-//     String? address,
-//     List<SelectableItem>? desiredService,
-//   });
-// }
-
-// class AuthRepositoryHttp implements AuthRepository {
-//   final Uri _endpointUri;
-//   final Duration timeout;
-
-//   /// Pass full absolute URL if you like:
-//   /// AuthRepositoryHttp.fullUrl('https://<host>/api/auth/signup')
-//   AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
-//       : _endpointUri = Uri.parse(fullUrl);
-
-//   /// Or base + endpoint (defaults below)
 //   AuthRepositoryHttp({
 //     String baseUrl = 'http://192.3.3.187:83',
 //     String endpoint = '/api/auth/signup',
-//     this.timeout = const Duration(seconds: 30),
+//      this.timeout = const Duration(seconds: 30),
 //   }) : _endpointUri = Uri.parse('$baseUrl$endpoint');
-
-//   Map<String, String> _headers() => {
-//         HttpHeaders.acceptHeader: 'application/json',
-//         HttpHeaders.contentTypeHeader: 'application/json',
-//       };
 
 //   Failure? _validateEmail(String email) {
 //     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-//     return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
+//     return ok
+//         ? null
+//         : Failure(code: 'validation', message: 'Invalid email format');
 //   }
 
 //   Failure? _validateRequired(String label, String value) {
-//     if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
+//     if (value.trim().isEmpty)
+//       return Failure(code: 'validation', message: '$label is required');
 //     return null;
 //   }
 
-//   Future<Result<RegistrationResponse>> _postJson(Map<String, dynamic> body) async {
+//   Future<Result<RegistrationResponse>> _postJson(
+//       Map<String, dynamic> body) async {
 //     try {
-//       final res = await http
-//           .post(_endpointUri, headers: _headers(), body: jsonEncode(body))
+//       // Use the exact full URL (matches your previous working code)
+//       final headers = <String, String>{
+//         'Accept': 'application/json',
+//         'Content-Type': 'application/json',
+//         'X-Request-For': '::1',
+//       };
+
+//       print('>>> POST ${_endpointUri.toString()}');
+//       print('>>> REQUEST: ${jsonEncode(body)}');
+
+//       final http.Response res = await http
+//           .post(_endpointUri, headers: headers, body: jsonEncode(body))
 //           .timeout(timeout);
+
+//       print('<<< STATUS: ${res.statusCode}');
+//       print('<<< BODY: ${res.body}');
 
 //       if (res.statusCode >= 200 && res.statusCode < 300) {
 //         final data = jsonDecode(res.body);
 //         if (data is Map<String, dynamic>) {
 //           final resp = RegistrationResponse.fromJson(data);
 
-//           // If API returns isSuccess=false, bubble up a validation failure
-//           if (resp.isSuccess == false) {
-//             String msg = resp.message ?? 'Validation failed';
+//           if (!resp.isSuccess) {
+//             // Build best-possible error message (bubbles to UI)
+//             String msg = resp.message ?? 'Verification failed';
 //             if (resp.errors.isNotEmpty) {
 //               final first = resp.errors.first;
-//               final field = (first.field.isEmpty ? '' : '${first.field}: ');
-//               msg = '$field${first.error}'.trim();
+//               msg =
+//                   '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
 //             } else {
-//               // Try common server shapes (e.g., .NET ModelState)
-//               final errors = data['errors'];
-//               if (errors is Map && errors.isNotEmpty) {
-//                 final kv = errors.entries.first;
-//                 final v = kv.value;
-//                 if (v is List && v.isNotEmpty) {
-//                   msg = '${kv.key}: ${v.first}';
-//                 } else {
-//                   msg = '$errors';
+//               final sc = res.statusCode;
+//               String message = 'Server error ($sc)';
+//               String bodyText = res.body;
+//               // Try to extract a useful message
+//               try {
+//                 final obj = jsonDecode(res.body);
+//                 if (obj is Map && obj['message'] != null) {
+//                   message = obj['message'].toString();
+//                 } else if (obj is Map && obj['error'] != null) {
+//                   message = obj['error'].toString();
 //                 }
+//               } catch (_) {
+//                 // keep bodyText for visibility below
 //               }
+
+//               // Log everything for debugging and surface a short tail to the UI
+//               print('<<< SERVER ERROR $sc');
+//               print('<<< HEADERS: ${res.headers}');
+//               print('<<< BODY: ${res.body}');
+
+//               final tail = (bodyText.length > 500)
+//                   ? bodyText.substring(0, 500) + '…'
+//                   : bodyText;
+//               return Result.fail(
+//                 Failure(
+//                     code: 'server', message: '$message\n$tail', statusCode: sc),
+//               );
 //             }
-//             return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
+//             print('<<< VERIFICATION FAILED: $msg');
+//             return Result.fail(Failure(
+//                 code: 'validation', message: msg, statusCode: res.statusCode));
 //           }
 
 //           return Result.ok(resp);
 //         }
-//         return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
-//       } else {
-//         String message = 'Server error';
-//         try {
-//           final err = jsonDecode(res.body);
-//           if (err is Map && err['message'] != null) message = err['message'].toString();
-//         } catch (_) {}
-//         return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+//         return Result.fail(Failure(
+//             code: 'parse',
+//             message: 'Invalid response format',
+//             statusCode: res.statusCode));
 //       }
+
+//       String message = 'Server error';
+//       try {
+//         final err = jsonDecode(res.body);
+//         if (err is Map && err['message'] != null)
+//           message = err['message'].toString();
+//       } catch (_) {}
+//       return Result.fail(Failure(
+//           code: 'server', message: message, statusCode: res.statusCode));
 //     } on SocketException {
-//       return Result.fail(Failure(code: 'network', message: 'No internet connection'));
-//     } on HttpException {
-//       return Result.fail(Failure(code: 'network', message: 'HTTP error'));
-//     } on FormatException {
-//       return Result.fail(Failure(code: 'parse', message: 'Bad response format'));
+//       return Result.fail(
+//           Failure(code: 'network', message: 'No internet connection'));
 //     } on TimeoutException {
-//       return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+//       return Result.fail(
+//           Failure(code: 'timeout', message: 'Request timed out'));
 //     } catch (e) {
 //       return Result.fail(Failure(code: 'unknown', message: e.toString()));
 //     }
 //   }
 
-//   /// Generic register (minimal checks aligned with your current form)
 //   @override
-//   Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
+//   Future<Result<RegistrationResponse>> register(
+//       RegistrationRequest request) async {
 //     final e1 = _validateRequired('Phone number', request.phoneNumber);
 //     if (e1 != null) return Result.fail(e1);
 //     final e2 = _validateRequired('Password', request.password);
 //     if (e2 != null) return Result.fail(e2);
-//     final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
+//     final e3 = _validateRequired('Email', request.emailAddress) ??
+//         _validateEmail(request.emailAddress);
 //     if (e3 != null) return Result.fail(e3);
 
 //     return _postJson(request.toJson());
@@ -1943,26 +541,20 @@ class AuthRepositoryHttp implements AuthRepository {
 //     required String phoneNumber,
 //     required String emailAddress,
 //     required String password,
+//     List<SelectableItem>? desiredService,
 //     List<SelectableItem>? companyCategory,
 //     List<SelectableItem>? companySubCategory,
 //     String? abn,
 //     String? representativeName,
 //     String? representativeNumber,
 //   }) {
-//     // If backend requires at least one companyCategory with valid ID
-//     final cc = <SelectableItem>[];
-//     if (companyCategory != null && companyCategory.isNotEmpty) {
-//       cc.addAll(companyCategory);
-//     } else if (kDefaultCompanyCategoryId != null) {
-//       cc.add(SelectableItem(id: kDefaultCompanyCategoryId!, name: 'Default', isSelected: true));
-//     }
-
 //     final req = RegistrationRequest.company(
-//       fullName: fullName, // company name as 'fullname'
+//       fullName: fullName,
 //       phoneNumber: phoneNumber,
 //       emailAddress: emailAddress,
 //       password: password,
-//       companyCategory: cc,
+//       desiredService: desiredService ?? const [],
+//       companyCategory: companyCategory ?? const [],
 //       companySubCategory: companySubCategory ?? const [],
 //       abn: abn,
 //       representativeName: representativeName,
@@ -1980,484 +572,14 @@ class AuthRepositoryHttp implements AuthRepository {
 //     String? address,
 //     List<SelectableItem>? desiredService,
 //   }) {
-//     // If backend requires at least one desiredService with valid ID
-//     final ds = <SelectableItem>[];
-//     if (desiredService != null && desiredService.isNotEmpty) {
-//       ds.addAll(desiredService);
-//     } else if (kDefaultServiceId != null) {
-//       ds.add(SelectableItem(id: kDefaultServiceId!, name: 'Default', isSelected: true));
-//     }
-
 //     final req = RegistrationRequest.tasker(
 //       fullName: fullName,
 //       phoneNumber: phoneNumber,
 //       emailAddress: emailAddress,
 //       password: password,
 //       address: address,
-//       desiredService: ds,
+//       desiredService: desiredService ?? const [],
 //     );
 //     return register(req);
 //   }
 // }
-
-// */
-
-
-// // // lib/auth_repository_http.dart
-// // import 'dart:async'; // TimeoutException
-// // import 'dart:convert';
-// // import 'dart:io';
-// // import 'package:http/http.dart' as http;
-
-// // /// ===============================
-// // /// Helpers: Result / Failure
-// // /// ===============================
-// // class Result<T> {
-// //   final T? data;
-// //   final Failure? failure;
-// //   const Result._({this.data, this.failure});
-// //   bool get isSuccess => failure == null;
-// //   bool get isFailure => !isSuccess;
-// //   static Result<T> ok<T>(T data) => Result._(data: data);
-// //   static Result<T> fail<T>(Failure failure) => Result._(failure: failure);
-// // }
-
-// // class Failure {
-// //   final String code; // 'network' | 'timeout' | 'server' | 'parse' | 'validation' | 'unknown'
-// //   final String message;
-// //   final int? statusCode;
-// //   const Failure({required this.code, required this.message, this.statusCode});
-// //   @override
-// //   String toString() => 'Failure($code, $statusCode): $message';
-// // }
-
-// // /// ===============================
-// // /// Models
-// // /// ===============================
-// // enum AccountType { USER, COMPANY, TASKER }
-// // String accountTypeToApi(AccountType t) => t.name; // USER | COMPANY | TASKER
-
-// // class SelectableItem {
-// //   final String id;
-// //   final String name;
-// //   final bool isSelected;
-// //   const SelectableItem({required this.id, required this.name, this.isSelected = false});
-
-// //   factory SelectableItem.fromJson(Map<String, dynamic> json) => SelectableItem(
-// //         id: (json['id'] ?? '').toString(),
-// //         name: (json['name'] ?? '').toString(),
-// //         isSelected: (json['isSelected'] ?? false) == true,
-// //       );
-
-// //   Map<String, dynamic> toJson() => {
-// //         'id': id,
-// //         'name': name,
-// //         'isSelected': isSelected,
-// //       };
-// // }
-
-// // class RegistrationRequest {
-// //   final AccountType type;
-
-// //   // Common
-// //   final String fullName;
-// //   final String phoneNumber;
-// //   final String emailAddress;
-// //   final String password;
-
-// //   // Collections
-// //   final List<SelectableItem>? desiredService;
-// //   final List<SelectableItem>? companyCategory;
-// //   final List<SelectableItem>? companySubCategory;
-
-// //   // Company-only
-// //   final String? abn;
-// //   final String? representativeName;
-// //   final String? representativeNumber;
-
-// //   // Tasker-only
-// //   final String? address;
-
-// //   RegistrationRequest._({
-// //     required this.type,
-// //     required this.fullName,
-// //     required this.phoneNumber,
-// //     required this.emailAddress,
-// //     required this.password,
-// //     this.desiredService,
-// //     this.companyCategory,
-// //     this.companySubCategory,
-// //     this.abn,
-// //     this.representativeName,
-// //     this.representativeNumber,
-// //     this.address,
-// //   });
-
-// //   // USER
-// //   factory RegistrationRequest.user({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? desiredService,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //   }) {
-// //     return RegistrationRequest._(
-// //       type: AccountType.USER,
-// //       fullName: fullName,
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       desiredService: desiredService ?? const [], // UI has no picker yet
-// //       companyCategory: companyCategory ?? const [],
-// //       companySubCategory: companySubCategory ?? const [],
-// //       abn: abn,
-// //     );
-// //   }
-
-// //   // COMPANY
-// //   factory RegistrationRequest.company({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //     String? representativeName,
-// //     String? representativeNumber,
-// //   }) {
-// //     return RegistrationRequest._(
-// //       type: AccountType.COMPANY,
-// //       fullName: fullName, // company name
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       desiredService: const [],
-// //       companyCategory: companyCategory ?? const [],
-// //       companySubCategory: companySubCategory ?? const [],
-// //       abn: abn,
-// //       representativeName: representativeName,
-// //       representativeNumber: representativeNumber,
-// //     );
-// //   }
-
-// //   // TASKER
-// //   factory RegistrationRequest.tasker({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     String? address,
-// //     List<SelectableItem>? desiredService,
-// //   }) {
-// //     return RegistrationRequest._(
-// //       type: AccountType.TASKER,
-// //       fullName: fullName,
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       address: address,
-// //       desiredService: desiredService ?? const [],
-// //       companyCategory: const [],
-// //       companySubCategory: const [],
-// //     );
-// //   }
-
-// //   Map<String, dynamic> toJson() {
-// //     final base = <String, dynamic>{
-// //       'type': accountTypeToApi(type),
-// //       'fullname': fullName,
-// //       'phoneNumber': phoneNumber,
-// //       'emailAddress': emailAddress,
-// //       'password': password,
-// //     };
-
-// //     List<Map<String, dynamic>>? mapList(List<SelectableItem>? l) =>
-// //         l?.map((e) => e.toJson()).toList();
-
-// //     switch (type) {
-// //       case AccountType.USER:
-// //         base['desiredService'] = mapList(desiredService ?? []);
-// //         base['companyCategory'] = mapList(companyCategory ?? []);
-// //         base['companySubCategory'] = mapList(companySubCategory ?? []);
-// //         base['abn'] = abn ?? '';
-// //         break;
-
-// //       case AccountType.COMPANY:
-// //         base['desiredService'] = mapList(desiredService ?? [
-// //           const SelectableItem(id: '', name: '', isSelected: false)
-// //         ]);
-// //         base['companyCategory'] = mapList(companyCategory ?? []);
-// //         base['companySubCategory'] = mapList(companySubCategory ?? [
-// //           const SelectableItem(id: '', name: '', isSelected: false)
-// //         ]);
-// //         base['abn'] = abn ?? '';
-// //         base['representativeName'] = representativeName ?? '';
-// //         base['representativeNumber'] = representativeNumber ?? '';
-// //         break;
-
-// //       case AccountType.TASKER:
-// //         base['address'] = address ?? '';
-// //         base['desiredService'] = mapList(desiredService ?? [
-// //           const SelectableItem(id: '', name: '', isSelected: false)
-// //         ]);
-// //         base['companyCategory'] = mapList(companyCategory ?? [
-// //           const SelectableItem(id: '', name: '', isSelected: false)
-// //         ]);
-// //         base['companySubCategory'] = mapList(companySubCategory ?? [
-// //           const SelectableItem(id: '', name: '', isSelected: false)
-// //         ]);
-// //         base['abn'] = '';
-// //         base['representativeName'] = '';
-// //         base['representativeNumber'] = '';
-// //         break;
-// //     }
-// //     return base;
-// //   }
-// // }
-
-// // class ApiErrorItem {
-// //   final String field;
-// //   final String error;
-// //   ApiErrorItem({required this.field, required this.error});
-// //   factory ApiErrorItem.fromJson(Map<String, dynamic> json) => ApiErrorItem(
-// //         field: (json['field'] ?? '').toString(),
-// //         error: (json['error'] ?? '').toString(),
-// //       );
-// // }
-
-// // class RegistrationResult {
-// //   final String? userId;
-// //   final String? token;
-// //   RegistrationResult({this.userId, this.token});
-// //   factory RegistrationResult.fromJson(Map<String, dynamic>? json) {
-// //     if (json == null) return RegistrationResult();
-// //     return RegistrationResult(
-// //       userId: json['userId']?.toString(),
-// //       token: json['token']?.toString(),
-// //     );
-// //   }
-// // }
-
-// // class RegistrationResponse {
-// //   final bool isSuccess;
-// //   final String? message;
-// //   final RegistrationResult? result;
-// //   final List<ApiErrorItem> errors;
-// //   final int? statusCode;
-
-// //   RegistrationResponse({
-// //     required this.isSuccess,
-// //     this.message,
-// //     this.result,
-// //     this.errors = const [],
-// //     this.statusCode,
-// //   });
-
-// //   factory RegistrationResponse.fromJson(Map<String, dynamic> json) {
-// //     return RegistrationResponse(
-// //       isSuccess: json['isSuccess'] == true,
-// //       message: json['message']?.toString(),
-// //       result: RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
-// //       errors: ((json['errors'] ?? []) as List)
-// //           .whereType<Map<String, dynamic>>()
-// //           .map(ApiErrorItem.fromJson)
-// //           .toList(),
-// //       statusCode: json['statusCode'] is int
-// //           ? json['statusCode'] as int
-// //           : int.tryParse('${json['statusCode'] ?? ''}'),
-// //     );
-// //   }
-// // }
-
-// // /// ===============================
-// // /// Repository (http) — points to /api/auth/signup
-// // /// ===============================
-// // abstract class AuthRepository {
-// //   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
-
-// //   Future<Result<RegistrationResponse>> registerUser({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? desiredService,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //   });
-
-// //   Future<Result<RegistrationResponse>> registerCompany({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //     String? representativeName,
-// //     String? representativeNumber,
-// //   });
-
-// //   Future<Result<RegistrationResponse>> registerTasker({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     String? address,
-// //     List<SelectableItem>? desiredService,
-// //   });
-// // }
-
-// // class AuthRepositoryHttp implements AuthRepository {
-// //   final Uri _endpointUri;
-// //   final Duration timeout;
-
-// //   /// Use this to pass a full absolute URL directly:
-// //   /// e.g. AuthRepositoryHttp.fullUrl('https://<host>/api/auth/signup')
-// //   AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
-// //       : _endpointUri = Uri.parse(fullUrl);
-
-// //   /// Or use base + endpoint (defaults below)
-// //   AuthRepositoryHttp({
-// //     String baseUrl = 'https://staging-api.taskoon.com',
-// //     String endpoint = '/api/auth/signup',
-// //     this.timeout = const Duration(seconds: 30),
-// //   }) : _endpointUri = Uri.parse('$baseUrl$endpoint');
-
-// //   Map<String, String> _headers() => {
-// //         HttpHeaders.acceptHeader: 'application/json',
-// //         HttpHeaders.contentTypeHeader: 'application/json',
-// //       };
-
-// //   // Minimal common validations to match your current UI
-// //   Failure? _validateEmail(String email) {
-// //     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-// //     return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
-// //   }
-
-// //   Failure? _validateRequired(String label, String value) {
-// //     if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
-// //     return null;
-// //   }
-
-// //   Future<Result<RegistrationResponse>> _postJson(Map<String, dynamic> body) async {
-// //     try {
-// //       final res = await http
-// //           .post(_endpointUri, headers: _headers(), body: jsonEncode(body))
-// //           .timeout(timeout);
-
-// //       if (res.statusCode >= 200 && res.statusCode < 300) {
-// //         final data = jsonDecode(res.body);
-// //         if (data is Map<String, dynamic>) {
-// //           return Result.ok(RegistrationResponse.fromJson(data));
-// //         }
-// //         return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
-// //       } else {
-// //         String message = 'Server error';
-// //         try {
-// //           final err = jsonDecode(res.body);
-// //           if (err is Map && err['message'] != null) message = err['message'].toString();
-// //         } catch (_) {}
-// //         return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
-// //       }
-// //     } on SocketException {
-// //       return Result.fail(Failure(code: 'network', message: 'No internet connection'));
-// //     } on HttpException {
-// //       return Result.fail(Failure(code: 'network', message: 'HTTP error'));
-// //     } on FormatException {
-// //       return Result.fail(Failure(code: 'parse', message: 'Bad response format'));
-// //     } on TimeoutException {
-// //       return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
-// //     } catch (e) {
-// //       return Result.fail(Failure(code: 'unknown', message: e.toString()));
-// //     }
-// //   }
-
-// //   /// Generic register (UI already enforces required fields)
-// //   @override
-// //   Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
-// //     // minimal checks aligned with your current form
-// //     final e1 = _validateRequired('Phone number', request.phoneNumber);
-// //     if (e1 != null) return Result.fail(e1);
-// //     final e2 = _validateRequired('Password', request.password);
-// //     if (e2 != null) return Result.fail(e2);
-// //     final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
-// //     if (e3 != null) return Result.fail(e3);
-
-// //     return _postJson(request.toJson());
-// //   }
-
-// //   @override
-// //   Future<Result<RegistrationResponse>> registerUser({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? desiredService,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //   }) {
-// //     final req = RegistrationRequest.user(
-// //       fullName: fullName,
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       desiredService: desiredService ?? const [],
-// //       companyCategory: companyCategory ?? const [],
-// //       companySubCategory: companySubCategory ?? const [],
-// //       abn: abn,
-// //     );
-// //     return register(req);
-// //   }
-
-// //   @override
-// //   Future<Result<RegistrationResponse>> registerCompany({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     List<SelectableItem>? companyCategory,
-// //     List<SelectableItem>? companySubCategory,
-// //     String? abn,
-// //     String? representativeName,
-// //     String? representativeNumber,
-// //   }) {
-// //     final req = RegistrationRequest.company(
-// //       fullName: fullName, // company name
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       companyCategory: companyCategory ?? const [],
-// //       companySubCategory: companySubCategory ?? const [],
-// //       abn: abn,
-// //       representativeName: representativeName,
-// //       representativeNumber: representativeNumber,
-// //     );
-// //     return register(req);
-// //   }
-
-// //   @override
-// //   Future<Result<RegistrationResponse>> registerTasker({
-// //     required String fullName,
-// //     required String phoneNumber,
-// //     required String emailAddress,
-// //     required String password,
-// //     String? address,
-// //     List<SelectableItem>? desiredService,
-// //   }) {
-// //     final req = RegistrationRequest.tasker(
-// //       fullName: fullName,
-// //       phoneNumber: phoneNumber,
-// //       emailAddress: emailAddress,
-// //       password: password,
-// //       address: address,
-// //       desiredService: desiredService ?? const [],
-// //     );
-// //     return register(req);
-// //   }
-// // }

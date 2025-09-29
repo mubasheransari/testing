@@ -1,15 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-
-import '../Login_Signup/landing_screen.dart';
-
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
-
-import '../Login_Signup/landing_screen.dart';
-
-import 'package:flutter/material.dart';
-
 import '../Login_Signup/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -20,9 +10,9 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  // --- Purple Taskoon palette ---
-  static const primary = Color(0xFF7841BA); // main purple
-  static const bgLavender = Color(0xFFF3ECFF); // soft background
+
+  static const primary = Color(0xFF7841BA); 
+  static const bgLavender = Color(0xFFF3ECFF); 
   static const midLavender = Color(0xFFDCCBFF);
   static const lightLavender = Color(0xFFE9DEFF);
 
@@ -40,7 +30,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Background Checked',
       subtitle:
           'Every tasker is identity verified\nand vetted for your peace of mind',
-      image: 'assets/bg_check.png',
+      image: 'assets/background_check.png',
     ),
     _SlideData(
       title: 'On-time & Reliable',

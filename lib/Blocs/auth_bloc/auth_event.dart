@@ -60,3 +60,16 @@ class RegisterTaskerRequested extends AuthenticationEvent {
     this.desiredService = const [],
   });
 }
+
+class SignInRequested extends AuthenticationEvent {
+  final String email;
+  final String password;
+
+   SignInRequested({
+    required this.email,
+    required this.password,
+  });
+
+  @override
+  List<Object?> get props => [email, password];
+}
