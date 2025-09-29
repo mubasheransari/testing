@@ -70,8 +70,11 @@ class _LoginScreenState extends State<LoginScreen> {
             final token = state.loginResponse?.result?.accessToken ?? '';
             final msg = state.loginResponse?.message ?? 'Login success';
             toastWidget(msg, Colors.green);
-                        Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => SelfieCaptureScreen()));
+Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(builder: (_) => SelfieCaptureScreen()),
+  (Route<dynamic> route) => false, // this clears all previous routes
+);
 
             // Save token if needed
             // final box = GetStorage();

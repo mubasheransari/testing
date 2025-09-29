@@ -10,9 +10,8 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-
-  static const primary = Color(0xFF7841BA); 
-  static const bgLavender = Color(0xFFF3ECFF); 
+  static const primary = Color(0xFF7841BA);
+  static const bgLavender = Color(0xFFF3ECFF);
   static const midLavender = Color(0xFFDCCBFF);
   static const lightLavender = Color(0xFFE9DEFF);
 
@@ -30,7 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Background Checked',
       subtitle:
           'Every tasker is identity verified\nand vetted for your peace of mind',
-      image: 'assets/background_check.png',
+      image: 'assets/bg_check.png',
     ),
     _SlideData(
       title: 'On-time & Reliable',
@@ -297,12 +296,14 @@ class _OnboardPage extends StatelessWidget {
                   Align(
                     alignment: Alignment.bottomCenter,
                     child: Padding(
-                      padding: EdgeInsets.only(bottom: 280),
-                      child: Image.asset(
-                        height: 280,
-                        data.image,
-                        width: c.maxWidth * .51,
-                        //fit: BoxFit.co,
+                      padding: EdgeInsets.only(bottom: 170, left: 10),
+                      child: Center(
+                        child: Image.asset(
+                          height: 290,
+                          data.image,
+                          width: c.maxWidth * .52,
+                          //fit: BoxFit.co,
+                        ),
                       ),
                     ),
                   ),
