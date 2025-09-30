@@ -5,10 +5,247 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
+import '../../Blocs/auth_bloc/auth_bloc.dart';
+import '../../Blocs/auth_bloc/auth_event.dart';
+import '../../Blocs/auth_bloc/auth_state.dart';
 import '../../screens/Tasker_Onboarding/personal_info.dart';
 import '../Tasker_Onboarding/capture_selfie_screen.dart';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sms_autofill/sms_autofill.dart';
+
 class OtpVerificationScreen extends StatefulWidget {
+  const OtpVerificationScreen({super.key});
+
+  @override
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+}
+
+class _OtpVerificationScreenState extends State<OtpVerificationScreen>
+    with CodeAutoFill {
+  // Brand colors
+  static const Color purple = Color(0xFF7841BA);
+  static const Color gold = Color(0xFFD4AF37);
+  static const Color lavender = Color(0xFFF3ECFF);
+
+  String? _otpCode; // 4 chars
+  bool get _isComplete => (_otpCode?.length ?? 0) == 4;
+
+  @override
+  void initState() {
+    super.initState();
+    listenForCode(); // Start SMS retriever (Android)
+  }
+
+  @override
+  void dispose() {
+    cancel(); // Stop listening
+    super.dispose();
+  }
+
+  @override
+  void codeUpdated() {
+    final newCode = code;
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _otpCode = newCode);
+    });
+  }
+
+  void _onCodeChanged(String? code) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _otpCode = code);
+    });
+  }
+
+  void _onVerifyPressed() {
+    if (!_isComplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter the 4-digit OTP")),
+      );
+      return;
+    }
+
+    final bloc = context.read<AuthenticationBloc>();
+    final loginResp = bloc.state.loginResponse;
+    final userId = loginResp?.result?.user?.userId ?? '';
+    final email = loginResp?.result?.user?.userId ??
+        ''; // ⚠️ Replace with actual email if needed
+
+    bloc.add(
+      VerifyOtpRequested(userId: userId, email: email, code: _otpCode!),
+    );
+  }
+
+  void _onResendPressed() {
+    final bloc = context.read<AuthenticationBloc>();
+    final loginResp = bloc.state.loginResponse;
+    final userId = loginResp?.result?.user?.userId ?? '';
+    final email =
+        loginResp?.result?.user?.userId ?? ''; // ⚠️ Replace with actual email
+
+    // bloc.add(SendOtpRequested(userId: userId, email: email));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    return BlocConsumer<AuthenticationBloc, AuthenticationState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.loading) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text("Processing...")));
+        } else if (state.status == AuthStatus.success) {
+          if (state.response?.message == "Verified") {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.response?.message ?? "Success")),
+            );
+          }
+        } else if (state.status == AuthStatus.failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error ?? "Something went wrong")),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: Colors.white, //Testing@123
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+              children: [
+                Center(
+                  child: Image.asset(
+                    'assets/taskoon_logo.png',
+                    height: 95,
+                    width: 95,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // Title
+                Text(
+                  'OTP Verification',
+                  textAlign: TextAlign.center,
+                  style: t.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: purple,
+                    letterSpacing: .3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter the 6-digit code sent to your phone',
+                  textAlign: TextAlign.center,
+                  style: t.bodyMedium?.copyWith(
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 36),
+
+                // OTP input
+                Card(
+                  elevation: 0,
+                  color: lavender,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 28),
+                    child: PinFieldAutoFill(
+                      codeLength: 6,
+                      currentCode: _otpCode,
+                      onCodeChanged: _onCodeChanged,
+                      onCodeSubmitted: (_) => _onVerifyPressed(),
+                      decoration: BoxLooseDecoration(
+                        textStyle: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        bgColorBuilder: const FixedColorBuilder(Colors.white),
+                        strokeColorBuilder: const FixedColorBuilder(purple),
+                        radius: const Radius.circular(12),
+                        gapSpace: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Verify button
+                SizedBox(
+                  height: 52,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _onVerifyPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isComplete ? purple : Colors.grey[300],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: _isComplete ? 6 : 0,
+                    ),
+                    child: const Text(
+                      'Verify',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .4,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Resend
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Didn't receive the code? ",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _onResendPressed,
+                      child: const Text(
+                        'Resend',
+                        style: TextStyle(
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+/**class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({super.key});
 
   @override
@@ -202,7 +439,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ),
     );
   }
-}
+}*/
 
 /*class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({super.key});

@@ -14,6 +14,38 @@ class AuthenticationBloc
     on<RegisterTaskerRequested>(_onRegisterTasker);
     on<SignInRequested>(login);
     on<SendOtpThroughEmail>(sendotpThroughEmail);
+    on<VerifyOtpRequested>(_onVerifyOtpRequested);
+  }
+
+
+  Future<void> _onVerifyOtpRequested(
+    VerifyOtpRequested event,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+    ));
+
+    final result = await repo.verifyOtpThroughEmail(
+      userId: event.userId,
+      email: event.email,
+      code: event.code,
+    );
+
+    if (result.isSuccess) {
+      // Reuse registrationResponse slot since response shape matches
+      emit(state.copyWith(
+        status: AuthStatus.success,
+        response: result.data,
+        error: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        error: result.failure?.message ?? 'OTP verification failed',
+      ));
+    }
   }
 
   sendotpThroughEmail(SendOtpThroughEmail event, emit) {

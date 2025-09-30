@@ -87,3 +87,20 @@ class SendOtpThroughEmail extends AuthenticationEvent {
   @override
   List<Object?> get props => [userId, email];
 }
+
+
+ class VerifyOtpRequested extends AuthenticationEvent {
+  final String userId;
+  final String email;
+  final String code;
+
+   VerifyOtpRequested({
+    required this.userId,
+    required this.email,
+    required this.code,
+  });
+
+  @override
+  List<Object?> get props => [userId, email, code];
+}
+
