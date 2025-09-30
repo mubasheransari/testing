@@ -4,9 +4,8 @@ import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import '../../Repository/auth_repository.dart';
 import 'auth_event.dart';
 
-
-
-class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> {
+class AuthenticationBloc
+    extends Bloc<AuthenticationEvent, AuthenticationState> {
   final AuthRepository repo;
 
   AuthenticationBloc(this.repo) : super(const AuthenticationState()) {
@@ -14,6 +13,30 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     on<RegisterCompanyRequested>(_onRegisterCompany);
     on<RegisterTaskerRequested>(_onRegisterTasker);
     on<SignInRequested>(login);
+    on<SendOtpThroughEmail>(sendotpThroughEmail);
+  }
+
+  sendotpThroughEmail(SendOtpThroughEmail event, emit) {
+  //  emit(state.copyWith(status: AuthStatus.loading));
+
+    repo
+        .sendOtpThroughEmail(
+      userId: event.userId,
+      email: event.email,
+    )
+        .then((result) {
+      if (result.isSuccess) {
+        emit(state.copyWith(
+       //   status: AuthStatus.success,
+          response: result.data, // reuse registrationResponse
+        ));
+      } else {
+        emit(state.copyWith(
+        //  status: AuthStatus.failure,
+          error: result.failure?.message ?? 'OTP failed',
+        ));
+      }
+    });
   }
 
   Future<void> _onRegisterUser(
@@ -32,7 +55,8 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(status: AuthStatus.failure, error: r.failure!.message));
+      emit(state.copyWith(
+          status: AuthStatus.failure, error: r.failure!.message));
     }
   }
 
@@ -54,7 +78,8 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(status: AuthStatus.failure, error: r.failure!.message));
+      emit(state.copyWith(
+          status: AuthStatus.failure, error: r.failure!.message));
     }
   }
 
@@ -72,26 +97,26 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(status: AuthStatus.failure, error: r.failure!.message));
+      emit(state.copyWith(
+          status: AuthStatus.failure, error: r.failure!.message));
     }
   }
 
- login(SignInRequested event,emit) async {
-  emit(state.copyWith(status: AuthStatus.loading, error: null));
+  login(SignInRequested event, emit) async {
+    emit(state.copyWith(status: AuthStatus.loading, error: null));
 
-  final res = await repo.signIn(email: event.email, password: event.password);
+    final res = await repo.signIn(email: event.email, password: event.password);
 
-  if (res.isSuccess) {
-    emit(state.copyWith(
-      status: AuthStatus.success,
-      loginResponse: res.data,
-    ));
-  } else {
-    emit(state.copyWith(
-      status: AuthStatus.failure,
-      error: res.failure?.message ?? 'Login failed',
-    ));
+    if (res.isSuccess) {
+      emit(state.copyWith(
+        status: AuthStatus.success,
+        loginResponse: res.data,
+      ));
+    } else {
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        error: res.failure?.message ?? 'Login failed',
+      ));
+    }
   }
 }
-}
-

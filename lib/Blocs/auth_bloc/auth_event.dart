@@ -2,9 +2,6 @@ import 'package:equatable/equatable.dart';
 
 import '../../Models/auth_model.dart';
 
-
-
-
 abstract class AuthenticationEvent extends Equatable {
   @override
   List<Object?> get props => [];
@@ -12,7 +9,9 @@ abstract class AuthenticationEvent extends Equatable {
 
 class RegisterUserRequested extends AuthenticationEvent {
   final String fullName, phoneNumber, email, password;
-  final List<SelectableItem> desiredService, companyCategory, companySubCategory;
+  final List<SelectableItem> desiredService,
+      companyCategory,
+      companySubCategory;
   final String? abn;
 
   RegisterUserRequested({
@@ -29,7 +28,9 @@ class RegisterUserRequested extends AuthenticationEvent {
 
 class RegisterCompanyRequested extends AuthenticationEvent {
   final String fullName, phoneNumber, email, password;
-  final List<SelectableItem> desiredService, companyCategory, companySubCategory;
+  final List<SelectableItem> desiredService,
+      companyCategory,
+      companySubCategory;
   final String? abn, representativeName, representativeNumber;
 
   RegisterCompanyRequested({
@@ -65,11 +66,24 @@ class SignInRequested extends AuthenticationEvent {
   final String email;
   final String password;
 
-   SignInRequested({
+  SignInRequested({
     required this.email,
     required this.password,
   });
 
   @override
   List<Object?> get props => [email, password];
+}
+
+class SendOtpThroughEmail extends AuthenticationEvent {
+  final String userId;
+  final String email;
+
+  SendOtpThroughEmail({
+    required this.userId,
+    required this.email,
+  });
+
+  @override
+  List<Object?> get props => [userId, email];
 }

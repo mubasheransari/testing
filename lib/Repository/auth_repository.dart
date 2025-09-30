@@ -1,9 +1,7 @@
-// registration_repository.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
 
@@ -11,19 +9,14 @@ import '../Models/login_responnse.dart';
 
 class ApiConfig {
   static const String baseUrl = 'http://192.3.3.187:83';
-
-  // endpoints
   static const String signupEndpoint = '/api/auth/signup';
   static const String signInEndpoint = '/api/Auth/SignIn';
+  static const String sendOTPThroughEmailEndpoint = '/api/otp/send/email';
 }
 
 
 
-
-
-/// Abstraction
 abstract class AuthRepository {
-  // ---------- Registration ----------
   Future<Result<RegistrationResponse>> register(RegistrationRequest request);
 
   Future<Result<RegistrationResponse>> registerUser({
@@ -59,14 +52,18 @@ abstract class AuthRepository {
     List<SelectableItem>? desiredService,
   });
 
-  // ---------- Login ----------
   Future<Result<LoginResponse>> signIn({
     required String email,
     required String password,
   });
+
+  Future<Result<RegistrationResponse>> sendOtpThroughEmail({
+    required String userId,
+    required String email,
+  });
 }
 
-/// Concrete HTTP implementation
+/// HTTP implementation
 class AuthRepositoryHttp implements AuthRepository {
   final Uri _signupUri;
   final Duration timeout;
@@ -77,8 +74,10 @@ class AuthRepositoryHttp implements AuthRepository {
     this.timeout = const Duration(seconds: 30),
   }) : _signupUri = Uri.parse('$baseUrl$endpoint');
 
-  AuthRepositoryHttp.fullUrl(String fullUrl, {this.timeout = const Duration(seconds: 30)})
-      : _signupUri = Uri.parse(fullUrl);
+  AuthRepositoryHttp.fullUrl(
+    String fullUrl, {
+    this.timeout = const Duration(seconds: 30),
+  }) : _signupUri = Uri.parse(fullUrl);
 
   Map<String, String> _headers() => const {
         HttpHeaders.acceptHeader: 'application/json',
@@ -88,16 +87,21 @@ class AuthRepositoryHttp implements AuthRepository {
 
   Failure? _validateEmail(String email) {
     final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-    return ok ? null : Failure(code: 'validation', message: 'Invalid email format');
+    return ok
+        ? null
+        : Failure(code: 'validation', message: 'Invalid email format');
   }
 
   Failure? _validateRequired(String label, String value) {
-    if (value.trim().isEmpty) return Failure(code: 'validation', message: '$label is required');
+    if (value.trim().isEmpty) {
+      return Failure(code: 'validation', message: '$label is required');
+    }
     return null;
   }
 
-  // ---------------- Shared POST helper (registration) ----------------
-  Future<Result<RegistrationResponse>> _postRegistration(Map<String, dynamic> body) async {
+  // ---------------- Registration ----------------
+  Future<Result<RegistrationResponse>> _postRegistration(
+      Map<String, dynamic> body) async {
     try {
       print('>>> POST $_signupUri');
       print('>>> REQUEST: ${jsonEncode(body)}');
@@ -112,19 +116,30 @@ class AuthRepositoryHttp implements AuthRepository {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final parsed = jsonDecode(res.body);
         if (parsed is! Map<String, dynamic>) {
-          return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
         }
 
         final resp = RegistrationResponse.fromJson(parsed);
-
         if (!resp.isSuccess) {
-          // prefer server message / first field error
           String msg = resp.message ?? 'Verification failed';
           if (resp.errors.isNotEmpty) {
             final first = resp.errors.first;
-            msg = '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
+            msg =
+                '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
           }
-          return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: msg,
+              statusCode: res.statusCode,
+            ),
+          );
         }
 
         return Result.ok(resp);
@@ -134,13 +149,407 @@ class AuthRepositoryHttp implements AuthRepository {
       String message = 'Server error (${res.statusCode})';
       try {
         final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null) message = err['message'].toString();
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
       } catch (_) {}
-      return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: message,
+          statusCode: res.statusCode,
+        ),
+      );
     } on SocketException {
-      return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
     } on TimeoutException {
-      return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Result<RegistrationResponse>> register(
+      RegistrationRequest request) async {
+    final e1 = _validateRequired('Phone number', request.phoneNumber);
+    if (e1 != null) return Result.fail(e1);
+    final e2 = _validateRequired('Password', request.password);
+    if (e2 != null) return Result.fail(e2);
+    final e3 = _validateRequired('Email', request.emailAddress) ??
+        _validateEmail(request.emailAddress);
+    if (e3 != null) return Result.fail(e3);
+
+    return _postRegistration(request.toJson());
+  }
+
+  @override
+  Future<Result<RegistrationResponse>> registerUser({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+  }) {
+    final req = RegistrationRequest.user(
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      password: password,
+      desiredService: desiredService ?? const [],
+      companyCategory: companyCategory ?? const [],
+      companySubCategory: companySubCategory ?? const [],
+      abn: abn,
+    );
+    return register(req);
+  }
+
+  @override
+  Future<Result<RegistrationResponse>> registerCompany({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+    String? representativeName,
+    String? representativeNumber,
+  }) {
+    final req = RegistrationRequest.company(
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      password: password,
+      desiredService: desiredService ?? const [],
+      companyCategory: companyCategory ?? const [],
+      companySubCategory: companySubCategory ?? const [],
+      abn: abn,
+      representativeName: representativeName,
+      representativeNumber: representativeNumber,
+    );
+    return register(req);
+  }
+
+  @override
+  Future<Result<RegistrationResponse>> registerTasker({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    String? address,
+    List<SelectableItem>? desiredService,
+  }) {
+    final req = RegistrationRequest.tasker(
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      password: password,
+      address: address,
+      desiredService: desiredService ?? const [],
+    );
+    return register(req);
+  }
+
+  // ---------------- Login ----------------
+  @override
+  Future<Result<LoginResponse>> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.signInEndpoint}');
+    final body = {
+      "email": email,
+      "password": password,
+      "phoneNumber": ""
+    };
+
+    try {
+      print('>>> LOGIN POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< LOGIN STATUS: ${res.statusCode}');
+      print('<<< LOGIN BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = LoginResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'Login failed',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: 'Server error ${res.statusCode}',
+          statusCode: res.statusCode,
+        ),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+
+  // ---------------- Send OTP via Email ----------------
+  @override
+  Future<Result<RegistrationResponse>> sendOtpThroughEmail({
+    required String userId,
+    required String email,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.sendOTPThroughEmailEndpoint}');
+    final body = {
+      "userId": userId,
+      "email": email,
+    };
+
+    try {
+      print('>>> SEND OTP POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< SEND OTP STATUS: ${res.statusCode}');
+      print('<<< SEND OTP BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'OTP failed',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: 'Server error ${res.statusCode}',
+          statusCode: res.statusCode,
+        ),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+}
+
+
+
+/*class ApiConfig {
+  static const String baseUrl = 'http://192.3.3.187:83';
+  static const String signupEndpoint = '/api/auth/signup';
+  static const String signInEndpoint = '/api/Auth/SignIn';
+  static const String sendOTPThroughEmailEndpoint = '/api/otp/send/email';
+}
+
+abstract class AuthRepository {
+  Future<Result<RegistrationResponse>> register(RegistrationRequest request);
+
+  Future<Result<RegistrationResponse>> registerUser({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+  });
+
+  Future<Result<RegistrationResponse>> registerCompany({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+    String? representativeName,
+    String? representativeNumber,
+  });
+
+  Future<Result<RegistrationResponse>> registerTasker({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    String? address,
+    List<SelectableItem>? desiredService,
+  });
+
+  Future<Result<LoginResponse>> signIn({
+    required String email,
+    required String password,
+  });
+
+  sendOtpThroughEmail({
+    required String userId,
+    required String email,
+  });
+}
+
+class AuthRepositoryHttp implements AuthRepository {
+  final Uri _signupUri;
+  final Duration timeout;
+
+  AuthRepositoryHttp({
+    String baseUrl = ApiConfig.baseUrl,
+    String endpoint = ApiConfig.signupEndpoint,
+    this.timeout = const Duration(seconds: 30),
+  }) : _signupUri = Uri.parse('$baseUrl$endpoint');
+
+  AuthRepositoryHttp.fullUrl(String fullUrl,
+      {this.timeout = const Duration(seconds: 30)})
+      : _signupUri = Uri.parse(fullUrl);
+
+  Map<String, String> _headers() => const {
+        HttpHeaders.acceptHeader: 'application/json',
+        HttpHeaders.contentTypeHeader: 'application/json',
+        'X-Request-For': '::1',
+      };
+
+  Failure? _validateEmail(String email) {
+    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    return ok
+        ? null
+        : Failure(code: 'validation', message: 'Invalid email format');
+  }
+
+  Failure? _validateRequired(String label, String value) {
+    if (value.trim().isEmpty)
+      return Failure(code: 'validation', message: '$label is required');
+    return null;
+  }
+
+  
+
+  Future<Result<RegistrationResponse>> _postRegistration(
+      Map<String, dynamic> body) async {
+    try {
+      print('>>> POST $_signupUri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(_signupUri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< STATUS: ${res.statusCode}');
+      print('<<< BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode));
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+
+        if (!resp.isSuccess) {
+          // prefer server message / first field error
+          String msg = resp.message ?? 'Verification failed';
+          if (resp.errors.isNotEmpty) {
+            final first = resp.errors.first;
+            msg =
+                '${first.field.isEmpty ? '' : '${first.field}: '}${first.error}';
+          }
+          return Result.fail(Failure(
+              code: 'validation', message: msg, statusCode: res.statusCode));
+        }
+
+        return Result.ok(resp);
+      }
+
+      // Non-2xx
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null)
+          message = err['message'].toString();
+      } catch (_) {}
+      return Result.fail(Failure(
+          code: 'server', message: message, statusCode: res.statusCode));
+    } on SocketException {
+      return Result.fail(
+          Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(
+          Failure(code: 'timeout', message: 'Request timed out'));
     } catch (e) {
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
@@ -148,12 +557,14 @@ class AuthRepositoryHttp implements AuthRepository {
 
   // ---------------- Registration API ----------------
   @override
-  Future<Result<RegistrationResponse>> register(RegistrationRequest request) async {
+  Future<Result<RegistrationResponse>> register(
+      RegistrationRequest request) async {
     final e1 = _validateRequired('Phone number', request.phoneNumber);
     if (e1 != null) return Result.fail(e1);
     final e2 = _validateRequired('Password', request.password);
     if (e2 != null) return Result.fail(e2);
-    final e3 = _validateRequired('Email', request.emailAddress) ?? _validateEmail(request.emailAddress);
+    final e3 = _validateRequired('Email', request.emailAddress) ??
+        _validateEmail(request.emailAddress);
     if (e3 != null) return Result.fail(e3);
 
     return _postRegistration(request.toJson());
@@ -240,7 +651,7 @@ class AuthRepositoryHttp implements AuthRepository {
     final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.signInEndpoint}');
     // ✅ Your working request used these keys (email + password + phoneNumber:'')
     final body = {
-      "email": email,          // If backend expects "emailAddress", change to that key
+      "email": email, // If backend expects "emailAddress", change to that key
       "password": password,
       "phoneNumber": ""
     };
@@ -259,7 +670,10 @@ class AuthRepositoryHttp implements AuthRepository {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final parsed = jsonDecode(res.body);
         if (parsed is! Map<String, dynamic>) {
-          return Result.fail(Failure(code: 'parse', message: 'Invalid response format', statusCode: res.statusCode));
+          return Result.fail(Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode));
         }
 
         final resp = LoginResponse.fromJson(parsed);
@@ -281,14 +695,16 @@ class AuthRepositoryHttp implements AuthRepository {
         statusCode: res.statusCode,
       ));
     } on SocketException {
-      return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+      return Result.fail(
+          Failure(code: 'network', message: 'No internet connection'));
     } on TimeoutException {
-      return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+      return Result.fail(
+          Failure(code: 'timeout', message: 'Request timed out'));
     } catch (e) {
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
   }
-}
+}*/
 
 
 

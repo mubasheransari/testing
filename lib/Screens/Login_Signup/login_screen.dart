@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Screens/Login_Signup/otp_verification_screen.dart';
 import 'package:taskoon/Screens/Login_Signup/role_selection_screen.dart';
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
@@ -9,7 +10,7 @@ import '../../widgets/toast_widget.dart';
 import '../Tasker_Onboarding/capture_selfie_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key}); //Testing@123
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -69,14 +70,21 @@ class _LoginScreenState extends State<LoginScreen> {
           } else if (state.status == AuthStatus.success) {
             final token = state.loginResponse?.result?.accessToken ?? '';
             final msg = state.loginResponse?.message ?? 'Login success';
-            toastWidget(msg, Colors.green);
-Navigator.pushAndRemoveUntil(
-  context,
-  MaterialPageRoute(builder: (_) => SelfieCaptureScreen()),
-  (Route<dynamic> route) => false, // this clears all previous routes
-);
+            // toastWidget(msg, Colors.green);
+            context.read<AuthenticationBloc>().add(SendOtpThroughEmail(
+                userId: state.loginResponse!.result!.user!.userId.toString(),
+                email: emailController.text.trim()));
+            toastWidget(
+                'OTP Send to ${emailController.text.trim()}', Colors.green);
 
-            // Save token if needed
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => OtpVerificationScreen()),
+              (Route<dynamic> route) =>
+                  false, // this clears all previous routes Testing@123
+            );
+
+            // Save token if needed Testing@123
             // final box = GetStorage();
             // box.write('accessToken', token);
 
