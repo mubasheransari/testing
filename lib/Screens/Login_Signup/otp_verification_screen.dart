@@ -4,6 +4,7 @@ import 'package:sms_autofill/sms_autofill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import 'package:taskoon/widgets/toast_widget.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
@@ -98,8 +99,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return BlocConsumer<AuthenticationBloc, AuthenticationState>(
       listener: (context, state) {
         if (state.status == AuthStatus.loading) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text("Processing...")));
+          toastWidget("Please wait! While we're verifying your account!", Colors.green);
+          // ScaffoldMessenger.of(context)
+          //     .showSnackBar(const SnackBar(content: Text("Processing...")));
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
             Navigator.pushReplacement(
@@ -107,14 +109,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.response?.message ?? "Success")),
-            );
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   SnackBar(content: Text(state.response?.message ?? "Success")),
+            // );
           }
         } else if (state.status == AuthStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.error ?? "Something went wrong")),
-          );
+                   toastWidget("Wrong OTP! Wr're unable to access your account.", Colors.red);
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   SnackBar(content: Text(state.error ?? "Something went wrong")),
+          // );
         }
       },
       builder: (context, state) {
@@ -133,7 +136,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 ),
                 const SizedBox(height: 28),
 
-                // Title
                 Text(
                   'OTP Verification',
                   textAlign: TextAlign.center,
@@ -172,8 +174,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       decoration: BoxLooseDecoration(
                         textStyle: const TextStyle(
                           color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
                         bgColorBuilder: const FixedColorBuilder(Colors.white),
                         strokeColorBuilder: const FixedColorBuilder(purple),
@@ -186,8 +188,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
                 const SizedBox(height: 32),
 
+                 Center(
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.40,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: purple,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 6,
+                            shadowColor: purple.withOpacity(.35),
+                          ),
+                         onPressed: _onVerifyPressed,
+                          child:const Text(
+                         'Verify', //   isLoading ? 'Please wait…' : 'LOGIN',
+                            style:  TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                 // Verify button
-                SizedBox(
+              /*  SizedBox(
                   height: 52,
                   width: double.infinity,
                   child: ElevatedButton(
@@ -209,7 +238,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       ),
                     ),
                   ),
-                ),
+                ),*/
 
                 const SizedBox(height: 18),
 
