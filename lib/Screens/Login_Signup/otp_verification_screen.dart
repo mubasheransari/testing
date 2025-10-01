@@ -16,8 +16,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  String email;
-  OtpVerificationScreen({super.key, required this.email});
+  String email,userId;
+  OtpVerificationScreen({super.key, required this.email,required this.userId});
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -77,7 +77,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     //     ''; // ⚠️ Replace with actual email if needed Testing@123
 
     bloc.add(
-      VerifyOtpRequested(userId: userId, email: widget.email, code: _otpCode!),
+      VerifyOtpRequested(userId: widget.userId, email: widget.email, code: _otpCode!),
     );
   }
 
