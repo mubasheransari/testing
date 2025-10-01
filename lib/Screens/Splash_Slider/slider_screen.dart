@@ -179,8 +179,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                     const SizedBox(height: 18),
 
+                       Center(
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.90,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: primary,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 6,
+                            shadowColor: primary.withOpacity(.35),
+                          ),
+                          onPressed: _next,
+                          child: Center(
+                            child: Text(
+                            isLast ? 'Get Started' : 'Next',
+                            textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                letterSpacing: .2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                     // CTA Button
-                    SizedBox(
+                /*    SizedBox(
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: _next,
@@ -203,7 +233,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                       ),
-                    ),
+                    ),*/
                   ],
                 ),
               ),

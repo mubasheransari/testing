@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Screens/Login_Signup/forgot_password_screen.dart';
 import 'package:taskoon/Screens/Login_Signup/otp_verification_screen.dart';
 import 'package:taskoon/Screens/Login_Signup/role_selection_screen.dart';
 import '../../Blocs/auth_bloc/auth_bloc.dart';
@@ -186,7 +187,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 18),
 
-                    // --- Password
                     const Text('Password',
                         style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w600)),
@@ -219,8 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Spacer(),
                         TextButton(
                           onPressed: () {
-                            // TODO: Navigate to ForgotPasswordScreen
-                          },
+Navigator.push(context, MaterialPageRoute(builder: (context)=> ForgotPasswordScreen())) ;                         },
                           style: TextButton.styleFrom(
                             foregroundColor: primary,
                             padding: EdgeInsets.zero,
