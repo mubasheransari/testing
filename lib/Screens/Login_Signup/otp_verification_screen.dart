@@ -84,12 +84,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   void _onResendPressed() {
     final bloc = context.read<AuthenticationBloc>();
-    final loginResp = bloc.state.loginResponse;
-    final userId = loginResp?.result?.user?.userId ?? '';
-    final email =
-        loginResp?.result?.user?.userId ?? ''; // ⚠️ Replace with actual email
-
-    // bloc.add(SendOtpRequested(userId: userId, email: email));
+     bloc.add(SendOtpThroughEmail(userId: widget.userId, email: widget.email));
   }
 
   @override
@@ -242,8 +237,32 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
                 const SizedBox(height: 18),
 
+                
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Didn't receive the code?  ",
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 16),
+                        ),
+                        GestureDetector(
+                              onTap: _onResendPressed,
+                          child: const Text(
+                            'Resend',
+                            style: TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+
                 // Resend
-                Row(
+            /*    Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
@@ -264,7 +283,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       ),
                     ),
                   ],
-                ),
+                ),*/
               ],
             ),
           ),
