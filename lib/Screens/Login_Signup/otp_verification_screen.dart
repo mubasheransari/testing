@@ -165,7 +165,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 28),
+                        horizontal: 14, vertical: 28),
                     child: PinFieldAutoFill(
                       codeLength: 6,
                       currentCode: _otpCode,
