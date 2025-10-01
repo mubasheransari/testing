@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             Navigator.pushAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (_) => OtpVerificationScreen()),
+              MaterialPageRoute(builder: (_) => OtpVerificationScreen(email: emailController.text.trim())),
               (Route<dynamic> route) =>
                   false, // this clears all previous routes Testing@123
             );

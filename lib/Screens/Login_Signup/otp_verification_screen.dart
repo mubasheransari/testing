@@ -16,7 +16,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+  String email;
+  OtpVerificationScreen({super.key, required this.email});
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -30,7 +31,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   static const Color lavender = Color(0xFFF3ECFF);
 
   String? _otpCode; // 4 chars
-  bool get _isComplete => (_otpCode?.length ?? 0) == 4;
+  bool get _isComplete => (_otpCode?.length ?? 0) == 6;
 
   @override
   void initState() {
@@ -72,11 +73,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final bloc = context.read<AuthenticationBloc>();
     final loginResp = bloc.state.loginResponse;
     final userId = loginResp?.result?.user?.userId ?? '';
-    final email = loginResp?.result?.user?.userId ??
-        ''; // ⚠️ Replace with actual email if needed
+    // final email = loginResp?.result?.user?.userId ??
+    //     ''; // ⚠️ Replace with actual email if needed Testing@123
 
     bloc.add(
-      VerifyOtpRequested(userId: userId, email: email, code: _otpCode!),
+      VerifyOtpRequested(userId: userId, email: widget.email, code: _otpCode!),
     );
   }
 
@@ -153,7 +154,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 ),
                 const SizedBox(height: 36),
 
-                // OTP input
+                // OTP input Testing@123
                 Card(
                   elevation: 0,
                   color: lavender,
