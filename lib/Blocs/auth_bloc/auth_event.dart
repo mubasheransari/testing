@@ -93,7 +93,7 @@ class SendOtpThroughPhone extends AuthenticationEvent {
   final String phone;
 
   SendOtpThroughPhone({
-    required this.userId,//Testing@123
+    required this.userId, //Testing@123
     required this.phone,
   });
 
@@ -101,13 +101,12 @@ class SendOtpThroughPhone extends AuthenticationEvent {
   List<Object?> get props => [userId, phone];
 }
 
-
- class VerifyOtpRequested extends AuthenticationEvent {
+class VerifyOtpRequested extends AuthenticationEvent {
   final String userId;
   final String email;
   final String code;
 
-   VerifyOtpRequested({
+  VerifyOtpRequested({
     required this.userId,
     required this.email,
     required this.code,
@@ -117,3 +116,14 @@ class SendOtpThroughPhone extends AuthenticationEvent {
   List<Object?> get props => [userId, email, code];
 }
 
+class VerifyOtpRequestedPhone extends AuthenticationEvent {
+  final String userId;
+  final String code;
+  final String phone;
+
+  VerifyOtpRequestedPhone(
+      {required this.userId, required this.code, required this.phone});
+
+  @override
+  List<Object?> get props => [userId, code, phone];
+}

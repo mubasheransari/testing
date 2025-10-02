@@ -16,6 +16,37 @@ class AuthenticationBloc
     on<SendOtpThroughEmail>(sendotpThroughEmail);
     on<VerifyOtpRequested>(_onVerifyOtpRequested);
     on<SendOtpThroughPhone>(sendotpThroughPhone);
+    on<VerifyOtpRequestedPhone>(_onVerifyOtpRequestedPhone);
+  }
+
+
+   _onVerifyOtpRequestedPhone(
+    VerifyOtpRequestedPhone event,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+    ));
+
+    final result = await repo.verifyOtpThroughPhone(
+      userId: event.userId,
+      phone: event.phone,
+      code: event.code,
+    );
+
+    if (result.isSuccess) {
+      emit(state.copyWith(
+        status: AuthStatus.success,
+        response: result.data,
+        error: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        error: result.failure?.message ?? 'OTP verification failed',
+      ));
+    }
   }
 
   Future<void> _onVerifyOtpRequested(

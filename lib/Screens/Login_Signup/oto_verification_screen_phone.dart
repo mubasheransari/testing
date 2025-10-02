@@ -83,8 +83,8 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
     //     ''; // ⚠️ Replace with actual email if needed Testing@123
 
     bloc.add(
-      VerifyOtpRequested(
-          userId: widget.userId, email: widget.email, code: _otpCode!),
+      VerifyOtpRequestedPhone(
+          userId: widget.userId, phone: widget.phone, code: _otpCode!),
     );
   }
 
@@ -102,25 +102,16 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
         if (state.status == AuthStatus.loading) {
           toastWidget(
               "Please wait! While we're verifying your account!", Colors.green);
-          // ScaffoldMessenger.of(context)
-          //     .showSnackBar(const SnackBar(content: Text("Processing...")));
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
             );
-          } else {
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   SnackBar(content: Text(state.response?.message ?? "Success")),
-            // );
-          }
+          } else {}
         } else if (state.status == AuthStatus.failure) {
           toastWidget(
               "Wrong OTP! Wr're unable to access your account.", Colors.red);
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(content: Text(state.error ?? "Something went wrong")),
-          // );
         }
       },
       builder: (context, state) {
@@ -159,7 +150,6 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                 ),
                 const SizedBox(height: 36),
 
-                // OTP input Testing@123
                 Card(
                   elevation: 0,
                   color: lavender,
@@ -218,7 +208,6 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                   ),
                 ),
 
-
                 const SizedBox(height: 18),
 
                 Row(
@@ -271,12 +260,17 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                         ),
                         elevation: 6,
                         shadowColor: purple.withOpacity(.35),
-                      ),
+                      ),//Testing@123
                       onPressed: () {
-                        toastWidget('${widget.phone}', Colors.green);
+                        toastWidget(
+                            'OTP Send to ${widget.email}', Colors.green);
+                        context.read<AuthenticationBloc>().add(
+                            SendOtpThroughEmail(
+                                userId: widget.userId, email: widget.email));
+                        Navigator.of(context).pop();
                       },
                       child: const Text(
-                        'Get OTP on Email', //Testing@123
+                        'Get OTP on Email',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w500,
