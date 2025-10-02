@@ -17,10 +17,35 @@ class AuthenticationBloc
     on<VerifyOtpRequested>(_onVerifyOtpRequested);
     on<SendOtpThroughPhone>(sendotpThroughPhone);
     on<VerifyOtpRequestedPhone>(_onVerifyOtpRequestedPhone);
+    on<ForgotPasswordRequest>(forgotPasswordRequest);
   }
 
+  forgotPasswordRequest(
+    ForgotPasswordRequest event,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      forgotPasswordStatus: ForgotPasswordStatus.loading,
+      error: null,
+    ));
 
-   _onVerifyOtpRequestedPhone(
+    final result = await repo.forgotPassword(email: event.email);
+
+    if (result.isSuccess) {
+      emit(state.copyWith(
+        forgotPasswordStatus: ForgotPasswordStatus.success,
+        response: result.data,
+        error: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        forgotPasswordStatus: ForgotPasswordStatus.failure,
+        error: result.failure?.message ?? 'OTP verification failed',
+      ));
+    }
+  }
+
+  _onVerifyOtpRequestedPhone(
     VerifyOtpRequestedPhone event,
     Emitter<AuthenticationState> emit,
   ) async {

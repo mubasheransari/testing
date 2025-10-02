@@ -127,3 +127,12 @@ class VerifyOtpRequestedPhone extends AuthenticationEvent {
   @override
   List<Object?> get props => [userId, code, phone];
 }
+
+class ForgotPasswordRequest extends AuthenticationEvent {
+  final String email;
+
+  ForgotPasswordRequest({required this.email});
+
+  @override
+  List<Object?> get props => [email];
+}

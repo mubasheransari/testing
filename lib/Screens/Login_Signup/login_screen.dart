@@ -82,13 +82,14 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(
                   builder: (_) => OtpVerificationScreen(
+                    isForgetFunctionality: false,
                       email: emailController.text.trim(),
                       userId:
                           state.loginResponse!.result!.user!.userId.toString(),
                       phone: state.loginResponse!.result!.user!.phoneNumber
                           .toString())),
               (Route<dynamic> route) =>
-                  false, // this clears all previous routes Testing@123
+                  false, 
             );
 
             // Save token if needed Testing@123

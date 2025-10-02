@@ -6,9 +6,10 @@ import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
 import '../../Repository/auth_repository.dart';
 import '../../widgets/toast_widget.dart';
+import 'otp_verification_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key}); 
+  const ForgotPasswordScreen({super.key});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -18,7 +19,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool obscure = true;
 
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
 
   static const Color primary = Color(0xFF7841BA);
   static const Color hintBg = Color(0xFFF4F5F7);
@@ -33,18 +33,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   bool _validateAndToast() {
     final email = emailController.text.trim();
-    final pass = passwordController.text;
 
     if (email.isEmpty) {
       toastWidget('Email is required.', Colors.redAccent);
-      return false;
-    }
-    if (!_emailRe.hasMatch(email)) {
-      toastWidget('Please enter a valid email.', Colors.redAccent);
-      return false;
-    }
-    if (pass.isEmpty) {
-      toastWidget('Password is required.', Colors.redAccent);
       return false;
     }
     return true;
@@ -55,19 +46,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return BlocProvider(
       create: (_) => AuthenticationBloc(
         AuthRepositoryHttp(
-          timeout: Duration(seconds: 20),
+          timeout: const Duration(seconds: 20),
           baseUrl: 'http://192.3.3.187:83',
-          endpoint: '/api/auth/signup',
+          endpoint: '/api/auth/forgetpassword',
         ),
       ),
       child: BlocListener<AuthenticationBloc, AuthenticationState>(
-        listenWhen: (p, c) => p.status != c.status,
+        listenWhen: (p, c) => p.forgotPasswordStatus != c.forgotPasswordStatus,
         listener: (context, state) {
-        
+          if (state.forgotPasswordStatus == ForgotPasswordStatus.success) {
+            context.read<AuthenticationBloc>().add(SendOtpThroughEmail(
+                userId: state.response!.result!.userId.toString(),
+                email: emailController.text.trim()));
+            toastWidget(
+                'OTP Send to ${emailController.text.trim()}', Colors.green);
+
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => OtpVerificationScreen(
+                      isForgetFunctionality: true,
+                      email: emailController.text.trim(),
+                      userId: state.response!.result!.userId.toString(),
+                      phone: '')),
+              (Route<dynamic> route) => false,
+            );
+          }
         },
         child: Builder(builder: (context) {
-          final isLoading = context.select(
-              (AuthenticationBloc b) => b.state.status == AuthStatus.loading);
+          final isLoading = context.select((AuthenticationBloc b) =>
+              b.state.forgotPasswordStatus == ForgotPasswordStatus.loading);
 
           return Scaffold(
             backgroundColor: Colors.white,
@@ -77,9 +85,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-               
                     const SizedBox(height: 22),
-
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -92,7 +98,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       .textTheme
                                       .headlineMedium),
                               const SizedBox(height: 6),
-                              Text('Hello there, sign in to continue!',
+                              Text(
+                                  'Hello there, recover your password to continue!',
                                   style:
                                       Theme.of(context).textTheme.bodyMedium),
                             ],
@@ -101,9 +108,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         const _DecorShapesPurple(),
                       ],
                     ),
-                    const SizedBox(height: 28),
-
-                    // --- Email
+                    const SizedBox(height: 38),
                     const Text('Email',
                         style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w600)),
@@ -124,8 +129,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-
-
                     Center(
                       child: SizedBox(
                         width: MediaQuery.of(context).size.width * 0.40,
@@ -144,14 +147,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               : () {
                                   if (!_validateAndToast()) return;
                                   context.read<AuthenticationBloc>().add(
-                                        SignInRequested(
+                                        ForgotPasswordRequest(
                                           email: emailController.text.trim(),
-                                          password: passwordController.text,
                                         ),
                                       );
                                 },
                           child: Text(
-                            isLoading ? 'Please wait…' : 'LOGIN',
+                            isLoading ? 'Please wait…' : 'Sumbit',
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w500,
@@ -161,35 +163,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Didn't have an account? ",
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w400,
-                              fontSize: 16),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => RoleSelectScreen()));
-                          },
-                          child: const Text(
-                            'Register now!',
-                            style: TextStyle(
-                                color: Colors.deepPurple,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),

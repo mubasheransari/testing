@@ -19,12 +19,18 @@ import 'package:sms_autofill/sms_autofill.dart';
 import 'oto_verification_screen_phone.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  String email, userId, phone;
-  OtpVerificationScreen(
-      {super.key,
-      required this.email,
-      required this.userId,
-      required this.phone});
+  final String email;
+  final String userId;
+  final String phone;
+  final bool isForgetFunctionality;
+
+  const OtpVerificationScreen({
+    super.key,
+    this.isForgetFunctionality = false,
+    required this.email,
+    required this.userId,
+    required this.phone,
+  });
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -43,6 +49,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   @override
   void initState() {
     super.initState();
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
     listenForCode(); // Start SMS retriever (Android)
   }
 
@@ -103,30 +113,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         if (state.status == AuthStatus.loading) {
           toastWidget(
               "Please wait! While we're verifying your account!", Colors.green);
-          // ScaffoldMessenger.of(context)
-          //     .showSnackBar(const SnackBar(content: Text("Processing...")));
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
-            );
-          } else {
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   SnackBar(content: Text(state.response?.message ?? "Success")),
+            if (widget.isForgetFunctionality == true) {
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
+              );
+            }
+
+            // Navigator.pushReplacement(
+            //   context,
+            //   MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
             // );
-          }
+          } else {}
         } else if (state.status == AuthStatus.failure) {
           toastWidget(
               "Wrong OTP! Wr're unable to access your account.", Colors.red);
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(content: Text(state.error ?? "Something went wrong")),
-          // );
         }
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: Colors.white, //Testing@123
+          backgroundColor: Colors.white,
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),

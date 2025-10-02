@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/routes.dart';
 import 'package:taskoon/theme.dart';
-
 import 'Blocs/auth_bloc/auth_bloc.dart';
 import 'Repository/auth_repository.dart';
 import 'Service/internet_connectivity_banner.dart';
