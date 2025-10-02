@@ -4,6 +4,7 @@ import 'package:sms_autofill/sms_autofill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import 'package:taskoon/Screens/Login_Signup/change_password_screen.dart';
 import 'package:taskoon/widgets/toast_widget.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
@@ -116,12 +117,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
             if (widget.isForgetFunctionality == true) {
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
-              print('IS FROM FORGET PASSWORD FUCNTIONALITY');
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          ChangePasswordScreen(email: '', userId: '')));
             } else {
               Navigator.pushReplacement(
                 context,
