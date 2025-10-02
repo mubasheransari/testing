@@ -16,9 +16,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
+import 'oto_verification_screen_phone.dart';
+
 class OtpVerificationScreen extends StatefulWidget {
-  String email, userId;
-  OtpVerificationScreen({super.key, required this.email, required this.userId});
+  String email, userId, phone;
+  OtpVerificationScreen(
+      {super.key,
+      required this.email,
+      required this.userId,
+      required this.phone});
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -291,11 +297,20 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                         elevation: 6,
                         shadowColor: purple.withOpacity(.35),
                       ),
-                      onPressed: () {
-                        toastWidget('', Colors.green);
+                      onPressed: () {//Testing@123
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    PhoneOtpVerificationScreen(
+                                      email: '',
+                                      userId: '',
+                                      phone: '',
+                                    )));
+                        toastWidget('${widget.phone}', Colors.green);
                       },
                       child: const Text(
-                        'Get OTP on Phone',
+                        'Get OTP on Phone', //Testing@123
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w500,

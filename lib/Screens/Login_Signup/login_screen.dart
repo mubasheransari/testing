@@ -82,10 +82,11 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(
                   builder: (_) => OtpVerificationScreen(
-                        email: emailController.text.trim(),
-                        userId: state.loginResponse!.result!.user!.userId
-                            .toString(),
-                      )),
+                      email: emailController.text.trim(),
+                      userId:
+                          state.loginResponse!.result!.user!.userId.toString(),
+                      phone: state.loginResponse!.result!.user!.phoneNumber
+                          .toString())),
               (Route<dynamic> route) =>
                   false, // this clears all previous routes Testing@123
             );
@@ -219,7 +220,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Spacer(),
                         TextButton(
                           onPressed: () {
-Navigator.push(context, MaterialPageRoute(builder: (context)=> ForgotPasswordScreen())) ;                         },
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        ForgotPasswordScreen()));
+                          },
                           style: TextButton.styleFrom(
                             foregroundColor: primary,
                             padding: EdgeInsets.zero,
