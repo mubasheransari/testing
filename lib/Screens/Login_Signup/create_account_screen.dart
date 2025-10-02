@@ -82,7 +82,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String _composeAuPhone(String local) {
     final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
     final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
-    return '+61$withoutLeadingZero';
+    return '+92$withoutLeadingZero'; //aus61
   }
 
   String _normalizeAbn(String raw) =>
@@ -122,14 +122,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
 
     // Phone quick sanity (after compose we expect at least +61 + 8–9 digits)
-    final composed = _composeAuPhone(phoneCtrl.text);
-    if (!composed.startsWith('+61') || composed.length < 10) {
-      toastWidget(
-          'Please enter a valid Australian phone number.', Colors.redAccent);
-      return false;
-    }
+    // final composed = _composeAuPhone(phoneCtrl.text);
+    // if (!composed.startsWith('+61') || composed.length < 10) {
+    //   toastWidget(
+    //       'Please enter a valid Australian phone number.', Colors.redAccent);
+    //   return false;
+    // }
 
-    // Role-specific
+    // Role-specific Testing@123
     if (_isUser) {
       if (nameCtrl.text.trim().isEmpty) {
         toastWidget('Full Name is required.', Colors.redAccent);
@@ -270,7 +270,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         email: email,
         password: password,
         address: addrCtrl.text.trim(),
-        desiredService: const [],
+        //   desiredService: const [],
       ));
     } else {
       final repPhone = _composeAuPhone(repPhoneCtrl.text);
@@ -307,13 +307,11 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         listenWhen: (p, c) => p.status != c.status,
         listener: (context, state) {
           if (state.status == AuthStatus.success) {
-            final msg = state.response?.message ?? 'Account created';//Testing@123
+            final msg =
+                state.response?.message ?? 'Account created'; //Testing@123
             toastWidget(msg, Colors.green);
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          LoginScreen()));
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => LoginScreen()));
           } else if (state.status == AuthStatus.failure) {
             toastWidget(state.error ?? 'Registration failed', Colors.redAccent);
           }
@@ -424,7 +422,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: Colors.transparent),
                             ),
-                            child: const Text('+61',
+                            child: const Text('+92', //Testing@123
                                 style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     color: Colors.black87)),
@@ -467,12 +465,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                             controller: addrCtrl,
                             hint: 'Address',
                             keyboardType: TextInputType.streetAddress),
-                        const SizedBox(height: 14),
-                        _label('Desired Service (Optional)'),
-                        _filledField(
-                            controller: serviceCtrl,
-                            hint: 'Desired Service',
-                            keyboardType: TextInputType.text),
+                        // const SizedBox(height: 14),
+                        // _label('Desired Service (Optional)'),
+                        // _filledField(
+                        //     controller: serviceCtrl,
+                        //     hint: 'Desired Service',
+                        //     keyboardType: TextInputType.text),
                         const SizedBox(height: 14),
                       ],
 
