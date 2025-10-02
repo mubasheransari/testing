@@ -7,13 +7,11 @@ import 'package:taskoon/screens/Tasker_Onboarding/review_submit.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/selfie_verification.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/success.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/welcome.dart';
-
-import 'Screens/Login_Signup/landing_screen.dart';
+import 'Screens/Authentication/landing_screen.dart';
 import 'Screens/Splash_Slider/slider_screen.dart';
 import 'Screens/Tasker_Onboarding/cerifications_screen.dart';
 
 class Routes {
-  // static const welcome = '/';
   static const splash = '/splash';
   static const personalInfo = '/personal-info';
   static const documentUpload = '/document-upload';
@@ -34,8 +32,6 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => OnboardingScreen());
       case Routes.cerificationScreen:
         return MaterialPageRoute(builder: (_) => CertificationsScreen());
-      // case Routes.login:
-      //   return MaterialPageRoute(builder: (_) => const Login());
       case Routes.personalInfo:
         return MaterialPageRoute(builder: (_) => const PersonalInfo());
       case Routes.documentUpload:

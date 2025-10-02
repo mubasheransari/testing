@@ -4,32 +4,36 @@ import 'package:sms_autofill/sms_autofill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import 'package:taskoon/Screens/Authentication/change_password_screen.dart';
 import 'package:taskoon/widgets/toast_widget.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
-import '../../screens/Tasker_Onboarding/personal_info.dart';
 import '../Tasker_Onboarding/capture_selfie_screen.dart';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sms_autofill/sms_autofill.dart';
+import 'oto_verification_screen_phone.dart';
 
-class PhoneOtpVerificationScreen extends StatefulWidget {
-  String email, userId, phone;
-  PhoneOtpVerificationScreen(
-      {super.key,
-      required this.email,
-      required this.userId,
-      required this.phone});
+class OtpVerificationScreen extends StatefulWidget {
+  final String email;
+  final String userId;
+  final String phone;
+  final bool isForgetFunctionality;
+
+  const OtpVerificationScreen({
+    super.key,
+    this.isForgetFunctionality = false,
+    required this.email,
+    required this.userId,
+    required this.phone,
+  });
 
   @override
-  State<PhoneOtpVerificationScreen> createState() =>
-      _PhoneOtpVerificationScreenState();
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
+class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     with CodeAutoFill {
   // Brand colors
   static const Color purple = Color(0xFF7841BA);
@@ -42,6 +46,10 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
   @override
   void initState() {
     super.initState();
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
+    print('BOOLEAN CHECK ${widget.isForgetFunctionality}');
     listenForCode(); // Start SMS retriever (Android)
   }
 
@@ -77,14 +85,9 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
     }
 
     final bloc = context.read<AuthenticationBloc>();
-    final loginResp = bloc.state.loginResponse;
-    final userId = loginResp?.result?.user?.userId ?? '';
-    // final email = loginResp?.result?.user?.userId ??
-    //     ''; // ⚠️ Replace with actual email if needed Testing@123
-
     bloc.add(
-      VerifyOtpRequestedPhone(
-          userId: widget.userId, phone: widget.phone, code: _otpCode!),
+      VerifyOtpRequested(
+          userId: widget.userId, email: widget.email, code: _otpCode!),
     );
   }
 
@@ -104,10 +107,23 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
               "Please wait! While we're verifying your account!", Colors.green);
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
-            );
+            if (widget.isForgetFunctionality == true) {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          ChangePasswordScreen(email: '', userId: '')));
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
+              );
+            }
+
+            // Navigator.pushReplacement(
+            //   context,
+            //   MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
+            // );
           } else {}
         } else if (state.status == AuthStatus.failure) {
           toastWidget(
@@ -116,7 +132,7 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: Colors.white, //Testing@123
+          backgroundColor: Colors.white,
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
@@ -141,7 +157,7 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the 6-digit code sent to your Phone!',
+                  'Enter the 6-digit code sent to your Email!',
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(
                     color: Colors.black54,
@@ -150,6 +166,7 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                 ),
                 const SizedBox(height: 36),
 
+                // OTP input Testing@123
                 Card(
                   elevation: 0,
                   color: lavender,
@@ -260,17 +277,26 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                         ),
                         elevation: 6,
                         shadowColor: purple.withOpacity(.35),
-                      ),//Testing@123
+                      ),
                       onPressed: () {
-                        toastWidget(
-                            'OTP Send to ${widget.email}', Colors.green);
+                        //Testing@123
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    PhoneOtpVerificationScreen(
+                                      email: widget.email,
+                                      userId: widget.userId,
+                                      phone: widget.phone,
+                                    )));
+
                         context.read<AuthenticationBloc>().add(
-                            SendOtpThroughEmail(
-                                userId: widget.userId, email: widget.email));
-                        Navigator.of(context).pop();
+                            SendOtpThroughPhone(
+                                userId: widget.userId, phone: widget.phone));
+                        toastWidget('${widget.phone}', Colors.green);
                       },
                       child: const Text(
-                        'Get OTP on Email',
+                        'Get OTP on Phone', 
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w500,
@@ -281,30 +307,6 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
                     ),
                   ),
                 ),
-
-                // Resend
-                /*    Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Didn't receive the code? ",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: _onResendPressed,
-                      child: const Text(
-                        'Resend',
-                        style: TextStyle(
-                          color: Colors.deepPurple,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),*/
               ],
             ),
           ),
@@ -313,3 +315,4 @@ class _PhoneOtpVerificationScreenState extends State<PhoneOtpVerificationScreen>
     );
   }
 }
+

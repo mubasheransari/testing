@@ -136,3 +136,12 @@ class ForgotPasswordRequest extends AuthenticationEvent {
   @override
   List<Object?> get props => [email];
 }
+
+class ChangePassword extends AuthenticationEvent {
+  final String password;
+  final String userId;
+  ChangePassword({required this.password, required this.userId});
+
+  @override
+  List<Object?> get props => [password, userId];
+}

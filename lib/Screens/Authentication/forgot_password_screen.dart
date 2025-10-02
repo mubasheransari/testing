@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:taskoon/Screens/Login_Signup/role_selection_screen.dart';
+import 'package:taskoon/Screens/Authentication/role_selection_screen.dart';
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
@@ -71,6 +71,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       phone: '')),
               (Route<dynamic> route) => false,
             );
+          }
+          else if(state.forgotPasswordStatus == ForgotPasswordStatus.failure){
+
           }
         },
         child: Builder(builder: (context) {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
 
@@ -14,10 +15,13 @@ class ApiConfig {
   static const String sendOTPThroughPhoneEndpoint = '/api/otp/send/phone';
   static const String verifyOtpPhoneEndpoint = '/api/otp/verify/phone';
   static const String forgotPasswordEndpoint = '/api/auth/forgetpassword';
+  static const String changePasswordEndpoint = '/api/auth/changepassword';
 }
 
 abstract class AuthRepository {
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
+ 
+
 
   Future<Result<RegistrationResponse>> verifyOtpThroughEmail({
     required String userId,
@@ -116,6 +120,8 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+ 
 
   @override
   Future<Result<RegistrationResponse>> verifyOtpThroughEmail({

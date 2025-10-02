@@ -40,7 +40,7 @@ class AuthenticationBloc
     } else {
       emit(state.copyWith(
         forgotPasswordStatus: ForgotPasswordStatus.failure,
-        error: result.failure?.message ?? 'OTP verification failed',
+        error: result.failure?.message ?? 'User not found!',
       ));
     }
   }

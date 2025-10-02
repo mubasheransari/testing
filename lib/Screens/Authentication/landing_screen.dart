@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:taskoon/Screens/Login_Signup/role_selection_screen.dart';
-
+import 'package:taskoon/Screens/Authentication/role_selection_screen.dart';
 import 'login_screen.dart';
 
 class TaskoonLandingScreen extends StatelessWidget {
@@ -22,11 +21,9 @@ class TaskoonLandingScreen extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
-              // Top hero with arc + images + logo + title/subtitle
               _HeroHeader(width: w),
               const SizedBox(height: 24),
 
-              // White card with gold border & actions
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Container(
@@ -56,7 +53,6 @@ class TaskoonLandingScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 18),
 
-                        // Login (filled pill)
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -86,7 +82,6 @@ class TaskoonLandingScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
 
-                        // Forgot password
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton(
@@ -94,7 +89,7 @@ class TaskoonLandingScreen extends StatelessWidget {
                               foregroundColor: Colors.black,
                               padding: EdgeInsets.zero,
                             ),
-                            onPressed: () {/* TODO */},
+                            onPressed: () {},
                             child: Text(
                               'Forgot Password?',
                               style: TextStyle(
