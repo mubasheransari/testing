@@ -15,8 +15,8 @@ class AuthenticationBloc
     on<SignInRequested>(login);
     on<SendOtpThroughEmail>(sendotpThroughEmail);
     on<VerifyOtpRequested>(_onVerifyOtpRequested);
+    on<SendOtpThroughPhone>(sendotpThroughPhone);
   }
-
 
   Future<void> _onVerifyOtpRequested(
     VerifyOtpRequested event,
@@ -49,7 +49,7 @@ class AuthenticationBloc
   }
 
   sendotpThroughEmail(SendOtpThroughEmail event, emit) {
-  //  emit(state.copyWith(status: AuthStatus.loading));
+    //  emit(state.copyWith(status: AuthStatus.loading));
 
     repo
         .sendOtpThroughEmail(
@@ -59,12 +59,31 @@ class AuthenticationBloc
         .then((result) {
       if (result.isSuccess) {
         emit(state.copyWith(
-       //   status: AuthStatus.success,
+          //   status: AuthStatus.success,
           response: result.data, // reuse registrationResponse
         ));
       } else {
         emit(state.copyWith(
-        //  status: AuthStatus.failure,
+          //  status: AuthStatus.failure,
+          error: result.failure?.message ?? 'OTP failed',
+        ));
+      }
+    });
+  }
+
+  sendotpThroughPhone(SendOtpThroughPhone event, emit) {
+    repo
+        .sendOtpThroughPhone(
+      userId: event.userId,
+      phoneNumber: event.phone,
+    )
+        .then((result) {
+      if (result.isSuccess) {
+        emit(state.copyWith(
+          response: result.data,
+        ));
+      } else {
+        emit(state.copyWith(
           error: result.failure?.message ?? 'OTP failed',
         ));
       }

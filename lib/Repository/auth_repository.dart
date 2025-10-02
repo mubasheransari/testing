@@ -13,6 +13,7 @@ class ApiConfig {
   static const String signInEndpoint = '/api/Auth/SignIn';
   static const String sendOTPThroughEmailEndpoint = '/api/otp/send/email';
   static const String verifyOtpEmailEndpoint = '/api/otp/verify/email';
+  static const String sendOTPThroughPhoneEndpoint = '/api/otp/send/phone';
 }
 
 
@@ -66,6 +67,11 @@ abstract class AuthRepository {
   Future<Result<RegistrationResponse>> sendOtpThroughEmail({
     required String userId,
     required String email,
+  });
+
+   Future<Result<RegistrationResponse>> sendOtpThroughPhone({
+    required String userId,
+    required String phoneNumber,
   });
 }
 
@@ -422,6 +428,79 @@ Future<Result<RegistrationResponse>> verifyOtpThroughEmail({
     final body = {
       "userId": userId,
       "email": email,
+    };
+
+    try {
+      print('>>> SEND OTP POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< SEND OTP STATUS: ${res.statusCode}');
+      print('<<< SEND OTP BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'OTP failed',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: 'Server error ${res.statusCode}',
+          statusCode: res.statusCode,
+        ),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+
+
+
+
+    @override
+  Future<Result<RegistrationResponse>> sendOtpThroughPhone({
+    required String userId,
+    required String phoneNumber,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.sendOTPThroughPhoneEndpoint}');
+    final body = {
+      "userId": userId,
+      "phoneNumber": phoneNumber,
     };
 
     try {

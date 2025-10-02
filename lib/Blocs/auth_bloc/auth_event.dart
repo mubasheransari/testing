@@ -88,6 +88,19 @@ class SendOtpThroughEmail extends AuthenticationEvent {
   List<Object?> get props => [userId, email];
 }
 
+class SendOtpThroughPhone extends AuthenticationEvent {
+  final String userId;
+  final String phone;
+
+  SendOtpThroughPhone({
+    required this.userId,//Testing@123
+    required this.phone,
+  });
+
+  @override
+  List<Object?> get props => [userId, phone];
+}
+
 
  class VerifyOtpRequested extends AuthenticationEvent {
   final String userId;

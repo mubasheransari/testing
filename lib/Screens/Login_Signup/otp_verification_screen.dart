@@ -297,16 +297,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                         elevation: 6,
                         shadowColor: purple.withOpacity(.35),
                       ),
-                      onPressed: () {//Testing@123
+                      onPressed: () {
+                        //Testing@123
                         Navigator.push(
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
                                     PhoneOtpVerificationScreen(
-                                      email: '',
-                                      userId: '',
-                                      phone: '',
+                                      email: widget.email,
+                                      userId: widget.userId,
+                                      phone: widget.phone,
                                     )));
+
+                        context.read<AuthenticationBloc>().add(
+                            SendOtpThroughPhone(
+                                userId: widget.userId, phone: widget.phone));
                         toastWidget('${widget.phone}', Colors.green);
                       },
                       child: const Text(
