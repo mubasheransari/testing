@@ -17,8 +17,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  String email,userId;
-  OtpVerificationScreen({super.key, required this.email,required this.userId});
+  String email, userId;
+  OtpVerificationScreen({super.key, required this.email, required this.userId});
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -78,13 +78,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     //     ''; // ⚠️ Replace with actual email if needed Testing@123
 
     bloc.add(
-      VerifyOtpRequested(userId: widget.userId, email: widget.email, code: _otpCode!),
+      VerifyOtpRequested(
+          userId: widget.userId, email: widget.email, code: _otpCode!),
     );
   }
 
   void _onResendPressed() {
     final bloc = context.read<AuthenticationBloc>();
-     bloc.add(SendOtpThroughEmail(userId: widget.userId, email: widget.email));
+    bloc.add(SendOtpThroughEmail(userId: widget.userId, email: widget.email));
   }
 
   @override
@@ -94,7 +95,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return BlocConsumer<AuthenticationBloc, AuthenticationState>(
       listener: (context, state) {
         if (state.status == AuthStatus.loading) {
-          toastWidget("Please wait! While we're verifying your account!", Colors.green);
+          toastWidget(
+              "Please wait! While we're verifying your account!", Colors.green);
           // ScaffoldMessenger.of(context)
           //     .showSnackBar(const SnackBar(content: Text("Processing...")));
         } else if (state.status == AuthStatus.success) {
@@ -109,7 +111,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             // );
           }
         } else if (state.status == AuthStatus.failure) {
-                   toastWidget("Wrong OTP! Wr're unable to access your account.", Colors.red);
+          toastWidget(
+              "Wrong OTP! Wr're unable to access your account.", Colors.red);
           // ScaffoldMessenger.of(context).showSnackBar(
           //   SnackBar(content: Text(state.error ?? "Something went wrong")),
           // );
@@ -142,7 +145,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the 6-digit code sent to your phone',
+                  'Enter the 6-digit code sent to your Email!',
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(
                     color: Colors.black54,
@@ -183,35 +186,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
                 const SizedBox(height: 32),
 
-                 Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.40,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: purple,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 6,
-                            shadowColor: purple.withOpacity(.35),
-                          ),
-                         onPressed: _onVerifyPressed,
-                          child:const Text(
-                         'Verify', //   isLoading ? 'Please wait…' : 'LOGIN',
-                            style:  TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                              letterSpacing: .2,
-                            ),
-                          ),
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.40,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: purple,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 6,
+                        shadowColor: purple.withOpacity(.35),
+                      ),
+                      onPressed: _onVerifyPressed,
+                      child: const Text(
+                        'Verify',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          letterSpacing: .2,
                         ),
                       ),
                     ),
+                  ),
+                ),
 
                 // Verify button
-              /*  SizedBox(
+                /*  SizedBox(
                   height: 52,
                   width: double.infinity,
                   child: ElevatedButton(
@@ -237,32 +240,75 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
                 const SizedBox(height: 18),
 
-                
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Didn't receive the code?  ",
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w400,
-                              fontSize: 16),
-                        ),
-                        GestureDetector(
-                              onTap: _onResendPressed,
-                          child: const Text(
-                            'Resend',
-                            style: TextStyle(
-                                color: Colors.deepPurple,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16),
-                          ),
-                        ),
-                      ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Didn't receive the code?  ",
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w400,
+                          fontSize: 16),
                     ),
+                    GestureDetector(
+                      onTap: _onResendPressed,
+                      child: const Text(
+                        'Resend',
+                        style: TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 15,
+                ),
+                const Center(
+                  child: Text(
+                    "OR ",
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 19),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.50,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: purple,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 6,
+                        shadowColor: purple.withOpacity(.35),
+                      ),
+                      onPressed: () {
+                        toastWidget('', Colors.green);
+                      },
+                      child: const Text(
+                        'Get OTP on Phone',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          letterSpacing: .2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
 
                 // Resend
-            /*    Row(
+                /*    Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
