@@ -21,6 +21,7 @@ class ApiConfig {
 abstract class AuthRepository {
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
  
+  Future<Result<RegistrationResponse>> changePassword({required String password,required String userId});
 
 
   Future<Result<RegistrationResponse>> verifyOtpThroughEmail({
@@ -85,7 +86,6 @@ abstract class AuthRepository {
   });
 }
 
-/// HTTP implementation
 class AuthRepositoryHttp implements AuthRepository {
   final Uri _signupUri;
   final Duration timeout;
@@ -119,6 +119,78 @@ class AuthRepositoryHttp implements AuthRepository {
       return Failure(code: 'validation', message: '$label is required');
     }
     return null;
+  }
+
+  @override
+  Future<Result<RegistrationResponse>> changePassword({
+    required String password,
+    required String userId,
+
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.changePasswordEndpoint}');
+    final body = {
+      "password": password,
+      "userId": userId,
+    };
+
+    try {
+      print('>>> VERIFY OTP POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< VERIFY OTP STATUS: ${res.statusCode}');
+      print('<<< VERIFY OTP BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'OTP verification failed',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: 'Server error ${res.statusCode}',
+          statusCode: res.statusCode,
+        ),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
   }
 
  

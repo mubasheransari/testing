@@ -112,7 +112,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                   context,
                   MaterialPageRoute(
                       builder: (context) =>
-                          ChangePasswordScreen(email: '', userId: '')));
+                          ChangePasswordScreen(email: widget.email, userId: widget.userId)));
             } else {
               Navigator.pushReplacement(
                 context,
@@ -120,7 +120,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               );
             }
 
-            // Navigator.pushReplacement(
+            // Navigator.pushReplacement( Testing@1122
             //   context,
             //   MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
             // );

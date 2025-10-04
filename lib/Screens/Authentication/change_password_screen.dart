@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/main.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
@@ -84,7 +86,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final p1 = newPassCtrl.text;
     final p2 = confirmPassCtrl.text;
 
-    // basic rules: not empty, >= 8, match
     if (p1.isEmpty || p2.isEmpty) return false;
     if (p1.length < 8) return false;
     if (p1 != p2) return false;
@@ -108,16 +109,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       toastWidget('Passwords do not match.', Colors.redAccent);
       return;
     }
+    // Testing@123
 
-    // Dispatch the bloc event (no URLs here)
-    // context.read<AuthenticationBloc>().add(
-    //       ResetPasswordRequested(
-    //         email: widget.email,
-    //         userId: widget.userId,       // keep if your API needs it
-    //         newPassword: p1,
-    //         confirmPassword: p2,
-    //       ),
-    //     );
+    // Dispatch the bloc event (no URLs here) Testing@1234
+    context.read<AuthenticationBloc>().add(
+          ChangePassword(
+            userId: widget.userId, // keep if your API needs it
+            password: p1,
+          ),
+        );
   }
 
   @override
@@ -125,14 +125,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return BlocListener<AuthenticationBloc, AuthenticationState>(
       //  listenWhen: (p, c) => p.resetPasswordStatus != c.resetPasswordStatus,
       listener: (context, state) {
-        // if (state.resetPasswordStatus == ResetPasswordStatus.loading) {
-        //   toastWidget('Updating password…', Colors.black87);
-        // } else if (state.resetPasswordStatus == ResetPasswordStatus.success) {
-        //   toastWidget('Password updated successfully', Colors.green);
-        //   Navigator.pop(context); // go back or navigate to login
-        // } else if (state.resetPasswordStatus == ResetPasswordStatus.failure) {
-        //   toastWidget(state.error ?? 'Failed to update password', Colors.redAccent);
-        // }
+        if (state.changePasswordStatus == ChangePasswordStatus.loading) {
+          //toastWidget('Updating password…', Colors.black87);
+        } else if (state.changePasswordStatus == ChangePasswordStatus.success) {
+          toastWidget('Password updated successfully', Colors.green);
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen()),
+            (Route<dynamic> route) => false,
+          );
+        } else if (state.changePasswordStatus == ChangePasswordStatus.failure) {
+          toastWidget(
+              state.error ?? 'Failed to update password', Colors.redAccent);
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -143,9 +148,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'CHANGE PASSWORD',
                       style: TextStyle(

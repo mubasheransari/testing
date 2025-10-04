@@ -18,6 +18,33 @@ class AuthenticationBloc
     on<SendOtpThroughPhone>(sendotpThroughPhone);
     on<VerifyOtpRequestedPhone>(_onVerifyOtpRequestedPhone);
     on<ForgotPasswordRequest>(forgotPasswordRequest);
+    on<ChangePassword>(changePassword);
+  }
+
+  changePassword(
+    ChangePassword event,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      changePasswordStatus: ChangePasswordStatus.loading,
+      error: null,
+    ));
+
+    final result = await repo.changePassword(
+        password: event.password, userId: event.userId);
+
+    if (result.isSuccess) {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.success,
+        response: result.data,
+        error: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.failure,
+        error: result.failure?.message ?? 'User not found!',
+      ));
+    }
   }
 
   forgotPasswordRequest(
