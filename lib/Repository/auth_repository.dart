@@ -21,11 +21,11 @@ class ApiConfig {
 }
 
 abstract class AuthRepository {
-    Future<Result<List<ServiceDto>>> fetchServices();
+  Future<Result<List<ServiceDto>>> fetchServices();
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
- 
-  Future<Result<RegistrationResponse>> changePassword({required String password,required String userId});
 
+  Future<Result<RegistrationResponse>> changePassword(
+      {required String password, required String userId});
 
   Future<Result<RegistrationResponse>> verifyOtpThroughEmail({
     required String userId,
@@ -124,7 +124,6 @@ class AuthRepositoryHttp implements AuthRepository {
     return null;
   }
 
-
   @override
   Future<Result<List<ServiceDto>>> fetchServices() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.servicesEndpoint}');
@@ -149,7 +148,8 @@ class AuthRepositoryHttp implements AuthRepository {
         }
 
         final list = parsed
-            .map<ServiceDto>((e) => ServiceDto.fromJson(e as Map<String, dynamic>))
+            .map<ServiceDto>(
+                (e) => ServiceDto.fromJson(e as Map<String, dynamic>))
             .toList();
 
         return Result.ok(list);
@@ -189,7 +189,6 @@ class AuthRepositoryHttp implements AuthRepository {
   Future<Result<RegistrationResponse>> changePassword({
     required String password,
     required String userId,
-
   }) async {
     final uri =
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.changePasswordEndpoint}');
@@ -256,8 +255,6 @@ class AuthRepositoryHttp implements AuthRepository {
       );
     }
   }
-
- 
 
   @override
   Future<Result<RegistrationResponse>> verifyOtpThroughEmail({

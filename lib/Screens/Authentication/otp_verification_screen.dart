@@ -104,8 +104,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return BlocConsumer<AuthenticationBloc, AuthenticationState>(
       listener: (context, state) {
         if (state.status == AuthStatus.loading) {
-          toastWidget(
-              "Please wait! While we're verifying your account!", Colors.green);
+          // toastWidget(
+          //     "Please wait! While we're verifying your account!", Colors.green);
         } else if (state.status == AuthStatus.success) {
           if (state.response?.message == "Verified") {
             if (widget.isForgetFunctionality == true) {
@@ -126,9 +126,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             //   MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
             // );
           } else {}
-        } else if (state.status == AuthStatus.failure) {
-          toastWidget(
-              "Wrong OTP! Wr're unable to access your account.", Colors.red);
+        }
+        if (state.status == AuthStatus.failure &&
+            (state.error?.isNotEmpty ?? false)) {
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   SnackBar(content: Text(state.error!)),
+          // );
+          toastWidget(state.error!, Colors.red);
         }
       },
       builder: (context, state) {
