@@ -246,28 +246,80 @@ class AuthenticationBloc
     }
   }
 
-  sendotpThroughEmail(SendOtpThroughEmail event, emit) {
-    //  emit(state.copyWith(status: AuthStatus.loading));
+  // Helper (optional, place inside your bloc file)
+  String _extractApiMessage(RegistrationResponse? res,
+      {String fallback = 'OTP failed'}) {
+    if (res == null) return fallback;
+    final msg = res.message?.trim();
+    if (msg != null && msg.isNotEmpty) return msg;
 
-    repo
-        .sendOtpThroughEmail(
+    if (res.errors.isNotEmpty) {
+      final e = res.errors.first;
+      final err = e.error?.trim();
+      if (err != null && err.isNotEmpty) return err;
+      final fld = e.field?.trim();
+      if (fld != null && fld.isNotEmpty) return fld;
+    }
+    return fallback;
+  }
+
+  sendotpThroughEmail(
+      SendOtpThroughEmail event, Emitter<AuthenticationState> emit) async {
+    final result = await repo.sendOtpThroughEmail(
       userId: event.userId,
-      email: event.email,
-    )
-        .then((result) {
-      if (result.isSuccess) {
+      email: event.email,//Testing@1234
+    );
+
+    if (result.isSuccess) {
+      final RegistrationResponse? res = result.data;
+      print("RESPONSE ${result.data}");
+      print("RESPONSE ${result.data}");
+      print("RESPONSE ${result.data}");
+
+      if (res?.isSuccess == true) {
         emit(state.copyWith(
-          //   status: AuthStatus.success,
-          response: result.data, // reuse registrationResponse
+          response: res,
+          error: null,
         ));
       } else {
+        final msg = _extractApiMessage(res, fallback: 'OTP failed');
         emit(state.copyWith(
-          //  status: AuthStatus.failure,
-          error: result.failure?.message ?? 'OTP failed',
+          error: msg,
         ));
       }
-    });
+    } else {
+      final msg = (result.failure?.message?.trim().isNotEmpty ?? false)
+          ? result.failure!.message!.trim()
+          : 'Unable to send OTP. Please try again.';
+      print('Send OTP error: $msg');
+      emit(state.copyWith(
+        error: msg,
+      ));
+    }
   }
+
+  // sendotpThroughEmail(SendOtpThroughEmail event, emit) {
+  //   //  emit(state.copyWith(status: AuthStatus.loading));
+
+  //   repo
+  //       .sendOtpThroughEmail(
+  //     userId: event.userId,
+  //     email: event.email,
+  //   )
+  //       .then((result) {
+  //     if (result.isSuccess) {
+  //       emit(state.copyWith(
+  //         //   status: AuthStatus.success,
+  //         response: result.data, // reuse registrationResponse
+  //       ));
+  //     } else {
+  //       emit(state.copyWith(
+  //         //  status: AuthStatus.failure,
+  //         error: result.failure?.message ?? 'OTP failed',
+  //       ));
+  //     }
+  //   });
+  // }
 
   sendotpThroughPhone(SendOtpThroughPhone event, emit) {
     repo

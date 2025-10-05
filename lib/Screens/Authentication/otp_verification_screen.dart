@@ -242,16 +242,118 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                           fontWeight: FontWeight.w400,
                           fontSize: 16),
                     ),
-                    GestureDetector(
-                      onTap: _onResendPressed,
-                      child: const Text(
-                        'Resend',
-                        style: TextStyle(
-                            color: Colors.deepPurple,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 16),
-                      ),
+
+                    BlocConsumer<AuthenticationBloc, AuthenticationState>(
+                      // Fire on new errors, new response objects (even same message), or status change
+                      listenWhen: (prev, curr) =>
+                          prev.error != curr.error ||
+                          prev.response !=
+                              curr.response || // reference change ⇒ new API hit
+                          prev.status !=
+                              curr.status, // if you emit status updates
+                      listener: (context, state) {
+                        final err = state.error?.trim();
+                        if (err != null && err.isNotEmpty) {
+                          toastWidget(err, Colors.red);
+                          // ScaffoldMessenger.of(context)
+                          //   ..hideCurrentSnackBar()
+                          //   ..showSnackBar(SnackBar(content: Text(err)));
+                          return;
+                        }
+
+                        // Show server message on success payload, even if it's the same text each time
+                        final res = state.response;
+                        final bodyMsg = res?.message?.trim(); //Testing@1234
+                        if (res?.isSuccess == true &&
+                            bodyMsg != null &&
+                            bodyMsg.isNotEmpty) {
+                          toastWidget(bodyMsg, Colors.green);
+                          // ScaffoldMessenger.of(context)
+                          //   ..hideCurrentSnackBar()
+                          //   ..showSnackBar(SnackBar(content: Text(bodyMsg)));
+                        }
+                      },
+                      builder: (context, state) {
+                        final isBusy =
+                            state.status == AuthStatus.loading; // optional
+                        return GestureDetector(
+                          onTap: isBusy ? null : _onResendPressed,
+                          child: Opacity(
+                            opacity: isBusy ? 0.6 : 1,
+                            child: const Text(
+                              'Resend',
+                              style: TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
+
+                    /*    BlocConsumer<AuthenticationBloc, AuthenticationState>(
+                      // Fire listener when either error changes OR the response.message changes
+                      listenWhen: (prev, curr) {
+                        final prevMsg = prev.response?.message?.trim();
+                        final currMsg = curr.response?.message?.trim();
+                        return prev.error != curr.error || prevMsg != currMsg;
+                      },
+                      listener: (context, state) {
+                        final err = state.error?.trim();
+                        if (err != null && err.isNotEmpty) {
+                          // show error
+                          // ScaffoldMessenger.of(context)
+                          //   ..hideCurrentSnackBar()
+                          //   ..showSnackBar(SnackBar(content: Text(err)));//Testing@1234
+                          toastWidget(err, Colors.red);
+                          return;
+                        }
+                        print(state.response?.message?.trim());
+
+                        final bodyMsg = state.response?.message?.trim();
+                        final ok = state.response?.isSuccess == true;
+
+                        // Show server message when API payload is success (covers:
+                        // {"isSuccess":true,"message":"OTP code request already sent.",...})
+                        if (ok && bodyMsg != null && bodyMsg.isNotEmpty) {
+                          // ScaffoldMessenger.of(context)
+                          //   ..hideCurrentSnackBar()
+                          //   ..showSnackBar(SnackBar(content: Text(bodyMsg)));
+                          toastWidget(bodyMsg, Colors.orange);
+                        }
+                      },
+                      builder: (context, state) {
+                        final isBusy =
+                            state.status == AuthStatus.loading; // optional
+                        return GestureDetector(
+                          onTap: isBusy ? null : _onResendPressed,
+                          child: Opacity(
+                            opacity: isBusy ? 0.6 : 1,
+                            child: const Text(
+                              'Resend',
+                              style: TextStyle(
+                                color: Colors.deepPurple,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),*/
+
+                    // GestureDetector(
+                    //   onTap: _onResendPressed,
+                    //   child: const Text(
+                    //     'Resend',
+                    //     style: TextStyle(
+                    //         color: Colors.deepPurple,
+                    //         fontWeight: FontWeight.w500,
+                    //         fontSize: 16),
+                    //   ),
+                    // ),
                   ],
                 ),
                 const SizedBox(
