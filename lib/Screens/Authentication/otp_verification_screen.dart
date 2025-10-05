@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 import 'package:taskoon/Screens/Authentication/change_password_screen.dart';
+import 'package:taskoon/Screens/Tasker_Onboarding/personal_info.dart';
 import 'package:taskoon/widgets/toast_widget.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
@@ -111,12 +112,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) =>
-                          ChangePasswordScreen(email: widget.email, userId: widget.userId)));
+                      builder: (context) => ChangePasswordScreen(
+                          email: widget.email, userId: widget.userId)));
             } else {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
+                MaterialPageRoute(builder: (_) => const PersonalInfo()),
               );
             }
 
@@ -296,7 +297,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                         toastWidget('${widget.phone}', Colors.green);
                       },
                       child: const Text(
-                        'Get OTP on Phone', 
+                        'Get OTP on Phone',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w500,
@@ -315,4 +316,3 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     );
   }
 }
-

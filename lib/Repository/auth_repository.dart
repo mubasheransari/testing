@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
+import '../Models/services_model.dart';
 
 class ApiConfig {
   static const String baseUrl = 'http://192.3.3.187:83';
@@ -16,9 +17,11 @@ class ApiConfig {
   static const String verifyOtpPhoneEndpoint = '/api/otp/verify/phone';
   static const String forgotPasswordEndpoint = '/api/auth/forgetpassword';
   static const String changePasswordEndpoint = '/api/auth/changepassword';
+  static const String servicesEndpoint = '/api/Services/services';
 }
 
 abstract class AuthRepository {
+    Future<Result<List<ServiceDto>>> fetchServices();
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
  
   Future<Result<RegistrationResponse>> changePassword({required String password,required String userId});
@@ -119,6 +122,67 @@ class AuthRepositoryHttp implements AuthRepository {
       return Failure(code: 'validation', message: '$label is required');
     }
     return null;
+  }
+
+
+  @override
+  Future<Result<List<ServiceDto>>> fetchServices() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.servicesEndpoint}');
+    try {
+      print('>>> SERVICES GET $uri');
+
+      final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+      print('<<< SERVICES STATUS: ${res.statusCode}');
+      // The endpoint returns a JSON array
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+
+        if (parsed is! List) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format (expected array)',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final list = parsed
+            .map<ServiceDto>((e) => ServiceDto.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        return Result.ok(list);
+      }
+
+      // Non-2xx
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+      return Result.fail(
+        Failure(
+          code: 'server',
+          message: message,
+          statusCode: res.statusCode,
+        ),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
   }
 
   @override

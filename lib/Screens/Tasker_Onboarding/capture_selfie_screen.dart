@@ -69,7 +69,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     try {
       final cams = await availableCameras();
       final front = cams.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == CameraLensDirection.front,//Testing123
         orElse: () => cams.first,
       );
 
@@ -206,7 +206,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     final lum = List<int>.filled(w * h, 0, growable: false);
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        lum[y * w + x] = gray.getPixel(x, y).luminance.toInt();
+        lum[y * w + x] = gray.getPixel(x, y).luminance.toInt();//Testing@1234
       }
     }
 

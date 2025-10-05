@@ -145,3 +145,29 @@ class ChangePassword extends AuthenticationEvent {
   @override
   List<Object?> get props => [password, userId];
 }
+
+
+class LoadServicesRequested extends AuthenticationEvent {}
+
+class ToggleCertification extends AuthenticationEvent {
+  final int certificationId;
+  final bool selectAll;
+  ToggleCertification({required this.certificationId, required this.selectAll});
+  @override
+  List<Object?> get props => [certificationId, selectAll];
+}
+
+class ToggleSingleService extends AuthenticationEvent {
+  final int certificationId;
+  final int serviceId;
+  final bool isSelected;
+  ToggleSingleService({
+    required this.certificationId,
+    required this.serviceId,
+    required this.isSelected,
+  });
+  @override
+  List<Object?> get props => [certificationId, serviceId, isSelected];
+}
+
+class ClearServicesError extends AuthenticationEvent {}

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 
+import '../../Models/services_ui_model.dart';
 import '../../Repository/auth_repository.dart';
 import 'auth_event.dart';
 
@@ -19,7 +20,85 @@ class AuthenticationBloc
     on<VerifyOtpRequestedPhone>(_onVerifyOtpRequestedPhone);
     on<ForgotPasswordRequest>(forgotPasswordRequest);
     on<ChangePassword>(changePassword);
+
+    on<LoadServicesRequested>(_onLoadServices);
+on<ToggleCertification>(_onToggleCertification);
+on<ToggleSingleService>(_onToggleSingleService);
+on<ClearServicesError>((e, emit) => emit(state.copyWith(servicesError: null)));
   }
+
+  // handlers
+Future<void> _onLoadServices(
+  LoadServicesRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(servicesStatus: ServicesStatus.loading, servicesError: null));
+
+  final r = await repo.fetchServices(); // <— from AuthRepository
+  if (!r.isSuccess) {
+    emit(state.copyWith(
+      servicesStatus: ServicesStatus.failure,
+      servicesError: r.failure?.message ?? 'Failed to load services',
+    ));
+    return;
+  }
+
+  // group rows by certification
+  final map = <int, CertificationGroup>{};
+  for (final dto in r.data!) {
+    final opt = ServiceOption(id: dto.serviceId, name: dto.serviceName);
+    final g = map[dto.certificationId];
+    if (g == null) {
+      map[dto.certificationId] =
+          CertificationGroup(id: dto.certificationId, name: dto.certificationName, services: [opt]);
+    } else {
+      map[dto.certificationId] = g.copyWith(services: [...g.services, opt]);
+    }
+  }
+
+  // sort for stable UI
+  final groups = map.values.toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  final sorted = groups
+      .map((g) => g.copyWith(
+            services: (List<ServiceOption>.from(g.services)
+              ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()))),
+          ))
+      .toList();
+
+  emit(state.copyWith(
+    servicesStatus: ServicesStatus.success,
+    serviceGroups: sorted,
+    servicesError: null,
+  ));
+}
+
+void _onToggleCertification(
+  ToggleCertification e,
+  Emitter<AuthenticationState> emit,
+) {
+  final updated = state.serviceGroups.map((g) {
+    if (g.id != e.certificationId) return g;
+    final svc = g.services.map((s) => s.copyWith(isSelected: e.selectAll)).toList();
+    return g.copyWith(services: svc);
+  }).toList();
+  emit(state.copyWith(serviceGroups: updated));
+}
+
+void _onToggleSingleService(
+  ToggleSingleService e,
+  Emitter<AuthenticationState> emit,
+) {
+  final updated = state.serviceGroups.map((g) {
+    if (g.id != e.certificationId) return g;
+    final svc = g.services.map((s) {
+      if (s.id == e.serviceId) return s.copyWith(isSelected: e.isSelected);
+      return s;
+    }).toList();
+    return g.copyWith(services: svc);
+  }).toList();
+  emit(state.copyWith(serviceGroups: updated));
+}
 
   changePassword(
     ChangePassword event,
