@@ -228,17 +228,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           shadowColor: primary.withOpacity(.35),
                         ),
                         onPressed: _valid ? _submit : null,
-                        // onPressed: isLoading //Testing@1234
-                        //     ? null
-                        //     : () {
-                        //         if (!_validateAndToast()) return;
-                        //         context.read<AuthenticationBloc>().add(
-                        //               SignInRequested(
-                        //                 email: emailController.text.trim(),
-                        //                 password: passwordController.text,
-                        //               ),
-                        //             );
-                        //       },
                         child: Text(
                           isLoading ? 'Please wait…' : 'SUMBIT',
                           style: const TextStyle(
