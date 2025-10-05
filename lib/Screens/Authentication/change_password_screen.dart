@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Screens/Authentication/login_screen.dart';
 import 'package:taskoon/main.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
@@ -131,7 +132,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           toastWidget('Password updated successfully', Colors.green);
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => HomeScreen()),
+            MaterialPageRoute(builder: (_) => LoginScreen()),
             (Route<dynamic> route) => false,
           );
         } else if (state.changePasswordStatus == ChangePasswordStatus.failure) {
@@ -139,105 +140,148 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               state.error ?? 'Failed to update password', Colors.redAccent);
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'CHANGE PASSWORD',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+      child: Builder(builder: (context) {
+        final isLoading = context.select((AuthenticationBloc b) =>
+            b.state.changePasswordStatus == ChangePasswordStatus.loading);
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Testing@11223344
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CHANGE PASSWORD',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    SizedBox(
-                      width: 60,
-                      height: 3,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.all(Radius.circular(2)),
+                      SizedBox(height: 4),
+                      SizedBox(
+                        width: 60,
+                        height: 3,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: primary,
+                            borderRadius: BorderRadius.all(Radius.circular(2)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+
+                  // Intro + purple shapes
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Enter your new password and confirm to continue.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                      const _DecorShapesPurple(),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  _label('New Password'),
+                  _filledField(
+                    controller: newPassCtrl,
+                    hint: 'New Password',
+                    obscure: obscureNew,
+                    onVisibilityToggle: () =>
+                        setState(() => obscureNew = !obscureNew),
+                  ),
+                  const SizedBox(height: 14),
+
+                  _label('Confirm New Password'),
+                  _filledField(
+                    controller: confirmPassCtrl,
+                    hint: 'Confirm New Password',
+                    obscure: obscureConfirm,
+                    onVisibilityToggle: () =>
+                        setState(() => obscureConfirm = !obscureConfirm),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  Center(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.40,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: primary,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 6,
+                          shadowColor: primary.withOpacity(.35),
+                        ),
+                        onPressed: _valid ? _submit : null,
+                        // onPressed: isLoading //Testing@1234
+                        //     ? null
+                        //     : () {
+                        //         if (!_validateAndToast()) return;
+                        //         context.read<AuthenticationBloc>().add(
+                        //               SignInRequested(
+                        //                 email: emailController.text.trim(),
+                        //                 password: passwordController.text,
+                        //               ),
+                        //             );
+                        //       },
+                        child: Text(
+                          isLoading ? 'Please wait…' : 'SUMBIT',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                            letterSpacing: .2,
+                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-
-                // Intro + purple shapes
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Enter your new password and confirm to continue.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    const _DecorShapesPurple(),
-                  ],
-                ),
-                const SizedBox(height: 28),
-
-                _label('New Password'),
-                _filledField(
-                  controller: newPassCtrl,
-                  hint: 'New Password',
-                  obscure: obscureNew,
-                  onVisibilityToggle: () =>
-                      setState(() => obscureNew = !obscureNew),
-                ),
-                const SizedBox(height: 14),
-
-                _label('Confirm New Password'),
-                _filledField(
-                  controller: confirmPassCtrl,
-                  hint: 'Confirm New Password',
-                  obscure: obscureConfirm,
-                  onVisibilityToggle: () =>
-                      setState(() => obscureConfirm = !obscureConfirm),
-                ),
-
-                const SizedBox(height: 22),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          _valid ? primary : const Color(0xFFECEFF3),
-                      foregroundColor: _valid ? Colors.white : Colors.black54,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: _valid ? 6 : 0,
-                      shadowColor: primary.withOpacity(.35),
-                    ),
-                    onPressed: _valid ? _submit : null,
-                    child: const Text(
-                      'SUBMIT',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: .2,
-                      ),
-                    ),
                   ),
-                ),
-              ],
+
+                  /* SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            _valid ? primary : const Color(0xFFECEFF3),
+                        foregroundColor: _valid ? Colors.white : Colors.black54,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: _valid ? 6 : 0,
+                        shadowColor: primary.withOpacity(.35),
+                      ),
+                      onPressed: _valid ? _submit : null,
+                      child: const Text(
+                        'SUBMIT',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: .2,
+                        ),
+                      ),
+                    ),
+                  ),*/
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

@@ -55,13 +55,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         listenWhen: (p, c) => p.forgotPasswordStatus != c.forgotPasswordStatus,
         listener: (context, state) {
           if (state.forgotPasswordStatus == ForgotPasswordStatus.success) {
+            print(
+                "FORGET PASSWORD SUCCESS CHECK ${state.forgotPasswordStatus == ForgotPasswordStatus.success}");
+            print(
+                "FORGET PASSWORD SUCCESS CHECK ${state.forgotPasswordStatus == ForgotPasswordStatus.success}");
+            print(
+                "FORGET PASSWORD SUCCESS CHECK ${state.forgotPasswordStatus == ForgotPasswordStatus.success}");
             context.read<AuthenticationBloc>().add(SendOtpThroughEmail(
                 userId: state.response!.result!.userId.toString(),
                 email: emailController.text.trim()));
             toastWidget(
                 'OTP Send to ${emailController.text.trim()}', Colors.green);
 
-            Navigator.pushAndRemoveUntil(
+            Navigator.pushAndRemoveUntil(//Testing@112233
               context,
               MaterialPageRoute(
                   builder: (_) => OtpVerificationScreen(
@@ -71,10 +77,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       phone: '')),
               (Route<dynamic> route) => false,
             );
-          }
-          else if(state.forgotPasswordStatus == ForgotPasswordStatus.failure){
-
-          }
+          } else if (state.forgotPasswordStatus ==
+              ForgotPasswordStatus.failure) {}
         },
         child: Builder(builder: (context) {
           final isLoading = context.select((AuthenticationBloc b) =>
