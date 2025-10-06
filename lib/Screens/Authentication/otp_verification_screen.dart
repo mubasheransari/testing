@@ -171,7 +171,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 ),
                 const SizedBox(height: 36),
 
-                // OTP input Testing@123
                 Card(
                   elevation: 0,
                   color: lavender,
@@ -244,13 +243,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                     ),
 
                     BlocConsumer<AuthenticationBloc, AuthenticationState>(
-                      // Fire on new errors, new response objects (even same message), or status change
                       listenWhen: (prev, curr) =>
                           prev.error != curr.error ||
                           prev.response !=
-                              curr.response || // reference change ⇒ new API hit
+                              curr.response || 
                           prev.status !=
-                              curr.status, // if you emit status updates
+                              curr.status,
                       listener: (context, state) {
                         final err = state.error?.trim();
                         if (err != null && err.isNotEmpty) {

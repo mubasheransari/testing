@@ -6,23 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
-
-import 'dart:async';
-import 'dart:io';
-import 'dart:math' as math;
-
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:image/image.dart' as img;
 import 'package:taskoon/Screens/Tasker_Onboarding/personal_info.dart';
 
-/// Brand colors
+
 const _primary = Color(0xFF7841BA);
 const _primaryAlt = Color(0xFF8B59C6);
 
-class SelfieCaptureScreen extends StatefulWidget {
+class SelfieCaptureScreen extends StatefulWidget {//Testing@1234
   const SelfieCaptureScreen({super.key});
   @override
   State<SelfieCaptureScreen> createState() => _SelfieCaptureScreenState();
@@ -69,7 +59,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     try {
       final cams = await availableCameras();
       final front = cams.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,//Testing123
+        (c) => c.lensDirection == CameraLensDirection.front, //Testing123
         orElse: () => cams.first,
       );
 
@@ -206,7 +196,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     final lum = List<int>.filled(w * h, 0, growable: false);
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        lum[y * w + x] = gray.getPixel(x, y).luminance.toInt();//Testing@1234
+        lum[y * w + x] = gray.getPixel(x, y).luminance.toInt(); //Testing@1234
       }
     }
 

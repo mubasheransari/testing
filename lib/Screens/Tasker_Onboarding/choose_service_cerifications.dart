@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Tasker_Onboarding/documents_screen.dart';
 import '../../Constants/constants.dart';
 import '../../Models/services_group_model.dart';
 
-
-/// Same UI as your design. Receives groups from CertificationsScreen.
-/// Optionally pass a set of initially-selected keys in the form "Group|Item".
 class ChooseServicesScreen extends StatefulWidget {
   const ChooseServicesScreen({
     super.key,
     required this.groups,
-    this.initialSelectedKeys = const <String>{},
-    this.onContinue, // If null, will Navigator.pop with the selected labels.
+    this.initialSelectedIds = const <int>{},
+    this.onContinue, // If null, Navigator.pop will return the selectedIds.
   });
 
   final List<ServiceGroup> groups;
-  final Set<String> initialSelectedKeys;
-  final void Function(List<String> selectedLabels)? onContinue;
+  final Set<int> initialSelectedIds;
+  final void Function(List<int> selectedIds, List<String> selectedLabels)?
+      onContinue;
 
   @override
   State<ChooseServicesScreen> createState() => _ChooseServicesScreenState();
@@ -25,12 +24,17 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
   static const purple = Color(0xFF7841BA);
 
   late final List<ServiceGroup> groups = widget.groups;
-  late final Set<String> selected = {...widget.initialSelectedKeys};
+  late final Set<int> selectedIds = {...widget.initialSelectedIds};
+
+  late final Map<int, String> _idToLabel = {
+    for (final g in groups)
+      for (final it in g.items) it.id: it.name,
+  };
 
   @override
   Widget build(BuildContext context) {
     final selectedLabels =
-        selected.map((k) => k.split('|')[1]).toList(growable: false);
+        selectedIds.map((id) => _idToLabel[id]!).toList(growable: false);
 
     const currentStep = 3;
     const totalSteps = 7;
@@ -129,14 +133,14 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
                   count: g.items.length,
                   child: Column(
                     children: [
-                      for (final s in g.items)
+                      for (final it in g.items)
                         _ServiceRow(
-                          label: s,
-                          selected: selected.contains('${g.title}|$s'),
+                          label: it.name,
+                          selected: selectedIds.contains(it.id),
                           onTap: () {
                             setState(() {
-                              final key = '${g.title}|$s';
-                              if (!selected.add(key)) selected.remove(key);
+                              if (!selectedIds.add(it.id))
+                                selectedIds.remove(it.id);
                             });
                           },
                         ),
@@ -171,9 +175,9 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (selected.isNotEmpty) ...[
+                    if (selectedIds.isNotEmpty) ...[
                       _SelectedSummary(
-                        title: 'Selected Services (${selected.length}):',
+                        title: 'Selected Services (${selectedIds.length}):',
                         items: selectedLabels,
                       ),
                       const SizedBox(height: 12),
@@ -189,14 +193,24 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: selected.isEmpty
+                        onPressed: selectedIds.isEmpty
                             ? null
                             : () {
+                                final ids = selectedIds.toList(growable: false);
+                                final labels = selectedLabels;
                                 if (widget.onContinue != null) {
-                                  widget.onContinue!(selectedLabels);
+                                  widget.onContinue!(ids, labels);
                                 } else {
-                                  // Return to previous screen with the chosen labels
-                                  Navigator.of(context).pop(selectedLabels);
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              DocumentsScreen()));
+                                  print(" IDS $ids");
+                                  // Return only the IDs if you want
+                                  //  Navigator.of(context).pop(ids);
+                                  // Or return both:
+                                  // Navigator.of(context).pop({'ids': ids, 'labels': labels});
                                 }
                               },
                         child: const Text(
@@ -490,6 +504,7 @@ class _SelectedSummary extends StatelessWidget {
     );
   }
 }
+
 
 
 
