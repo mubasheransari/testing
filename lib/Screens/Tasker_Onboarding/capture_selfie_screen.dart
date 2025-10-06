@@ -248,7 +248,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                 if (_report?.pass == true) {
                   Navigator.push(context,
                       MaterialPageRoute(builder: (context) => PersonalInfo()));
-                  //    Navigator.pop(context, _lastShot!.path);
+                  //    Navigator.pop(context, _lastShot!.path);//Testing@123
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
