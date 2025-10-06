@@ -84,7 +84,7 @@ class DocumentUpload extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _UploadTile(label: 'Front of ID', icon: Icons.credit_card),
-           SizedBox(height: Tokens.s12),
+          SizedBox(height: Tokens.s12),
           _UploadTile(label: 'Back of ID', icon: Icons.credit_card_rounded),
         ],
       ),

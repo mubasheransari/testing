@@ -70,7 +70,6 @@ abstract class AuthRepository {
     required String emailAddress,
     required String password,
     String? address,
-    List<SelectableItem>? desiredService,
   });
 
   Future<Result<LoginResponse>> signIn({
@@ -102,7 +101,7 @@ class AuthRepositoryHttp implements AuthRepository {
   AuthRepositoryHttp.fullUrl(
     String fullUrl, {
     this.timeout = const Duration(seconds: 30),
-  }) : _signupUri = Uri.parse(fullUrl);
+  }) : _signupUri = Uri.parse(fullUrl);//Testing@123
 
   Map<String, String> _headers() => const {
         HttpHeaders.acceptHeader: 'application/json',
@@ -625,8 +624,8 @@ class AuthRepositoryHttp implements AuthRepository {
       emailAddress: emailAddress,
       password: password,
       address: address,
-      desiredService: desiredService ?? const [],
-    );
+      //desiredService: desiredService ?? const [],
+    ); 
     return register(req);
   }
 

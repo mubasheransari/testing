@@ -167,12 +167,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         toastWidget("Representative Phone is required.", Colors.redAccent);
         return false;
       }
-      final repComposed = _composeAuPhone(repPhoneCtrl.text);
-      if (!repComposed.startsWith('+61') || repComposed.length < 10) {
-        toastWidget("Please enter a valid representative phone number.",
-            Colors.redAccent);
-        return false;
-      }
+      // final repComposed = _composeAuPhone(repPhoneCtrl.text); Testing@123
+      // if (!repComposed.startsWith('+61') || repComposed.length < 10) {
+      //   toastWidget("Please enter a valid representative phone number.",
+      //       Colors.redAccent);
+      //   return false;
+      // }
     }
 
     return true;

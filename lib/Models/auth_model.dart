@@ -10,7 +10,8 @@ class Result<T> {
 }
 
 class Failure {
-  final String code; // network | timeout | server | parse | validation | unknown
+  final String
+      code; // network | timeout | server | parse | validation | unknown
   final String message;
   final int? statusCode;
   const Failure({required this.code, required this.message, this.statusCode});
@@ -20,20 +21,31 @@ class Failure {
 
 // Enums & helpers
 enum AccountType { USER, COMPANY, TASKER }
-String accountTypeToApi(AccountType t) => t.name;
+
+String accountTypeToApi(AccountType t) {
+  switch (t) {
+    case AccountType.USER:
+      return 'user';
+    case AccountType.TASKER:
+      return 'tasker';
+    case AccountType.COMPANY:
+      return 'company'; // or 'business' if your API expects that Testing@123
+  }
+}
 
 class SelectableItem {
   final String id;
   final String name;
   final bool isSelected;
-  const SelectableItem({required this.id, required this.name, this.isSelected = false});
+  const SelectableItem(
+      {required this.id, required this.name, this.isSelected = false});
 
   // If your backend only needs IDs for some fields, you can switch to {'id': id}
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'isSelected': isSelected,
-  };
+        'id': id,
+        'name': name,
+        'isSelected': isSelected,
+      };
 }
 
 // Helper to remove empty / null keys
@@ -98,17 +110,18 @@ class RegistrationRequest {
     List<SelectableItem>? companyCategory,
     List<SelectableItem>? companySubCategory,
     String? abn,
-  }) => RegistrationRequest._(
-    type: AccountType.USER,
-    fullName: fullName,
-    phoneNumber: phoneNumber,
-    emailAddress: emailAddress,
-    password: password,
-    desiredService: desiredService ?? const [],
-    companyCategory: companyCategory ?? const [],
-    companySubCategory: companySubCategory ?? const [],
-    abn: abn,
-  );
+  }) =>
+      RegistrationRequest._(
+        type: AccountType.USER,
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        emailAddress: emailAddress,
+        password: password,
+        desiredService: desiredService ?? const [],
+        companyCategory: companyCategory ?? const [],
+        companySubCategory: companySubCategory ?? const [],
+        abn: abn,
+      );
 
   factory RegistrationRequest.company({
     required String fullName,
@@ -121,19 +134,20 @@ class RegistrationRequest {
     String? abn,
     String? representativeName,
     String? representativeNumber,
-  }) => RegistrationRequest._(
-    type: AccountType.COMPANY,
-    fullName: fullName,
-    phoneNumber: phoneNumber,
-    emailAddress: emailAddress,
-    password: password,
-    desiredService: desiredService ?? const [],
-    companyCategory: companyCategory ?? const [],
-    companySubCategory: companySubCategory ?? const [],
-    abn: abn,
-    representativeName: representativeName,
-    representativeNumber: representativeNumber,
-  );
+  }) =>
+      RegistrationRequest._(
+        type: AccountType.COMPANY,
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        emailAddress: emailAddress,
+        password: password,
+        desiredService: desiredService ?? const [],
+        companyCategory: companyCategory ?? const [],
+        companySubCategory: companySubCategory ?? const [],
+        abn: abn,
+        representativeName: representativeName,
+        representativeNumber: representativeNumber,
+      );
 
   factory RegistrationRequest.tasker({
     required String fullName,
@@ -141,18 +155,15 @@ class RegistrationRequest {
     required String emailAddress,
     required String password,
     String? address,
-    List<SelectableItem>? desiredService,
-  }) => RegistrationRequest._(
-    type: AccountType.TASKER,
-    fullName: fullName,
-    phoneNumber: phoneNumber,
-    emailAddress: emailAddress,
-    password: password,
-    address: address,
-    desiredService: desiredService ?? const [],
-    companyCategory: const [],
-    companySubCategory: const [],
-  );
+  }) =>
+      RegistrationRequest._(
+        type: AccountType.TASKER,
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        emailAddress: emailAddress,
+        password: password,
+        address: address,
+      );
 
   Map<String, dynamic> toJson() {
     List<Map<String, dynamic>>? mapList(List<SelectableItem>? l) =>
@@ -183,9 +194,6 @@ class RegistrationRequest {
         break;
       case AccountType.TASKER:
         base['address'] = address ?? '';
-        base['desiredService'] = mapList(desiredService);
-        base['companyCategory'] = mapList(companyCategory);
-        base['companySubCategory'] = mapList(companySubCategory);
         break;
     }
     return base.cleaned();
@@ -197,9 +205,9 @@ class ApiErrorItem {
   final String error;
   ApiErrorItem({required this.field, required this.error});
   factory ApiErrorItem.fromJson(Map<String, dynamic> json) => ApiErrorItem(
-    field: (json['field'] ?? '').toString(),
-    error: (json['error'] ?? '').toString(),
-  );
+        field: (json['field'] ?? '').toString(),
+        error: (json['error'] ?? '').toString(),
+      );
 }
 
 class RegistrationResult {
@@ -234,7 +242,8 @@ class RegistrationResponse {
     return RegistrationResponse(
       isSuccess: json['isSuccess'] == true,
       message: json['message']?.toString(),
-      result: RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
+      result:
+          RegistrationResult.fromJson(json['result'] as Map<String, dynamic>?),
       errors: ((json['errors'] ?? []) as List)
           .whereType<Map<String, dynamic>>()
           .map(ApiErrorItem.fromJson)

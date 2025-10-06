@@ -22,7 +22,7 @@ class CertificationsScreen extends StatefulWidget {
 class _CertificationsScreenState extends State<CertificationsScreen> {
   static const purple = Color(0xFF7841BA);
 
-  /// Track which certificationIds the user toggled on this screen.
+  /// Track which certificationIds the user toggled on this screen. Testing@123
   final Set<int> _selectedCertificationIds = {};
 
   @override
@@ -126,38 +126,42 @@ class _CertificationsScreenState extends State<CertificationsScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                       onPressed: selectedGroups.isEmpty
-    ? null
-    : () async {
-        // Map your selected CertificationGroup -> ServiceGroup with IDs
-        final List<ServiceGroup> groupsForNext = selectedGroups.map((g) {
-          return ServiceGroup(
-            id: g.id,            // certificationId
-            title: g.name,       // certificationName
-            items: g.services.map((s) {
-              // API fields: serviceId, serviceName
-              return ServiceItem(id: s.id, name: s.name);
-            }).toList(),
-          );
-        }).toList();
+                        onPressed: selectedGroups.isEmpty
+                            ? null
+                            : () async {
+                                // Map your selected CertificationGroup -> ServiceGroup with IDs
+                                final List<ServiceGroup> groupsForNext =
+                                    selectedGroups.map((g) {
+                                  return ServiceGroup(
+                                    id: g.id, // certificationId
+                                    title: g.name, // certificationName
+                                    items: g.services.map((s) {
+                                      // API fields: serviceId, serviceName
+                                      return ServiceItem(
+                                          id: s.id, name: s.name);
+                                    }).toList(),
+                                  );
+                                }).toList();
 
-        // Push and get back the IDs
-        final result = await Navigator.push<List<int>>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChooseServicesScreen(
-              groups: groupsForNext,
-              initialSelectedIds: const <int>{}, // preselect if you want
-            ),
-          ),
-        );
+                                // Push and get back the IDs
+                                final result = await Navigator.push<List<int>>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChooseServicesScreen(
+                                      groups: groupsForNext,
+                                      initialSelectedIds: const <
+                                          int>{}, // preselect if you want
+                                    ),
+                                  ),
+                                );
 
-        if (result != null) {
-          final selectedServiceIds = result; // ← 👈 your list of IDs
-          // do whatever you need (e.g., save to state or submit)
-          // print(selectedServiceIds);
-        }
-      },
+                                if (result != null) {
+                                  final selectedServiceIds =
+                                      result; // ← 👈 your list of IDs
+                                  // do whatever you need (e.g., save to state or submit)
+                                  // print(selectedServiceIds);
+                                }
+                              },
                         child: const Text(
                           'Continue to Service Selection',
                           style: TextStyle(

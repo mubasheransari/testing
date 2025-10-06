@@ -393,7 +393,6 @@ class AuthenticationBloc
       emailAddress: e.email,
       password: e.password,
       address: e.address,
-      desiredService: e.desiredService,
     );
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
