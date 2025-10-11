@@ -18,6 +18,7 @@ class ApiConfig {
   static const String forgotPasswordEndpoint = '/api/auth/forgetpassword';
   static const String changePasswordEndpoint = '/api/auth/changepassword';
   static const String servicesEndpoint = '/api/Services/services';
+  static const String docsRequiredEndpoint = '/api/Services/Documents';
 }
 
 abstract class AuthRepository {
