@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:taskoon/Models/service_document_model.dart';
 import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
@@ -11,6 +12,8 @@ enum ChangePasswordStatus { initial, loading, success, failure }
 
 enum ServicesStatus { initial, loading, success, failure }
 
+enum DocumentsStatus { initial, loading, success, failure }
+
 class AuthenticationState extends Equatable {
   final AuthStatus status;
   final ForgotPasswordStatus forgotPasswordStatus;
@@ -22,12 +25,20 @@ class AuthenticationState extends Equatable {
   final List<CertificationGroup> serviceGroups;
   final String? servicesError;
 
+    final DocumentsStatus documentsStatus;
+  final List<ServiceDocument> documents;
+  final String? documentsError;
+
 
   int get totalSelectedServices =>
       serviceGroups.fold(0, (sum, g) => sum + g.selectedCount);
 
   const AuthenticationState(
       {
+
+            this.documentsStatus = DocumentsStatus.initial,
+    this.documents = const [],
+    this.documentsError,
            this.servicesStatus = ServicesStatus.initial,
     this.serviceGroups = const [],
     this.servicesError,
@@ -39,6 +50,9 @@ class AuthenticationState extends Equatable {
       this.loginResponse});
 
   AuthenticationState copyWith({
+        DocumentsStatus? documentsStatus,
+    List<ServiceDocument>? documents,
+    String? documentsError,
       ServicesStatus? servicesStatus,
     List<CertificationGroup>? serviceGroups,
     String? servicesError,
@@ -50,6 +64,9 @@ class AuthenticationState extends Equatable {
     LoginResponse? loginResponse,
   }) =>
       AuthenticationState(
+                documentsStatus: documentsStatus ?? this.documentsStatus,
+        documents: documents ?? this.documents,
+        documentsError: documentsError,
          servicesStatus: servicesStatus ?? this.servicesStatus,
         serviceGroups: serviceGroups ?? this.serviceGroups,
         servicesError: servicesError,
@@ -63,7 +80,10 @@ class AuthenticationState extends Equatable {
 
   @override
   List<Object?> get props =>
-      [    servicesStatus,
+      [    
+            documentsStatus,
+    documents,
+    documentsError,servicesStatus,
         serviceGroups,
         servicesError,
         totalSelectedServices,status,changePasswordStatus, forgotPasswordStatus, response, error, loginResponse];

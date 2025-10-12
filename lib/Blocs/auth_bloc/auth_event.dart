@@ -169,3 +169,5 @@ class ToggleSingleService extends AuthenticationEvent {
 }
 
 class ClearServicesError extends AuthenticationEvent {}
+
+class LoadServiceDocumentsRequested extends AuthenticationEvent {}

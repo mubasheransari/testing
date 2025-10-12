@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Models/service_document_model.dart';
 
 import '../../Models/auth_model.dart';
 import '../../Models/services_ui_model.dart';
@@ -21,13 +22,47 @@ class AuthenticationBloc
     on<VerifyOtpRequestedPhone>(_onVerifyOtpRequestedPhone);
     on<ForgotPasswordRequest>(forgotPasswordRequest);
     on<ChangePassword>(changePassword);
-
     on<LoadServicesRequested>(_onLoadServices);
     on<ToggleCertification>(_onToggleCertification);
     on<ToggleSingleService>(_onToggleSingleService);
     on<ClearServicesError>(
         (e, emit) => emit(state.copyWith(servicesError: null)));
+
+          on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
+
   }
+
+  Future<void> _onLoadServiceDocuments(
+  LoadServiceDocumentsRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(
+    documentsStatus: DocumentsStatus.loading,
+    documentsError: null,
+  ));
+
+  final r = await repo.fetchServiceDocuments(); // your GET
+  if (!r.isSuccess) {
+    emit(state.copyWith(
+      documentsStatus: DocumentsStatus.failure,
+      documentsError: r.failure?.message ?? 'Failed to load documents',
+    ));
+    return;
+  }
+
+  // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
+  final out = <ServiceDocument>[];
+  for (final resp in r.data!) {
+    out.addAll(resp.result);
+  }
+
+  emit(state.copyWith(
+    documentsStatus: DocumentsStatus.success,
+    documents: out,
+    documentsError: null,
+  ));
+}
+
 
   // handlers
   Future<void> _onLoadServices(
