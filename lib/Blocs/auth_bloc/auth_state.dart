@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-
 import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
@@ -57,7 +56,7 @@ class AuthenticationState extends Equatable {
           status: status ?? this.status,
           changePasswordStatus: changePasswordStatus ?? this.changePasswordStatus,
           forgotPasswordStatus:
-              forgotPasswordStatus ?? this.forgotPasswordStatus,//Testing@123
+              forgotPasswordStatus ?? this.forgotPasswordStatus,
           response: response ?? this.response,
           error: error,
           loginResponse: loginResponse ?? this.loginResponse);

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Models/service_document_model.dart';
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
 import '../Models/services_model.dart';
@@ -22,6 +23,7 @@ class ApiConfig {
 }
 
 abstract class AuthRepository {
+  Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments();
   Future<Result<List<ServiceDto>>> fetchServices();
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
 
@@ -123,6 +125,70 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+  @override
+Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments() async {
+  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.docsRequiredEndpoint}');
+  try {
+    print('>>> FETCH SERVICE DOCUMENTS GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    print('<<< SERVICE DOCUMENTS STATUS: ${res.statusCode}');
+    print('<<< SERVICE DOCUMENTS BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final parsed = jsonDecode(res.body);
+
+      if (parsed is! List) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format (expected list)',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      final docs = parsed
+          .map<ServiceDocumentResponse>(
+              (e) => ServiceDocumentResponse.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      return Result.ok(docs);
+    }
+
+    // Non-2xx responses
+    String message = 'Server error (${res.statusCode})';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err['message'] != null) {
+        message = err['message'].toString();
+      }
+    } catch (_) {}
+
+    return Result.fail(
+      Failure(
+        code: 'server',
+        message: message,
+        statusCode: res.statusCode,
+      ),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
 
   @override
   Future<Result<List<ServiceDto>>> fetchServices() async {
