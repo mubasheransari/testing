@@ -34,6 +34,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('IDS ::::: ${widget.selectedServices}');
+    print('IDS ::::: ${widget.selectedServices}');
+    print('IDS ::::: ${widget.selectedServices}');
     const currentStep = 4;
     const totalSteps = 7;
     final progress = currentStep / totalSteps;
