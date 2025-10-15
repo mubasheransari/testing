@@ -171,3 +171,18 @@ class ToggleSingleService extends AuthenticationEvent {
 class ClearServicesError extends AuthenticationEvent {}
 
 class LoadServiceDocumentsRequested extends AuthenticationEvent {}
+
+class CreatePaymentSessionRequested extends AuthenticationEvent {
+  final String userId;
+  final num amount;
+  final String paymentMethod; 
+
+  CreatePaymentSessionRequested({
+    required this.userId,
+    required this.amount,
+    this.paymentMethod = 'stripe',
+  });
+
+  @override
+  List<Object?> get props => [userId, amount, paymentMethod];
+}

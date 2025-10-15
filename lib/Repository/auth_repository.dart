@@ -20,9 +20,15 @@ class ApiConfig {
   static const String changePasswordEndpoint = '/api/auth/changepassword';
   static const String servicesEndpoint = '/api/Services/services';
   static const String docsRequiredEndpoint = '/api/Services/Documents';
+  static const String paymentSessionEndpoint = '/api/Payment/GetSessionUrl';
 }
 
 abstract class AuthRepository {
+    Future<Result<String>> createPaymentSession({  
+    required String userId,
+    required num amount,
+    String paymentMethod,
+  });
 
     Future<Result<List<ServiceDocument>>> fetchServiceDocuments();
 
@@ -126,6 +132,47 @@ class AuthRepositoryHttp implements AuthRepository {
       return Failure(code: 'validation', message: '$label is required');
     }
     return null;
+  }
+
+  @override
+  Future<Result<String>> createPaymentSession({
+    required String userId,
+    required num amount,
+    String paymentMethod = 'stripe',
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.paymentSessionEndpoint}');
+    final body = {"userId": userId, "amount": amount, "paymentMethod": paymentMethod};
+
+    try {
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is Map<String, dynamic>) {
+          if (parsed['isSuccess'] == true) {
+            final url = parsed['result']?['sessionUrl']?.toString();
+            if (url != null && url.isNotEmpty) return Result.ok(url);
+            return Result.fail(Failure(code: 'validation', message: 'No sessionUrl returned'));
+          }
+          return Result.fail(Failure(
+            code: 'validation',
+            message: parsed['message']?.toString() ?? 'Payment session failed',
+            statusCode: res.statusCode,
+          ));
+        }
+        return Result.fail(Failure(code: 'parse', message: 'Invalid response format'));
+      }
+
+      return Result.fail(Failure(code: 'server', message: 'Server error ${res.statusCode}', statusCode: res.statusCode));
+    } on SocketException {
+      return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    }
   }
 
   @override

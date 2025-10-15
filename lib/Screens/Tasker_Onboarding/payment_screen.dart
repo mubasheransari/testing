@@ -1,6 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Screens/Tasker_Onboarding/paymennt_success.dart';
+import 'package:taskoon/Screens/Tasker_Onboarding/webview_stripe.dart';
 
 import '../../Constants/constants.dart';
 
@@ -193,41 +198,75 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
 
-          // Sticky bottom Pay button
           Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 20,
-                    offset: Offset(0, -6),
-                  ),
-                ],
+  alignment: Alignment.bottomCenter,
+  child: BlocConsumer<AuthenticationBloc, AuthenticationState>(
+    listenWhen: (prev, curr) => prev.paymentStatus != curr.paymentStatus,
+    listener: (context, state) {
+      if (state.paymentStatus == PaymentStatus.urlReady &&
+          state.paymentSessionUrl != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CheckoutWebView(url: state.paymentSessionUrl!),
+          ),
+        );
+      } else if (state.paymentStatus == PaymentStatus.failure &&
+                 state.paymentError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.paymentError!)),
+        );
+      }
+    },
+    builder: (context, state) {
+      final loading = state.paymentStatus == PaymentStatus.loading;
+
+      return Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 20,
+              offset: Offset(0, -6),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: SizedBox(
+            height: 56,
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: purple, // your existing color
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: SafeArea(
-                top: false,
-                minimum: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: SizedBox(
-                  height: 56,
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: purple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => PaymentSuccessScreen()));
+              onPressed: loading
+                  ? null
+                  : () {
+                      context.read<AuthenticationBloc>().add(
+                            CreatePaymentSessionRequested(
+                              userId:
+                                  '77801979-3a6a-4080-b43f-7a7183c37bf9', // <-- put actual
+                              amount: total, // <-- your total as num/double
+                              paymentMethod: 'stripe',
+                            ),
+                          );
                     },
-                    child: Text(
+              child: loading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
                       'Pay \$${total.toStringAsFixed(0)}',
                       style: const TextStyle(
                         color: Colors.white,
@@ -235,11 +274,61 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         letterSpacing: .2,
                       ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
+        ),
+      );
+    },
+  ),
+),
+
+          // Sticky bottom Pay button
+          // Align(
+          //   alignment: Alignment.bottomCenter,
+          //   child: Container(
+          //     decoration: const BoxDecoration(
+          //       color: Colors.white,
+          //       boxShadow: [
+          //         BoxShadow(
+          //           color: Color(0x1A000000),
+          //           blurRadius: 20,
+          //           offset: Offset(0, -6),
+          //         ),
+          //       ],
+          //     ),
+          //     child: SafeArea(
+          //       top: false,
+          //       minimum: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          //       child: SizedBox(
+          //         height: 56,
+          //         width: double.infinity,
+          //         child: ElevatedButton(
+          //           style: ElevatedButton.styleFrom(
+          //             elevation: 0,
+          //             backgroundColor: purple,
+          //             shape: RoundedRectangleBorder(
+          //               borderRadius: BorderRadius.circular(12),
+          //             ),
+          //           ),
+          //           onPressed: () {
+          //             Navigator.push(
+          //                 context,
+          //                 MaterialPageRoute(
+          //                     builder: (context) => PaymentSuccessScreen()));
+          //           },
+          //           child: Text(
+          //             'Pay \$${total.toStringAsFixed(0)}',
+          //             style: const TextStyle(
+          //               color: Colors.white,
+          //               fontWeight: FontWeight.w700,
+          //               letterSpacing: .2,
+          //             ),
+          //           ),
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

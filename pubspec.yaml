@@ -47,6 +47,7 @@ dependencies:
   camera:
   google_mlkit_face_detection:
   google_fonts: ^6.3.2
+  webview_flutter:
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.2 

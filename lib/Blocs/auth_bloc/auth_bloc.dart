@@ -29,8 +29,41 @@ class AuthenticationBloc
         (e, emit) => emit(state.copyWith(servicesError: null)));
 
          on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
-
+  on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
   }
+
+
+  Future<void> _onCreatePaymentSession(
+  CreatePaymentSessionRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(
+    paymentStatus: PaymentStatus.loading,
+    paymentError: null,
+    paymentSessionUrl: null,
+  ));
+
+  final r = await repo.createPaymentSession(
+    userId: e.userId,
+    amount: e.amount,
+    paymentMethod: e.paymentMethod,
+  );
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      paymentStatus: PaymentStatus.urlReady,
+      paymentSessionUrl: r.data,
+      paymentError: null,
+    ));
+  } else {
+    emit(state.copyWith(
+      paymentStatus: PaymentStatus.failure,
+      paymentError: r.failure?.message ?? 'Failed to create checkout session',
+      paymentSessionUrl: null,
+    ));
+  }
+}
+
 
   Future<void> _onLoadServiceDocuments(
   LoadServiceDocumentsRequested e,
