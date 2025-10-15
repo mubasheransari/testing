@@ -28,7 +28,7 @@ class AuthenticationBloc
     on<ClearServicesError>(
         (e, emit) => emit(state.copyWith(servicesError: null)));
 
-          on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
+         on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
 
   }
 
@@ -36,12 +36,16 @@ class AuthenticationBloc
   LoadServiceDocumentsRequested e,
   Emitter<AuthenticationState> emit,
 ) async {
+  // 1) set loading
   emit(state.copyWith(
     documentsStatus: DocumentsStatus.loading,
     documentsError: null,
   ));
 
-  final r = await repo.fetchServiceDocuments(); // your GET
+  // 2) call repo
+  final r = await repo.fetchServiceDocuments();
+
+  // 3) handle failure
   if (!r.isSuccess) {
     emit(state.copyWith(
       documentsStatus: DocumentsStatus.failure,
@@ -50,18 +54,55 @@ class AuthenticationBloc
     return;
   }
 
-  // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
-  final out = <ServiceDocument>[];
-  for (final resp in r.data!) {
-    out.addAll(resp.result);
-  }
+  // 4) success (API returns a flat List<ServiceDocument>)
+  final docs = r.data!;
+
+  // Optional: dedupe exact duplicates (by serviceId+documentId)
+  // final seen = <String>{};
+  // final unique = <ServiceDocument>[];
+  // for (final d in docs) {
+  //   final k = '${d.serviceId}:${d.documentId}';
+  //   if (seen.add(k)) unique.add(d);
+  // }
 
   emit(state.copyWith(
     documentsStatus: DocumentsStatus.success,
-    documents: out,
+    documents: docs,        // or: unique
     documentsError: null,
   ));
 }
+
+
+//   Future<void> _onLoadServiceDocuments(
+//   LoadServiceDocumentsRequested e,
+//   Emitter<AuthenticationState> emit,
+// ) async {
+//   emit(state.copyWith(
+//     documentsStatus: DocumentsStatus.loading,
+//     documentsError: null,
+//   ));
+
+//   final r = await repo.fetchServiceDocuments(); // your GET
+//   if (!r.isSuccess) {
+//     emit(state.copyWith(
+//       documentsStatus: DocumentsStatus.failure,
+//       documentsError: r.failure?.message ?? 'Failed to load documents',
+//     ));
+//     return;
+//   }
+
+//   // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
+//   final out = <ServiceDocument>[];
+//   for (final resp in r.data!) {
+//     out.addAll(resp.result);
+//   }
+
+//   emit(state.copyWith(
+//     documentsStatus: DocumentsStatus.success,
+//     documents: out,
+//     documentsError: null,
+//   ));
+// }
 
 
   // handlers

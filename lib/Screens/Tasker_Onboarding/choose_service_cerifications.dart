@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Screens/Tasker_Onboarding/documents_screen.dart';
-import '../../Constants/constants.dart';
 import '../../Models/services_group_model.dart';
 
-import 'documents_screen.dart';
 
 class ChooseServicesScreen extends StatefulWidget {
   const ChooseServicesScreen({
@@ -182,34 +183,93 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
                           ),
                         ),
                         onPressed: selectedIds.isEmpty
-                            ? null
-                            : () {
-                                final ids = selectedIds.toList(growable: false);
-                                final labels = selectedLabels;
+    ? null
+    : () {
+        final ids = selectedIds.toList(growable: false);
+        final labels = selectedLabels;
 
-                                // Build the actual ServiceItem list that was selected
-                                final selectedItems = <ServiceItem>[];
-                                for (final g in groups) {
-                                  for (final it in g.items) {
-                                    if (selectedIds.contains(it.id)) {
-                                      selectedItems.add(it);
-                                    }
-                                  }
-                                }
+        // Build the actual ServiceItem list that was selected
+        final selectedItems = <ServiceItem>[];
+        for (final g in groups) {
+          for (final it in g.items) {
+            if (selectedIds.contains(it.id)) {
+              selectedItems.add(it);
+            }
+          }
+        }
 
-                                if (widget.onContinue != null) {
-                                  widget.onContinue!(ids, labels);
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DocumentsScreen(
-                                        selectedServices: selectedItems,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
+        // ⬇️ read docs from global bloc state (no event dispatch here)
+        final st = context.read<AuthenticationBloc>().state;
+
+        if (st.documentsStatus != DocumentsStatus.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(st.documentsError ?? 'Documents not ready')),
+          );
+          return;
+        }
+
+        // All loaded documents
+        final allDocs = st.documents; // List<ServiceDocument>
+        debugPrint('✅ Docs loaded: ${allDocs.length}');
+
+        // Only docs for currently selected services (optional)
+        final selectedServiceIds = selectedIds.toSet();
+        final docsForSelected = allDocs
+            .where((d) => selectedServiceIds.contains(d.serviceId))
+            .toList();
+
+        debugPrint('📄 Docs for selected services: ${docsForSelected.length}');
+        for (final d in docsForSelected) {
+          debugPrint(
+              '[serviceId=${d.serviceId}] ${d.serviceName} -> (docId=${d.documentId}) ${d.documentName}');
+        }
+
+        // Continue your existing flow
+        if (widget.onContinue != null) {
+          widget.onContinue!(ids, labels);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DocumentsScreen(
+                selectedServices: selectedItems,
+                // Optionally pass the filtered docs if your screen accepts it
+                // documents: docsForSelected,
+              ),
+            ),
+          );
+        }
+      },
+
+                        // onPressed: selectedIds.isEmpty
+                        //     ? null
+                        //     : () {
+                        //         final ids = selectedIds.toList(growable: false);
+                        //         final labels = selectedLabels;
+
+                        //         // Build the actual ServiceItem list that was selected
+                        //         final selectedItems = <ServiceItem>[];
+                        //         for (final g in groups) {
+                        //           for (final it in g.items) {
+                        //             if (selectedIds.contains(it.id)) {
+                        //               selectedItems.add(it);
+                        //             }
+                        //           }
+                        //         }
+
+                        //         if (widget.onContinue != null) {
+                        //           widget.onContinue!(ids, labels);
+                        //         } else {
+                        //           Navigator.push(
+                        //             context,
+                        //             MaterialPageRoute(
+                        //               builder: (_) => DocumentsScreen(
+                        //                 selectedServices: selectedItems,
+                        //               ),
+                        //             ),
+                        //           );
+                        //         }
+                        //       },
                         child: const Text(
                           'Continue',
                           style: TextStyle(

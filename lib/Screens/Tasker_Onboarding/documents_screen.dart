@@ -1,6 +1,7 @@
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Tasker_Onboarding/payment_screen.dart';
 
 import '../../Models/services_group_model.dart';
 
@@ -203,12 +204,19 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 }
                             ];
 
+                                                  Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => PaymentScreen()));
+
+                            
+
                             // TODO: call upload API here with:
                             // idPath, addressPath, insurancePath, certUploads
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('All service certificates added ✔')),
-                            );
+                            // ScaffoldMessenger.of(context).showSnackBar(
+                            //   const SnackBar(content: Text('All service certificates added ✔')),
+                            // );
                           },
                     child: const Text(
                       'Continue',
@@ -664,10 +672,10 @@ class _GhostButton extends StatelessWidget {
 //                       ),
 //                     ),
 //                     onPressed: () {
-//                       Navigator.push(
-//                           context,
-//                           MaterialPageRoute(
-//                               builder: (context) => PaymentScreen()));
+                      // Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //         builder: (context) => PaymentScreen()));
 //                     },
 //                     child: const Text(
 //                       'Continue',

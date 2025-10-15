@@ -23,7 +23,9 @@ class ApiConfig {
 }
 
 abstract class AuthRepository {
-  Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments();
+
+    Future<Result<List<ServiceDocument>>> fetchServiceDocuments();
+
   Future<Result<List<ServiceDto>>> fetchServices();
   Future<Result<RegistrationResponse>> forgotPassword({required String email});
 
@@ -127,16 +129,14 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
   @override
-Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments() async {
+Future<Result<List<ServiceDocument>>> fetchServiceDocuments() async {
   final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.docsRequiredEndpoint}');
   try {
-    print('>>> FETCH SERVICE DOCUMENTS GET $uri');
+    print('>>> DOCS GET $uri');
 
     final res = await http.get(uri, headers: _headers()).timeout(timeout);
 
-    print('<<< SERVICE DOCUMENTS STATUS: ${res.statusCode}');
-    print('<<< SERVICE DOCUMENTS BODY: ${res.body}');
-
+    print('<<< DOCS STATUS: ${res.statusCode}');
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final parsed = jsonDecode(res.body);
 
@@ -144,21 +144,20 @@ Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments() async {
         return Result.fail(
           Failure(
             code: 'parse',
-            message: 'Invalid response format (expected list)',
+            message: 'Invalid response format (expected array)',
             statusCode: res.statusCode,
           ),
         );
       }
 
-      final docs = parsed
-          .map<ServiceDocumentResponse>(
-              (e) => ServiceDocumentResponse.fromJson(e as Map<String, dynamic>))
+      final list = parsed
+          .map<ServiceDocument>((e) => ServiceDocument.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      return Result.ok(docs);
+      return Result.ok(list);
     }
 
-    // Non-2xx responses
+    // Non-2xx
     String message = 'Server error (${res.statusCode})';
     try {
       final err = jsonDecode(res.body);
@@ -166,28 +165,20 @@ Future<Result<List<ServiceDocumentResponse>>> fetchServiceDocuments() async {
         message = err['message'].toString();
       }
     } catch (_) {}
-
     return Result.fail(
-      Failure(
-        code: 'server',
-        message: message,
-        statusCode: res.statusCode,
-      ),
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
     );
   } on SocketException {
-    return Result.fail(
-      Failure(code: 'network', message: 'No internet connection'),
-    );
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
   } on TimeoutException {
-    return Result.fail(
-      Failure(code: 'timeout', message: 'Request timed out'),
-    );
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
   } catch (e) {
-    return Result.fail(
-      Failure(code: 'unknown', message: e.toString()),
-    );
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
+
+
+ 
 
 
   @override
