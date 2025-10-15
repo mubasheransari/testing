@@ -5,8 +5,267 @@ import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Screens/Tasker_Onboarding/documents_screen.dart';
 import '../../Models/services_group_model.dart';
 
-
+// ——— ChooseServicesScreen.dart ———
 class ChooseServicesScreen extends StatefulWidget {
+  const ChooseServicesScreen({
+    super.key,
+    required this.groups,
+    this.initialSelectedIds = const <int>{},
+    this.onContinue,
+  });
+
+  final List<ServiceGroup> groups;
+  final Set<int> initialSelectedIds;
+  final void Function(List<int> ids, List<String> labels)? onContinue;
+
+  @override
+  State<ChooseServicesScreen> createState() => _ChooseServicesScreenState();
+}
+
+class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
+  static const purple = Color(0xFF7841BA);
+
+  late final List<ServiceGroup> groups = widget.groups;
+  late final Set<int> selectedIds = {...widget.initialSelectedIds};
+
+  late final Map<int, String> _idToLabel = {
+    for (final g in groups) for (final it in g.items) it.id: it.name,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedLabels =
+        selectedIds.map((id) => _idToLabel[id]!).toList(growable: false);
+
+    const currentStep = 3;
+    const totalSteps = 7;
+    final progress = currentStep / totalSteps;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F7FF),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        toolbarHeight: 150,
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose Your Services',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 2),
+            Text("Tasker Onboarding",
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.black54)),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: Text('$currentStep/$totalSteps',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: Colors.black54)),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(36),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: Colors.grey,
+                    valueColor: const AlwaysStoppedAnimation(purple),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text('Progress',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Colors.black54)),
+                    const Spacer(),
+                    Text('${(progress * 100).round()}% complete',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Colors.black54)),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 14.0, left: 14.0, top: 10),
+                  child: Text(
+                    "Based on your certifications, you're eligible for these services. Select the ones you want to offer.",
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 260),
+            children: [
+              const _InfoBanner(
+                title: 'Certification-Based Eligibility',
+                message:
+                    'The services shown below are based on your selected certifications. You can only offer services that match your qualifications.',
+              ),
+              const SizedBox(height: 16),
+              for (final g in groups) ...[
+                _GroupCard(
+                  title: g.title,
+                  count: g.items.length,
+                  child: Column(
+                    children: [
+                      for (final it in g.items)
+                        _ServiceRow(
+                          label: it.name,
+                          selected: selectedIds.contains(it.id),
+                          onTap: () {
+                            setState(() {
+                              if (!selectedIds.add(it.id)) {
+                                selectedIds.remove(it.id);
+                              }
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+            ],
+          ),
+
+          // —— Bottom Continue Bar ——
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: purple.withOpacity(.16), width: 1),
+                ),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, -6)),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (selectedIds.isNotEmpty) ...[
+                      _SelectedSummary(
+                        title: 'Selected Services (${selectedIds.length}):',
+                        items: selectedLabels,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: purple,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: selectedIds.isEmpty
+                            ? null
+                            : () {
+                                final ids = selectedIds.toList(growable: false);
+                                final labels = selectedLabels;
+
+                                // Build selected ServiceItem list
+                                final selectedItems = <ServiceItem>[];
+                                for (final g in groups) {
+                                  for (final it in g.items) {
+                                    if (selectedIds.contains(it.id)) {
+                                      selectedItems.add(it);
+                                    }
+                                  }
+                                }
+
+                                // Read docs from global bloc
+                                final st = context.read<AuthenticationBloc>().state;
+                                if (st.documentsStatus != DocumentsStatus.success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(st.documentsError ?? 'Documents not ready')),
+                                  );
+                                  return;
+                                }
+
+                                // Filter docs for selected services
+                                final selectedServiceIds = selectedIds.toSet();
+                                final docsForSelected = st.documents
+                                    .where((d) => selectedServiceIds.contains(d.serviceId))
+                                    .toList();
+
+                                debugPrint('✅ Docs loaded: ${st.documents.length}');
+                                debugPrint('📄 Docs for selected: ${docsForSelected.length}');
+
+                                if (widget.onContinue != null) {
+                                  widget.onContinue!(ids, labels);
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DocumentsScreen(
+                                        selectedServices: selectedItems,
+                                        selectedDocs: docsForSelected, // <<<<<< PASS HERE
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0.1,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* --- Small widgets (unchanged) --- */
+// _InfoBanner, _GroupCard, _ServiceRow, _SquareCheck, _Badge, _SelectedSummary
+
+
+
+/*class ChooseServicesScreen extends StatefulWidget {
   const ChooseServicesScreen({
     super.key,
     required this.groups,
@@ -290,7 +549,7 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
       ),
     );
   }
-}
+}*/
 
 /* ---------- Small widgets ---------- */
 
