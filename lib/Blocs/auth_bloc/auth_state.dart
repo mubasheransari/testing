@@ -16,7 +16,11 @@ enum DocumentsStatus { initial, loading, success, failure }
 
 enum PaymentStatus { initial, loading, urlReady, failure }
 
+enum CertificateSubmitStatus { initial, uploading, success, failure }
+
 class AuthenticationState extends Equatable {
+  final CertificateSubmitStatus certificateSubmitStatus;
+  final String? certificateSubmitError;
   final PaymentStatus paymentStatus;     // +ADD
   final String? paymentSessionUrl;       // +ADD
   final String? paymentError;            // +ADD
@@ -40,6 +44,8 @@ class AuthenticationState extends Equatable {
 
   const AuthenticationState(
       {
+          this.certificateSubmitStatus = CertificateSubmitStatus.initial,
+    this.certificateSubmitError,
           this.paymentStatus = PaymentStatus.initial, // +ADD
     this.paymentSessionUrl,                     // +ADD
     this.paymentError,                          // +ADD
@@ -58,6 +64,8 @@ class AuthenticationState extends Equatable {
       this.loginResponse});
 
   AuthenticationState copyWith({
+        CertificateSubmitStatus? certificateSubmitStatus,
+    String? certificateSubmitError,
       PaymentStatus? paymentStatus,     // +ADD
     String? paymentSessionUrl,        // +ADD
     String? paymentError,             // +ADD
@@ -75,6 +83,8 @@ class AuthenticationState extends Equatable {
     LoginResponse? loginResponse,
   }) =>
       AuthenticationState(
+            certificateSubmitStatus: certificateSubmitStatus ?? this.certificateSubmitStatus,
+        certificateSubmitError: certificateSubmitError,
            paymentStatus: paymentStatus ?? this.paymentStatus,
         paymentSessionUrl: paymentSessionUrl ?? this.paymentSessionUrl,
         paymentError: paymentError,
@@ -95,6 +105,8 @@ class AuthenticationState extends Equatable {
   @override
   List<Object?> get props =>
       [    
+            certificateSubmitStatus,
+    certificateSubmitError,
         paymentStatus, paymentSessionUrl, paymentError,
             documentsStatus,
     documents,

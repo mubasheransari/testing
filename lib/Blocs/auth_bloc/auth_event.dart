@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../Models/auth_model.dart';
 
@@ -6,6 +7,28 @@ abstract class AuthenticationEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
+
+class SubmitCertificateBytesRequested extends AuthenticationEvent {
+  final String userId;
+  final int serviceId;
+  final int documentId;
+  final Uint8List bytes;
+  final String? fileName;
+  final String? mimeType;
+
+  SubmitCertificateBytesRequested({
+    required this.userId,
+    required this.serviceId,
+    required this.documentId,
+    required this.bytes,
+    this.fileName,
+    this.mimeType,
+  });
+
+  @override
+  List<Object?> get props => [userId, serviceId, documentId, bytes, fileName, mimeType];
+}
+
 
 class RegisterUserRequested extends AuthenticationEvent {
   final String fullName, phoneNumber, email, password;

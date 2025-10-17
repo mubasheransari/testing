@@ -30,6 +30,38 @@ class AuthenticationBloc
 
          on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
   on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
+  on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
+  }
+
+  Future<void> _onSubmitCertificateBytes(
+    SubmitCertificateBytesRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      certificateSubmitStatus: CertificateSubmitStatus.uploading,
+      certificateSubmitError: null,
+    ));
+
+    final r = await repo.submitCertificate(
+      userId: e.userId,
+      serviceId: e.serviceId,
+      documentId: e.documentId,
+      bytes: e.bytes,
+      fileName: e.fileName,
+      mimeType: e.mimeType,
+    );
+
+    if (r.isSuccess) {
+      emit(state.copyWith(
+        certificateSubmitStatus: CertificateSubmitStatus.success,
+        certificateSubmitError: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        certificateSubmitStatus: CertificateSubmitStatus.failure,
+        certificateSubmitError: r.failure?.message ?? 'Certificate submit failed',
+      ));
+    }
   }
 
 
