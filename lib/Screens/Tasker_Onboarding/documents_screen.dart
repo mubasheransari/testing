@@ -361,7 +361,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                         backgroundColor: _allServiceCertsUploaded ? purple : purple.withOpacity(.4),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: (){
+                      onPressed:  !_allServiceCertsUploaded
+                          ? null
+                          :(){
                         Navigator.push(context, MaterialPageRoute(builder: (context)=> PaymentScreen()));
                       },
                       // onPressed: !_allServiceCertsUploaded
