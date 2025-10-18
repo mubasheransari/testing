@@ -231,6 +231,7 @@ class _ChooseServicesScreenState extends State<ChooseServicesScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => DocumentsScreen(
+                                        userId: '77801979-3a6a-4080-b43f-7a7183c37bf9',
                                         selectedServices: selectedItems,
                                         selectedDocs: docsForSelected, // <<<<<< PASS HERE
                                       ),
