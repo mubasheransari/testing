@@ -1,9 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:taskoon/Models/service_document_model.dart';
+import 'package:taskoon/Models/training_videos_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
 import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
+
+enum TrainingVideosStatus { initial, loading, success, failure }
 
 enum OnboardingStatus { initial, submitting, success, failure }
 
@@ -24,6 +27,9 @@ enum PaymentStatus { initial, loading, urlReady, failure }
 enum CertificateSubmitStatus { initial, uploading, success, failure }
 
 class AuthenticationState extends Equatable {
+  final TrainingVideosStatus trainingVideosStatus;
+final List<TrainingVideo> trainingVideos;
+final String? trainingVideosError;
     final OnboardingStatus onboardingStatus;
   final String? onboardingError;
   final UserDetailsStatus userDetailsStatus;
@@ -54,6 +60,9 @@ class AuthenticationState extends Equatable {
 
   const AuthenticationState(
       {
+          this.trainingVideosStatus = TrainingVideosStatus.initial,
+  this.trainingVideos = const <TrainingVideo>[],
+  this.trainingVideosError,
             this.onboardingStatus = OnboardingStatus.initial,
     this.onboardingError,
        this.userDetailsStatus = UserDetailsStatus.initial,
@@ -79,6 +88,10 @@ class AuthenticationState extends Equatable {
       this.loginResponse});
 
   AuthenticationState copyWith({
+     TrainingVideosStatus? trainingVideosStatus,
+  List<TrainingVideo>? trainingVideos,
+  String? trainingVideosError,
+  bool clearTrainingVideosError = false,
       OnboardingStatus? onboardingStatus,
     String? onboardingError,
     bool clearOnboardingError = false,
@@ -106,6 +119,10 @@ class AuthenticationState extends Equatable {
     LoginResponse? loginResponse,
   }) =>
       AuthenticationState(
+            trainingVideosStatus: trainingVideosStatus ?? this.trainingVideosStatus,
+    trainingVideos: trainingVideos ?? this.trainingVideos,
+    trainingVideosError:
+        clearTrainingVideosError ? null : (trainingVideosError ?? this.trainingVideosError),
               onboardingStatus: onboardingStatus ?? this.onboardingStatus,
       onboardingError: clearOnboardingError ? null : (onboardingError ?? this.onboardingError),
       userDetailsStatus: userDetailsStatus ?? this.userDetailsStatus,
@@ -133,6 +150,9 @@ class AuthenticationState extends Equatable {
   @override
   List<Object?> get props =>
       [  
+          trainingVideosStatus,
+  trainingVideos,
+  trainingVideosError,
              onboardingStatus,
         onboardingError,  
             userDetailsStatus,

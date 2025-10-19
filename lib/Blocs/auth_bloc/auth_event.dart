@@ -250,6 +250,10 @@ class OnboardUserRequested extends AuthenticationEvent {
       ];
 }
 
+class LoadTrainingVideosRequested extends AuthenticationEvent {
+   LoadTrainingVideosRequested();
+}
+
 
 // class LoadUserDetailsRequested extends AuthenticationEvent {
 //   final String userId;

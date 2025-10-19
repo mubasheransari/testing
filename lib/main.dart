@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
       child: BlocProvider(
         create: (_) => AuthenticationBloc(authRepo)
           ..add(LoadServiceDocumentsRequested())
-          ..add(LoadServicesRequested())..add(LoadUserDetailsRequested('77801979-3a6a-4080-b43f-7a7183c37bf9')),
+          ..add(LoadServicesRequested())..add(LoadUserDetailsRequested('77801979-3a6a-4080-b43f-7a7183c37bf9'))..add(LoadTrainingVideosRequested()),
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',

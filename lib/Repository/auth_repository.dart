@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/service_document_model.dart';
+import 'package:taskoon/Models/training_videos_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
@@ -29,6 +30,7 @@ class ApiConfig {
   static const String certificateSubmitEndpoint = '/api/services/CertificateSubmit';
   static const String userDetailsEndpoint = '/api/User/details';
   static const String onboardingUserEndpoint = '/api/User/onboardinguser';
+  static const String trainingVideosEndpoint = '/api/Services/trainingvideos';
 }
 
 extension on String {
@@ -53,6 +55,7 @@ abstract class AuthRepository {
   });
 
     Future<Result<UserDetails>> fetchUserDetails({required String userId});
+      Future<Result<List<TrainingVideo>>> fetchTrainingVideos();
   Future<Result<String>> createPaymentSession({
     required String userId,
     required num amount,
@@ -175,6 +178,53 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+  @override
+Future<Result<List<TrainingVideo>>> fetchTrainingVideos() async {
+  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.trainingVideosEndpoint}');
+  try {
+    // ignore: avoid_print
+    print('>>> TRAINING VIDEOS GET $uri');
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+    // ignore: avoid_print
+    print('<<< TRAINING VIDEOS STATUS: ${res.statusCode}');
+    // ignore: avoid_print
+    print('<<< TRAINING VIDEOS BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(const <TrainingVideo>[]);
+      }
+      dynamic parsed;
+      try {
+        parsed = jsonDecode(raw);
+      } catch (_) {
+        return Result.fail(Failure(code: 'parse', message: 'Invalid JSON', statusCode: res.statusCode));
+      }
+      if (parsed is! List) {
+        return Result.fail(Failure(code: 'parse', message: 'Expected array', statusCode: res.statusCode));
+      }
+      final list = parsed
+          .map<TrainingVideo>((e) => TrainingVideo.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+      return Result.ok(list);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err['message'] != null) message = err['message'].toString();
+    } catch (_) {}
+    return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
 
 
   @override

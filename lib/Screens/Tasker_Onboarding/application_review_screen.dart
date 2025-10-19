@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 
 import '../../Constants/constants.dart';
 
@@ -116,10 +118,10 @@ class ApplicationReviewScreen extends StatelessWidget {
                 icon: CupertinoIcons.doc_text_fill,
                 iconColor: const Color(0xFF2E90FA),
                 title: 'Personal Information',
-                lines: const [
-                  'Name: krejgneejk',
-                  'Email: rwlgIrwnlj@gmail.com',
-                  'Phone: 43knjtjn',
+                lines:  [
+                  'Name: ${context.read<AuthenticationBloc>().state.userDetails!.fullName.toString()}',
+                  'Email: ${context.read<AuthenticationBloc>().state.userDetails!.email.toString()}',
+                  'Phone: ${context.read<AuthenticationBloc>().state.userDetails!.phone.toString()}',
                 ],
                 badgeText: 'Completed',
               ),
@@ -176,7 +178,7 @@ class ApplicationReviewScreen extends StatelessWidget {
               const _SectionTitle('What Happens Next?'),
               const SizedBox(height: 10),
               _NextStepsCard(
-                email: 'rwlgIrwnlj@gmail.com',
+                email: '${context.read<AuthenticationBloc>().state.userDetails!.email.toString()}',
               ),
               const SizedBox(height: 18),
               const _SectionTitle('Need Help?'),

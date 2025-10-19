@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/service_document_model.dart';
+import 'package:taskoon/Models/training_videos_model.dart';
 
 import '../../Models/auth_model.dart';
 import '../../Models/services_ui_model.dart';
@@ -33,7 +34,35 @@ class AuthenticationBloc
   on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
       on<LoadUserDetailsRequested>(_onLoadUserDetails);
       on<OnboardUserRequested>(_onOnboardUserRequested);
+      on<LoadTrainingVideosRequested>(_onLoadTrainingVideosRequested);
   }
+
+Future<void> _onLoadTrainingVideosRequested(
+  LoadTrainingVideosRequested event,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(
+    trainingVideosStatus: TrainingVideosStatus.loading,
+    clearTrainingVideosError: true,
+  ));
+
+  final res = await repo.fetchTrainingVideos();
+
+  if (res.isSuccess) {
+    final list = res.data ?? const <TrainingVideo>[]; // <-- use .data
+    emit(state.copyWith(
+      trainingVideosStatus: TrainingVideosStatus.success,
+      trainingVideos: list,
+    ));
+  } else {
+    emit(state.copyWith(
+      trainingVideosStatus: TrainingVideosStatus.failure,
+      trainingVideosError: res.failure?.message ?? 'Failed to load training videos',
+    ));
+  }
+}
+
+
 
   Future<void> _onOnboardUserRequested(
   OnboardUserRequested e,
