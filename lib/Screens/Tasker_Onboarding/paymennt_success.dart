@@ -8,7 +8,7 @@ class PaymentSuccessScreen extends StatelessWidget {
   const PaymentSuccessScreen({
     super.key,
     this.certification = 0,
-    this.processing = 5,
+    this.processing = 33,
   });
 
   final double certification;

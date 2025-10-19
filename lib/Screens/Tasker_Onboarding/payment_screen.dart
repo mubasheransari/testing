@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
@@ -24,7 +25,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // fake pricing
   final double certification = 0;
-  final double processing = 5;
+  final double processing = 33;
 
   int method = 0; // 0: card, 1: paypal, 2: bank
   final nameCtrl = TextEditingController(text: 'John Doe');
@@ -129,7 +130,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       body: Stack(
         children: [
-          ListView(
+         ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 200),
             children: [
               _OrderSummaryCard(
@@ -138,63 +139,63 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 total: total,
               ),
               const SizedBox(height: 16),
-              _PaymentMethodCard(
-                method: method,
-                onChanged: (v) => setState(() => method = v),
-              ),
-              const SizedBox(height: 12),
+              // _PaymentMethodCard(
+              //   method: method,
+              //   onChanged: (v) => setState(() => method = v),
+              // ),
+              // const SizedBox(height: 12),
 
-              // Cardholder form (matches your soft white section)
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: cardBorder),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('Cardholder Name'),
-                    const SizedBox(height: 8),
-                    _Field(controller: nameCtrl),
-                    const SizedBox(height: 16),
-                    _label('Card Number'),
-                    const SizedBox(height: 8),
-                    _Field(
-                        controller: numberCtrl,
-                        keyboardType: TextInputType.number),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _label('Expiry Date'),
-                              const SizedBox(height: 8),
-                              _Field(controller: expCtrl, hint: 'MM/YY'),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _label('CVV'),
-                              const SizedBox(height: 8),
-                              _Field(
-                                  controller: cvvCtrl,
-                                  keyboardType: TextInputType.number),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              // // Cardholder form (matches your soft white section)
+              // Container(
+              //   padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+              //   decoration: BoxDecoration(
+              //     color: Colors.white,
+              //     border: Border.all(color: cardBorder),
+              //     borderRadius: BorderRadius.circular(16),
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       _label('Cardholder Name'),
+              //       const SizedBox(height: 8),
+              //       _Field(controller: nameCtrl),
+              //       const SizedBox(height: 16),
+              //       _label('Card Number'),
+              //       const SizedBox(height: 8),
+              //       _Field(
+              //           controller: numberCtrl,
+              //           keyboardType: TextInputType.number),
+              //       const SizedBox(height: 16),
+              //       Row(
+              //         children: [
+              //           Expanded(
+              //             child: Column(
+              //               crossAxisAlignment: CrossAxisAlignment.start,
+              //               children: [
+              //                 _label('Expiry Date'),
+              //                 const SizedBox(height: 8),
+              //                 _Field(controller: expCtrl, hint: 'MM/YY'),
+              //               ],
+              //             ),
+              //           ),
+              //           const SizedBox(width: 16),
+              //           Expanded(
+              //             child: Column(
+              //               crossAxisAlignment: CrossAxisAlignment.start,
+              //               children: [
+              //                 _label('CVV'),
+              //                 const SizedBox(height: 8),
+              //                 _Field(
+              //                     controller: cvvCtrl,
+              //                     keyboardType: TextInputType.number),
+              //               ],
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
 
@@ -248,10 +249,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
               onPressed: loading
                   ? null
                   : () {
+                    
+                                    final box = GetStorage();
+      final savedUserId = box.read<String>('userId');
                       context.read<AuthenticationBloc>().add(
                             CreatePaymentSessionRequested(
-                              userId:
-                                  '77801979-3a6a-4080-b43f-7a7183c37bf9', // <-- put actual
+                              userId:savedUserId.toString(),
                               amount: total, // <-- your total as num/double
                               paymentMethod: 'stripe',
                             ),

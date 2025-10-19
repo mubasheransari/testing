@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Screens/Authentication/forgot_password_screen.dart';
 import 'package:taskoon/Screens/Authentication/otp_verification_screen.dart';
 import 'package:taskoon/Screens/Authentication/role_selection_screen.dart';
@@ -63,47 +64,55 @@ class _LoginScreenState extends State<LoginScreen> {
           endpoint: '/api/auth/signup',
         ),
       ),
-      child: BlocListener<AuthenticationBloc, AuthenticationState>(
-        listenWhen: (p, c) => p.status != c.status,
-        listener: (context, state) {
-          if (state.status == AuthStatus.loading) {
-            //  toastWidget('Signing in…', Colors.black87);
-          } else if (state.status == AuthStatus.success) {
-            final token = state.loginResponse?.result?.accessToken ?? '';
-            final msg = state.loginResponse?.message ?? 'Login success';
-            // toastWidget(msg, Colors.green);
-            context.read<AuthenticationBloc>().add(SendOtpThroughEmail(
-                userId: state.loginResponse!.result!.user!.userId.toString(),
-                email: emailController.text.trim()));
-            toastWidget(
-                'OTP Send to ${emailController.text.trim()}', Colors.green);
+      child: 
+BlocListener<AuthenticationBloc, AuthenticationState>(
+  listenWhen: (p, c) => p.status != c.status,
+  listener: (context, state) async {
+    if (state.status == AuthStatus.loading) {
+      // ... optional
+    } else if (state.status == AuthStatus.success) {
+      // 1) pull userId from login response
+      final userId = state.loginResponse?.result?.user?.userId?.toString() ?? '';
 
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => OtpVerificationScreen(
-                    isForgetFunctionality: false,
-                      email: emailController.text.trim(),
-                      userId:
-                          state.loginResponse!.result!.user!.userId.toString(),
-                      phone: state.loginResponse!.result!.user!.phoneNumber
-                          .toString())),
-              (Route<dynamic> route) =>
-                  false, 
-            );
+      if (userId.isNotEmpty) {
+        // 2) persist it
+        final box = GetStorage();
+        await box.write('userId', userId);
 
-            // Save token if needed Testing@123
-            // final box = GetStorage();
-            // box.write('accessToken', token);
+        // 3) dispatch post-login events that need the id
+        final bloc = context.read<AuthenticationBloc>();
+        bloc
+          ..add(LoadUserDetailsRequested(userId))
+          ..add(LoadServiceDocumentsRequested())
+          ..add(LoadServicesRequested())
+          ..add(LoadTrainingVideosRequested());
+      }
 
-            // Navigate to home/dashboard Testing@123
-            // Navigator.pushReplacement(context,
-            //     MaterialPageRoute(builder: (_) => const HomeScreen())); Testing@123
-          } else if (state.status == AuthStatus.failure) {
-            // toastWidget(state.error ?? 'Login failed', Colors.redAccent);
-            toastWidget("Invalid email or password!", Colors.red);
-          }
-        },
+      // your existing OTP + navigation (unchanged)
+      context.read<AuthenticationBloc>().add(
+        SendOtpThroughEmail(
+          userId: state.loginResponse!.result!.user!.userId.toString(),
+          email: emailController.text.trim(),
+        ),
+      );
+      toastWidget('OTP Send to ${emailController.text.trim()}', Colors.green);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            isForgetFunctionality: false,
+            email: emailController.text.trim(),
+            userId: state.loginResponse!.result!.user!.userId.toString(),
+            phone: state.loginResponse!.result!.user!.phoneNumber.toString(),
+          ),
+        ),
+        (route) => false,
+      );
+    } else if (state.status == AuthStatus.failure) {
+      toastWidget("Invalid email or password!", Colors.red);
+    }
+  },
         child: Builder(builder: (context) {
           final isLoading = context.select(
               (AuthenticationBloc b) => b.state.status == AuthStatus.loading);

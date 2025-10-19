@@ -223,7 +223,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         BlocListener<AuthenticationBloc, AuthenticationState>(
           listenWhen: (p, n) => p.onboardingStatus != n.onboardingStatus,
           listener: (context, s) {
-            switch (s.onboardingStatus) {
+           /* switch (s.onboardingStatus) {
               case OnboardingStatus.submitting:
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Submitting onboarding…')),
@@ -241,7 +241,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 break;
               case OnboardingStatus.initial:
                 break;
-            }
+            }*/
           },
         ),
       ],

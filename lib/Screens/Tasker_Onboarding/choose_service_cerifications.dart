@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Screens/Tasker_Onboarding/documents_screen.dart';
@@ -271,11 +272,14 @@ certificationsSelected: widget.selectedCertificatesCount
                                 if (widget.onContinue != null) {
                                   widget.onContinue!(ids, labels);
                                 } else {
+
+                                    final box = GetStorage();
+      final savedUserId = box.read<String>('userId');
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => DocumentsScreen(
-                                        userId: '77801979-3a6a-4080-b43f-7a7183c37bf9',
+                                        userId: savedUserId.toString(),
                                         selectedServices: selectedItems,
                                         selectedDocs: docsForSelected,
                                       ),

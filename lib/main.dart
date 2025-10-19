@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/routes.dart';
 import 'package:taskoon/theme.dart';
@@ -7,7 +8,13 @@ import 'Blocs/auth_bloc/auth_bloc.dart';
 import 'Repository/auth_repository.dart';
 import 'Service/internet_connectivity_banner.dart';
 
-void main() => runApp(const MyApp());
+// void main() => runApp(const MyApp());
+
+main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init(); // <- ADD THIS
+  runApp(const MyApp());
+}
 
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -24,17 +31,28 @@ class MyApp extends StatelessWidget {
       timeout: const Duration(seconds: 20),
     );
 
-    return RepositoryProvider.value(
-      value: authRepo,
-      child: BlocProvider(
-        create: (_) => AuthenticationBloc(authRepo)
-          ..add(LoadServiceDocumentsRequested())
-          ..add(LoadServicesRequested())..add(LoadUserDetailsRequested('77801979-3a6a-4080-b43f-7a7183c37bf9'))..add(LoadTrainingVideosRequested()),
+return RepositoryProvider.value(
+  value: authRepo,
+  child: BlocProvider(
+    create: (_) {
+      final bloc = AuthenticationBloc(authRepo)
+        ..add(LoadServiceDocumentsRequested())
+        ..add(LoadServicesRequested())
+        ..add(LoadTrainingVideosRequested());
+
+      // read saved user id (if any) to hydrate details on app start
+      final box = GetStorage();
+      final savedUserId = box.read<String>('userId');
+      if (savedUserId != null && savedUserId.isNotEmpty) {
+        bloc.add(LoadUserDetailsRequested(savedUserId));
+      }
+      return bloc;
+    },
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.personalInfo, // Routes.splash,
+          initialRoute:Routes.splash,//Routes.personalInfo, // Routes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>
