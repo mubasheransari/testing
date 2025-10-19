@@ -253,7 +253,20 @@ class OnboardUserRequested extends AuthenticationEvent {
 class LoadTrainingVideosRequested extends AuthenticationEvent {
    LoadTrainingVideosRequested();
 }
+class UpdateChooseServicesSummaryRequested extends AuthenticationEvent {
+  final int servicesSelected;          // selectedIds.length
+  final int totalEligibleServices;     // sum of items across groups
+  final int? certificationsSelected;   // pass if you know it here, or let bloc use state fallback
 
+   UpdateChooseServicesSummaryRequested({
+    required this.servicesSelected,
+    required this.totalEligibleServices,
+    this.certificationsSelected,
+  });
+
+  @override
+  List<Object?> get props => [servicesSelected, totalEligibleServices, certificationsSelected];
+}
 
 // class LoadUserDetailsRequested extends AuthenticationEvent {
 //   final String userId;

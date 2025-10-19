@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Models/selection_summary_model.dart';
 import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/training_videos_model.dart';
 
@@ -35,7 +36,24 @@ class AuthenticationBloc
       on<LoadUserDetailsRequested>(_onLoadUserDetails);
       on<OnboardUserRequested>(_onOnboardUserRequested);
       on<LoadTrainingVideosRequested>(_onLoadTrainingVideosRequested);
+
+      on<UpdateChooseServicesSummaryRequested>((event, emit) {
+  // Prefer the number provided by the event; otherwise fall back to what we already have in state.
+  final certs = event.certificationsSelected ?? state.certificationsSelectedCount;
+
+  final summary = SelectionSummary(
+    certificationsSelected: certs,
+    servicesSelected: event.servicesSelected,
+    totalEligibleServices: event.totalEligibleServices,
+  );
+
+  emit(state.copyWith(chooseServicesSummary: summary));
+});
+
   }
+
+
+  
 
 Future<void> _onLoadTrainingVideosRequested(
   LoadTrainingVideosRequested event,

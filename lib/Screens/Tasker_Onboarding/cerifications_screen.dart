@@ -114,6 +114,7 @@ class _CertificationsScreenState extends State<CertificationsScreen> {
                     final uiCard = uiCards[i];
                     final certificationId = groups[i].id;
                     final isSelected = _selectedCertificationIds.contains(certificationId);
+    
 
                     return _CertCard(
                       category: uiCard,
@@ -176,10 +177,13 @@ class _CertificationsScreenState extends State<CertificationsScreen> {
                                     );
                                   }).toList();
 
+       
+
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => ChooseServicesScreen(
+                                        selectedCertificatesCount: selectedGroups.length,
                                         groups: groupsForNext,
                                         initialSelectedIds: const <int>{},
                                       ),

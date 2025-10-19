@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:taskoon/Models/selection_summary_model.dart';
 import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/training_videos_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
@@ -27,6 +28,9 @@ enum PaymentStatus { initial, loading, urlReady, failure }
 enum CertificateSubmitStatus { initial, uploading, success, failure }
 
 class AuthenticationState extends Equatable {
+    final int certificationsSelectedCount;
+  /// Summary for "Choose Services" screen
+  final SelectionSummary? chooseServicesSummary;
   final TrainingVideosStatus trainingVideosStatus;
 final List<TrainingVideo> trainingVideos;
 final String? trainingVideosError;
@@ -60,6 +64,8 @@ final String? trainingVideosError;
 
   const AuthenticationState(
       {
+            this.certificationsSelectedCount = 0,
+    this.chooseServicesSummary,
           this.trainingVideosStatus = TrainingVideosStatus.initial,
   this.trainingVideos = const <TrainingVideo>[],
   this.trainingVideosError,
@@ -88,6 +94,8 @@ final String? trainingVideosError;
       this.loginResponse});
 
   AuthenticationState copyWith({
+        int? certificationsSelectedCount,
+    SelectionSummary? chooseServicesSummary,
      TrainingVideosStatus? trainingVideosStatus,
   List<TrainingVideo>? trainingVideos,
   String? trainingVideosError,
@@ -119,6 +127,8 @@ final String? trainingVideosError;
     LoginResponse? loginResponse,
   }) =>
       AuthenticationState(
+              certificationsSelectedCount: certificationsSelectedCount ?? this.certificationsSelectedCount,
+      chooseServicesSummary: chooseServicesSummary ?? this.chooseServicesSummary,
             trainingVideosStatus: trainingVideosStatus ?? this.trainingVideosStatus,
     trainingVideos: trainingVideos ?? this.trainingVideos,
     trainingVideosError:
@@ -150,6 +160,8 @@ final String? trainingVideosError;
   @override
   List<Object?> get props =>
       [  
+            certificationsSelectedCount,
+    chooseServicesSummary,
           trainingVideosStatus,
   trainingVideos,
   trainingVideosError,

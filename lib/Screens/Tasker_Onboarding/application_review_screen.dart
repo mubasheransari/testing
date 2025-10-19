@@ -131,10 +131,10 @@ class ApplicationReviewScreen extends StatelessWidget {
                 icon: CupertinoIcons.rosette,
                 iconColor: const Color(0xFF16A34A),
                 title: 'Certifications & Services',
-                lines: const [
-                  'Certifications: 2 selected',
-                  'Services: 1 chosen',
-                  'Total eligible services: 13',
+                lines:  [
+                  'Certifications: ${context.read<AuthenticationBloc>().state.chooseServicesSummary!.certificationsSelected} selected',
+                  'Services: ${context.read<AuthenticationBloc>().state.chooseServicesSummary!.servicesSelected.toString()} choosen',
+                  'Total eligible services: ${context.read<AuthenticationBloc>().state.chooseServicesSummary!.totalEligibleServices.toString()}',
                 ],
                 badgeText: 'Completed',
               ),
@@ -145,7 +145,7 @@ class ApplicationReviewScreen extends StatelessWidget {
                 iconColor: const Color(0xFF2E90FA),
                 title: 'Document Verification',
                 lines: const [
-                  'Documents uploaded: 3',
+                  'Documents uploaded',
                   'KYC Status: Verified',
                 ],
                 badgeText: 'Completed',
