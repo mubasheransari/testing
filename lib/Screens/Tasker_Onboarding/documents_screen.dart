@@ -191,29 +191,60 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       docsByService.putIfAbsent(d.serviceId, () => []).add(d);
     }
 
-    return BlocListener<AuthenticationBloc, AuthenticationState>(
-      listenWhen: (p, n) => p.certificateSubmitStatus != n.certificateSubmitStatus,
-      listener: (context, state) {
-        switch (state.certificateSubmitStatus) {
-          case CertificateSubmitStatus.uploading:
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Uploading document…')),
-            );
-            break;
-          case CertificateSubmitStatus.success:
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Document uploaded ✔')),
-            );
-            break;
-          case CertificateSubmitStatus.failure:
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.certificateSubmitError ?? 'Upload failed')),
-            );
-            break;
-          case CertificateSubmitStatus.initial:
-            break;
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        // 1) Certificate upload result listener (your existing behavior)
+        BlocListener<AuthenticationBloc, AuthenticationState>(
+          listenWhen: (p, n) => p.certificateSubmitStatus != n.certificateSubmitStatus,
+          listener: (context, state) {
+            switch (state.certificateSubmitStatus) {
+              case CertificateSubmitStatus.uploading:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Uploading document…')),
+                );
+                break;
+              case CertificateSubmitStatus.success:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Document uploaded ✔')),
+                );
+                break;
+              case CertificateSubmitStatus.failure:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.certificateSubmitError ?? 'Upload failed')),
+                );
+                break;
+              case CertificateSubmitStatus.initial:
+                break;
+            }
+          },
+        ),
+
+        // 2) Onboarding submission result listener (no nav change; only snackbars)
+        BlocListener<AuthenticationBloc, AuthenticationState>(
+          listenWhen: (p, n) => p.onboardingStatus != n.onboardingStatus,
+          listener: (context, s) {
+            switch (s.onboardingStatus) {
+              case OnboardingStatus.submitting:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Submitting onboarding…')),
+                );
+                break;
+              case OnboardingStatus.success:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Onboarding submitted ✔')),
+                );
+                break;
+              case OnboardingStatus.failure:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(s.onboardingError ?? 'Onboarding failed')),
+                );
+                break;
+              case OnboardingStatus.initial:
+                break;
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: softBG,
         appBar: AppBar(
@@ -288,22 +319,25 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 220),
               children: [
                 // —— General cards (local only) ——
-                       DocumentUploadCard(
+                DocumentUploadCard(
                   title: 'Profile Picture',
                   subtitle: 'Recent Profile Picture',
                   requiredBadge: RequiredBadge.required,
-                  pickedFileName: profilePicture == null ? null : '${profilePicture!.name}  •  ${_fmtBytes(profilePicture!.size)}',
+                  pickedFileName: profilePicture == null
+                      ? null
+                      : '${profilePicture!.name}  •  ${_fmtBytes(profilePicture!.size)}',
                   onChooseFile: () async {
                     final picked = await _pickDoc();
                     if (picked != null) setState(() => profilePicture = picked);
                   },
                 ),
-                 const SizedBox(height: 18),
+                const SizedBox(height: 18),
                 DocumentUploadCard(
                   title: 'ID Verification',
                   subtitle: 'Government-issued photo ID',
                   requiredBadge: RequiredBadge.required,
-                  pickedFileName: idDoc == null ? null : '${idDoc!.name}  •  ${_fmtBytes(idDoc!.size)}',
+                  pickedFileName:
+                      idDoc == null ? null : '${idDoc!.name}  •  ${_fmtBytes(idDoc!.size)}',
                   onChooseFile: () async {
                     final picked = await _pickDoc();
                     if (picked != null) setState(() => idDoc = picked);
@@ -314,8 +348,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   title: 'Proof of Address',
                   subtitle: 'Utility bill or bank statement',
                   requiredBadge: RequiredBadge.required,
-                  pickedFileName:
-                      addressDoc == null ? null : '${addressDoc!.name}  •  ${_fmtBytes(addressDoc!.size)}',
+                  pickedFileName: addressDoc == null
+                      ? null
+                      : '${addressDoc!.name}  •  ${_fmtBytes(addressDoc!.size)}',
                   onChooseFile: () async {
                     final picked = await _pickDoc();
                     if (picked != null) setState(() => addressDoc = picked);
@@ -371,81 +406,53 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         elevation: 0,
-                        backgroundColor: _allServiceCertsUploaded ? purple : purple.withOpacity(.4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor:
+                            _allServiceCertsUploaded ? purple : purple.withOpacity(.4),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-
                       onPressed: !_allServiceCertsUploaded
-    ? null
-    : () {
-        // Require the 4 mandatory files before dispatch
-        if (profilePicture == null || idDoc == null || addressDoc == null || insuranceDoc == null) {
-          _err('Please upload Profile Picture, ID Verification, Address Proof and Insurance.');
-          return;
-        }
-
-        // Small helper to convert your PickedDoc -> NamedBytes (used by the event/repo)
-        NamedBytes _nb(PickedDoc p) => NamedBytes(
-              fileName: p.name,
-              bytes: p.bytes,
-              mimeType: p.mime ?? _guessMime(p.ext) ?? 'application/octet-stream',
-            );
-
-        // 🚀 Dispatch the onboarding event
-        context.read<AuthenticationBloc>().add(
-          OnboardUserRequested(
-            userId: widget.userId,
-            servicesId: const <int>[],             // send ServicesId as EMPTY
-            profilePicture: _nb(profilePicture!),  // required
-            docCertification: null,                // send Doc_Certification as EMPTY
-            docInsurance: _nb(insuranceDoc!),      // required
-            docAddressProof: _nb(addressDoc!),     // required
-            docIdVerification: _nb(idDoc!),        // required
-          ),
-        );
-
-        // Keep your existing flow
-        Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentScreen()));
-      },
-
-                    /*  onPressed:  !_allServiceCertsUploaded
                           ? null
-                          :(){
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=> PaymentScreen()));
-                      },*/
-                      // onPressed: !_allServiceCertsUploaded
-                      //     ? null
-                      //     : () {
-                      //         final bloc = context.read<AuthenticationBloc>();
+                          : () {
+                              // Require the 4 mandatory files before dispatch
+                              if (profilePicture == null ||
+                                  idDoc == null ||
+                                  addressDoc == null ||
+                                  insuranceDoc == null) {
+                                _err(
+                                    'Please upload Profile Picture, ID Verification, Address Proof and Insurance.');
+                                return;
+                              }
 
-                      //         // Dispatch one event per picked required doc
-                      //         for (final d in widget.selectedDocs) {
-                      //           final p = _docFiles[_k(d.serviceId, d.documentId)];
-                      //           if (p != null) {
+                              // Helper: PickedDoc -> NamedBytes (used by the event/repo)
+                              NamedBytes _nb(PickedDoc p) => NamedBytes(
+                                    fileName: p.name,
+                                    bytes: p.bytes,
+                                    mimeType: p.mime ??
+                                        _guessMime(p.ext) ??
+                                        'application/octet-stream',
+                                  );
 
-                      //             print('USER ID : ${widget.userId}');
-                      //             print('SERVICES ID : ${d.serviceId}');
-                      //             print('DOCUMENT ID : ${d.documentId}');
-                      //             print('BYTES : ${p.bytes}');
-                      //             print('FILENAME : ${p.name}');
-                      //             print('USER ID : ${p.mime}');
+                              // Dispatch the onboarding event (ServicesId + Doc_Certification empty)
+                              context.read<AuthenticationBloc>().add(
+                                    OnboardUserRequested(
+                                      userId: widget.userId,
+                                      servicesId: const <int>[], // EMPTY array
+                                      profilePicture: _nb(profilePicture!),
+                                      docCertification:
+                                          null, // EMPTY (omit part in repo)
+                                      docInsurance: _nb(insuranceDoc!),
+                                      docAddressProof: _nb(addressDoc!),
+                                      docIdVerification: _nb(idDoc!),
+                                    ),
+                                  );
 
-
-                      //             // bloc.add(SubmitCertificateBytesRequested(
-                      //             //   userId: widget.userId,
-                      //             //   serviceId: d.serviceId,
-                      //             //   documentId: d.documentId,
-                      //             //   bytes: p.bytes,
-                      //             //   fileName: p.name,
-                      //             //   mimeType: p.mime,
-                      //             // ));
-                      //           }
-                      //         }
-
-                      //         ScaffoldMessenger.of(context).showSnackBar(
-                      //           const SnackBar(content: Text('Uploading your documents…')),
-                      //         );
-                      //       },
+                              // Keep your existing navigation
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => PaymentScreen()),
+                              );
+                            },
                       child: const Text(
                         'Continue',
                         style: TextStyle(
@@ -572,15 +579,15 @@ class _ProfessionalCertsSection extends StatelessWidget {
 
                       // 2) dispatch upload event immediately
                       context.read<AuthenticationBloc>().add(
-                        SubmitCertificateBytesRequested(
-                          userId: userId,
-                          serviceId: d.serviceId,
-                          documentId: d.documentId,
-                          bytes: picked.bytes,
-                          fileName: picked.name,
-                          mimeType: picked.mime,
-                        ),
-                      );
+                            SubmitCertificateBytesRequested(
+                              userId: userId,
+                              serviceId: d.serviceId,
+                              documentId: d.documentId,
+                              bytes: picked.bytes,
+                              fileName: picked.name,
+                              mimeType: picked.mime,
+                            ),
+                          );
                     }
                   },
                 ),

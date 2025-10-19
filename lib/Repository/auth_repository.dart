@@ -42,16 +42,15 @@ extension on String {
 
 // ---------- AuthRepository (abstract) ----------
 abstract class AuthRepository {
-  // AuthRepository (abstract) – add:
-Future<Result<RegistrationResponse>> onboardUser({
-  required String userId,
-  List<int> servicesId, // can be empty
-  required NamedBytes profilePicture,
-  NamedBytes? docCertification, // null => send empty/omit
-  required NamedBytes docInsurance,
-  required NamedBytes docAddressProof,
-  required NamedBytes docIdVerification,
-});
+  Future<Result<RegistrationResponse>> onboardUser({
+    required String userId,
+    List<int> servicesId,             // default = const []
+    required NamedBytes profilePicture,
+    NamedBytes? docCertification,     // null/empty => send tiny valid placeholder
+    required NamedBytes docInsurance,
+    required NamedBytes docAddressProof,
+    required NamedBytes docIdVerification,
+  });
 
     Future<Result<UserDetails>> fetchUserDetails({required String userId});
   Future<Result<String>> createPaymentSession({
@@ -178,81 +177,99 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
 
-@override
-Future<Result<RegistrationResponse>> onboardUser({
-  required String userId,
-  List<int> servicesId = const [], // will be empty
-  required NamedBytes profilePicture,
-  NamedBytes? docCertification,    // ignored when sending empty
-  required NamedBytes docInsurance,
-  required NamedBytes docAddressProof,
-  required NamedBytes docIdVerification,
-}) async {
-  if (userId.trim().isEmpty) {
-    return Result.fail(Failure(code: 'validation', message: 'UserId is required'));
-  }
-  if (profilePicture.bytes.isEmpty ||
-      docInsurance.bytes.isEmpty ||
-      docAddressProof.bytes.isEmpty ||
-      docIdVerification.bytes.isEmpty) {
-    return Result.fail(Failure(code: 'validation', message: 'All required files must be provided'));
-  }
-
-  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.onboardingUserEndpoint}');
-  try {
-    print('>>> ONBOARDING POST $uri (ServicesId=EMPTY, Doc_Certification=EMPTY FILE)');
-
-    final req = http.MultipartRequest('POST', uri)
-      ..headers[HttpHeaders.acceptHeader] = 'application/json'
-      ..headers['X-Request-For'] = '::1'
-      ..fields['UserId'] = userId;
-
-    // ----- ServicesId as EMPTY ARRAY -----
-    // In multipart/form-data, an "array" is represented by repeating the same key.
-    // To send an EMPTY array, just DO NOT add any 'ServicesId' fields/files at all.
-    // (Do NOT send '[]' as text; ASP.NET model binder won't parse JSON here.)
-    // for (final id in servicesId) { ... }  // <— intentionally omitted
-
-    http.MultipartFile _part(String name, NamedBytes f) {
-      final ct = (f.mimeType != null && f.mimeType!.trim().isNotEmpty)
-          ? MediaType.parse(f.mimeType!.toLowerCase() == 'image/jpg'
-              ? 'image/jpeg'
-              : f.mimeType!)
-          : null;
-      return http.MultipartFile.fromBytes(
-        name,
-        f.bytes,
-        filename: (f.fileName.isEmpty) ? 'upload.bin' : f.fileName,
-        contentType: ct,
-      );
+  @override
+  Future<Result<RegistrationResponse>> onboardUser({
+    required String userId,
+    List<int> servicesId = const [],        // empty allowed (we’ll send 0)
+    required NamedBytes profilePicture,     // required
+    NamedBytes? docCertification,           // null/empty => placeholder
+    required NamedBytes docInsurance,       // required
+    required NamedBytes docAddressProof,    // required
+    required NamedBytes docIdVerification,  // required
+  }) async {
+    // basic validation
+    if (userId.trim().isEmpty) {
+      return Result.fail(Failure(code: 'validation', message: 'UserId is required'));
+    }
+    if (profilePicture.bytes.isEmpty ||
+        docInsurance.bytes.isEmpty ||
+        docAddressProof.bytes.isEmpty ||
+        docIdVerification.bytes.isEmpty) {
+      return Result.fail(Failure(code: 'validation', message: 'All required files must be provided'));
     }
 
-    // Required files
-    req.files.add(_part('ProfilePicture', profilePicture));
-    req.files.add(_part('Doc_Insurance', docInsurance));
-    req.files.add(_part('Doc_Addressproof', docAddressProof));
-    req.files.add(_part('Doc_Idverification', docIdVerification));
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.onboardingUserEndpoint}');
+    try {
+      // Debug
+      // ignore: avoid_print
+      print(
+        '>>> ONBOARDING POST $uri (ServicesId=${servicesId.isEmpty ? 'EMPTY→0' : servicesId.join(',')}, '
+        'Doc_Certification=${(docCertification == null || docCertification.bytes.isEmpty) ? 'PLACEHOLDER' : 'SET'})',
+      );
 
-    // ----- Doc_Certification as EMPTY BINARY -----
-    // Always include the part, but with zero bytes.
-    req.files.add(http.MultipartFile.fromBytes(
-      'Doc_Certification',
-      const <int>[],         // zero-byte payload
-      filename: '',          // empty filename is fine
-      contentType: MediaType('application', 'octet-stream'),
-    ));
+      final req = http.MultipartRequest('POST', uri)
+        ..headers[HttpHeaders.acceptHeader] = 'application/json'
+        ..headers['X-Request-For'] = '::1'
+        ..fields['UserId'] = userId;
 
-    final streamed = await req.send().timeout(timeout);
-    final res = await http.Response.fromStream(streamed);
-    return _handleSubmitResponse(res);
-  } on SocketException {
-    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
-  } on TimeoutException {
-    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
-  } catch (e) {
-    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+      // ---- ServicesId ----
+      // Backend requires the field; when "empty", send an index with 0.
+      if (servicesId.isEmpty) {
+        req.fields['ServicesId[0]'] = '0';
+      } else {
+        for (var i = 0; i < servicesId.length; i++) {
+          req.fields['ServicesId[$i]'] = servicesId[i].toString();
+        }
+      }
+
+      // Helper to add a file with proper (optional) contentType
+      http.MultipartFile _part(String name, NamedBytes f) {
+        final mime = (f.mimeType ?? '').trim();
+        final ct = mime.isNotEmpty ? MediaType.parse(mime) : null; // let server infer if null
+        return http.MultipartFile.fromBytes(
+          name,
+          f.bytes,
+          filename: f.fileName.isEmpty ? 'upload.bin' : f.fileName,
+          contentType: ct,
+        );
+      }
+
+      // Required files
+      req.files.add(_part('ProfilePicture', profilePicture));
+      req.files.add(_part('Doc_Insurance', docInsurance));
+      req.files.add(_part('Doc_Addressproof', docAddressProof));
+      req.files.add(_part('Doc_Idverification', docIdVerification));
+
+      // ---- Doc_Certification ----
+      // Backend marks it required. When you want “empty”, attach a tiny valid file to pass validators.
+      if (docCertification != null && docCertification.bytes.isNotEmpty) {
+        req.files.add(_part('Doc_Certification', docCertification));
+      } else {
+        // 1×1 transparent PNG (67 bytes) – valid image/png
+        final tinyPng = base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+        );
+        req.files.add(http.MultipartFile.fromBytes(
+          'Doc_Certification',
+          tinyPng,
+          filename: 'blank.png',
+          contentType: MediaType('image', 'png'),
+        ));
+      }
+
+      final streamed = await req.send().timeout(timeout);
+      final res = await http.Response.fromStream(streamed);
+
+      // Reuse your existing handler
+      return _handleSubmitResponse(res);
+    } on SocketException {
+      return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    }
   }
-}
 
 
  @override
