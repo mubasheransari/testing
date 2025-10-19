@@ -209,3 +209,16 @@ class CreatePaymentSessionRequested extends AuthenticationEvent {
   @override
   List<Object?> get props => [userId, amount, paymentMethod];
 }
+
+class LoadUserDetailsRequested extends AuthenticationEvent {
+  final String userId;
+   LoadUserDetailsRequested(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+// class LoadUserDetailsRequested extends AuthenticationEvent {
+//   final String userId;
+//    LoadUserDetailsRequested(this.userId);
+// }

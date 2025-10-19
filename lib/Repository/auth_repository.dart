@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Models/service_document_model.dart';
+import 'package:taskoon/Models/user_details_model.dart';
 import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
 import '../Models/services_model.dart';
@@ -25,10 +26,12 @@ class ApiConfig {
   static const String docsRequiredEndpoint = '/api/Services/Documents';
   static const String paymentSessionEndpoint = '/api/Payment/GetSessionUrl';
   static const String certificateSubmitEndpoint = '/api/services/CertificateSubmit';
+  static const String userDetailsEndpoint = '/api/User/details';
 }
 
 // ---------- AuthRepository (abstract) ----------
 abstract class AuthRepository {
+    Future<Result<UserDetails>> fetchUserDetails({required String userId});
   Future<Result<String>> createPaymentSession({
     required String userId,
     required num amount,
@@ -151,6 +154,78 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+ @override
+Future<Result<UserDetails>> fetchUserDetails({required String userId}) async {
+  if (userId.trim().isEmpty) {
+    return Result.fail(Failure(code: 'validation', message: 'UserId is required'));
+  }
+
+  final base = '${ApiConfig.baseUrl}${ApiConfig.userDetailsEndpoint}';
+  // Only include UserId (Email/Phone are optional; don't send empty params)
+  final uri = Uri.parse(base).replace(queryParameters: {
+    'UserId': userId,
+  });
+
+  try {
+    print('>>> USER DETAILS GET $uri');
+
+    // it's fine to keep your existing _headers(); GET doesn't need Content-Type,
+    // but leaving it won't break anything.
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    print('<<< USER DETAILS STATUS: ${res.statusCode}');
+    print('<<< USER DETAILS BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final parsed = jsonDecode(res.body);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(Failure(
+          code: 'parse',
+          message: 'Invalid response format',
+          statusCode: res.statusCode,
+        ));
+      }
+
+      if (parsed['isSuccess'] != true) {
+        return Result.fail(Failure(
+          code: 'validation',
+          message: parsed['message']?.toString() ?? 'Failed to fetch user details',
+          statusCode: res.statusCode,
+        ));
+      }
+
+      final result = parsed['result'];
+      if (result is! Map<String, dynamic>) {
+        return Result.fail(Failure(
+          code: 'parse',
+          message: 'Invalid result format',
+          statusCode: res.statusCode,
+        ));
+      }
+
+      final details = UserDetails.fromJson(result);
+      return Result.ok(details);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err['message'] != null) {
+        message = err['message'].toString();
+      }
+    } catch (_) {}
+    return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
+
 
   @override
 Future<Result<RegistrationResponse>> submitCertificate({

@@ -31,6 +31,36 @@ class AuthenticationBloc
          on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
   on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
   on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
+      on<LoadUserDetailsRequested>(_onLoadUserDetails);
+  }
+
+  Future<void> _onLoadUserDetails(
+    LoadUserDetailsRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(state.copyWith(
+      userDetailsStatus: UserDetailsStatus.loading,
+      userDetailsError: null,
+      clearUserDetails: true,
+    ));
+
+    final r = await repo.fetchUserDetails(userId: e.userId);
+    print('USER DETAILS $r');
+    print('USER DETAILS $r');
+    print('USER DETAILS $r');
+
+    if (r.isSuccess) {
+      emit(state.copyWith(
+        userDetailsStatus: UserDetailsStatus.success,
+        userDetails: r.data!,
+        userDetailsError: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        userDetailsStatus: UserDetailsStatus.failure,
+        userDetailsError: r.failure!.message,
+      ));
+    }
   }
 
   Future<void> _onSubmitCertificateBytes(
