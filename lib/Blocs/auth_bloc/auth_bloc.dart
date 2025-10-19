@@ -32,7 +32,50 @@ class AuthenticationBloc
   on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
   on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
       on<LoadUserDetailsRequested>(_onLoadUserDetails);
+      on<OnboardUserRequested>(_onOnboardUserRequested);
   }
+
+  Future<void> _onOnboardUserRequested(
+  OnboardUserRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(
+    onboardingStatus: OnboardingStatus.submitting,
+    clearOnboardingError: true,
+  ));
+
+  final res = await repo.onboardUser(
+    userId: e.userId,
+    servicesId: e.servicesId,              // will be []
+    profilePicture: e.profilePicture,
+    docCertification: e.docCertification,  // will be null => omitted
+    docInsurance: e.docInsurance,
+    docAddressProof: e.docAddressProof,
+    docIdVerification: e.docIdVerification,
+  );
+
+  // Unwrap your Result<T> (pick the branch that matches your Result)
+  if ((res as dynamic).isSuccess == true) {
+    emit(state.copyWith(onboardingStatus: OnboardingStatus.success));
+  } else {
+    final failure = (res as dynamic).failure;
+    emit(state.copyWith(
+      onboardingStatus: OnboardingStatus.failure,
+      onboardingError: failure?.message ?? 'Onboarding failed',
+    ));
+  }
+
+  // If your Result has when()/fold(), use this instead:
+  /*
+  res.when(
+    ok: (_) => emit(state.copyWith(onboardingStatus: OnboardingStatus.success)),
+    err: (f) => emit(state.copyWith(
+      onboardingStatus: OnboardingStatus.failure,
+      onboardingError: f.message,
+    )),
+  );
+  */
+}
 
   Future<void> _onLoadUserDetails(
     LoadUserDetailsRequested e,

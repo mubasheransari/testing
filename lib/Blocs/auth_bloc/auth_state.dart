@@ -5,6 +5,8 @@ import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
 
+enum OnboardingStatus { initial, submitting, success, failure }
+
 enum UserDetailsStatus { initial, loading, success, failure }
 
 enum AuthStatus { initial, loading, success, failure }
@@ -22,6 +24,8 @@ enum PaymentStatus { initial, loading, urlReady, failure }
 enum CertificateSubmitStatus { initial, uploading, success, failure }
 
 class AuthenticationState extends Equatable {
+    final OnboardingStatus onboardingStatus;
+  final String? onboardingError;
   final UserDetailsStatus userDetailsStatus;
   final UserDetails? userDetails;
   final String? userDetailsError;
@@ -50,6 +54,8 @@ class AuthenticationState extends Equatable {
 
   const AuthenticationState(
       {
+            this.onboardingStatus = OnboardingStatus.initial,
+    this.onboardingError,
        this.userDetailsStatus = UserDetailsStatus.initial,
     this.userDetails,
     this.userDetailsError,
@@ -73,6 +79,9 @@ class AuthenticationState extends Equatable {
       this.loginResponse});
 
   AuthenticationState copyWith({
+      OnboardingStatus? onboardingStatus,
+    String? onboardingError,
+    bool clearOnboardingError = false,
      UserDetailsStatus? userDetailsStatus,
     UserDetails? userDetails,
     bool clearUserDetailsError = false,
@@ -97,6 +106,8 @@ class AuthenticationState extends Equatable {
     LoginResponse? loginResponse,
   }) =>
       AuthenticationState(
+              onboardingStatus: onboardingStatus ?? this.onboardingStatus,
+      onboardingError: clearOnboardingError ? null : (onboardingError ?? this.onboardingError),
       userDetailsStatus: userDetailsStatus ?? this.userDetailsStatus,
       userDetails: userDetails ?? this.userDetails,
       userDetailsError: clearUserDetailsError ? null : (userDetailsError ?? this.userDetailsError),
@@ -121,7 +132,9 @@ class AuthenticationState extends Equatable {
 
   @override
   List<Object?> get props =>
-      [    
+      [  
+             onboardingStatus,
+        onboardingError,  
             userDetailsStatus,
         userDetails,
         userDetailsError,

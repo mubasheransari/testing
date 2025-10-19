@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
 import '../Models/auth_model.dart';
@@ -27,10 +28,31 @@ class ApiConfig {
   static const String paymentSessionEndpoint = '/api/Payment/GetSessionUrl';
   static const String certificateSubmitEndpoint = '/api/services/CertificateSubmit';
   static const String userDetailsEndpoint = '/api/User/details';
+  static const String onboardingUserEndpoint = '/api/User/onboardinguser';
+}
+
+extension on String {
+  String normMime() {
+    final v = toLowerCase();
+    if (v == 'image/jpg') return 'image/jpeg';
+    if (v == 'application/x-pdf') return 'application/pdf';
+    return v;
+  }
 }
 
 // ---------- AuthRepository (abstract) ----------
 abstract class AuthRepository {
+  // AuthRepository (abstract) – add:
+Future<Result<RegistrationResponse>> onboardUser({
+  required String userId,
+  List<int> servicesId, // can be empty
+  required NamedBytes profilePicture,
+  NamedBytes? docCertification, // null => send empty/omit
+  required NamedBytes docInsurance,
+  required NamedBytes docAddressProof,
+  required NamedBytes docIdVerification,
+});
+
     Future<Result<UserDetails>> fetchUserDetails({required String userId});
   Future<Result<String>> createPaymentSession({
     required String userId,
@@ -154,6 +176,84 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+
+@override
+Future<Result<RegistrationResponse>> onboardUser({
+  required String userId,
+  List<int> servicesId = const [], // will be empty
+  required NamedBytes profilePicture,
+  NamedBytes? docCertification,    // ignored when sending empty
+  required NamedBytes docInsurance,
+  required NamedBytes docAddressProof,
+  required NamedBytes docIdVerification,
+}) async {
+  if (userId.trim().isEmpty) {
+    return Result.fail(Failure(code: 'validation', message: 'UserId is required'));
+  }
+  if (profilePicture.bytes.isEmpty ||
+      docInsurance.bytes.isEmpty ||
+      docAddressProof.bytes.isEmpty ||
+      docIdVerification.bytes.isEmpty) {
+    return Result.fail(Failure(code: 'validation', message: 'All required files must be provided'));
+  }
+
+  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.onboardingUserEndpoint}');
+  try {
+    print('>>> ONBOARDING POST $uri (ServicesId=EMPTY, Doc_Certification=EMPTY FILE)');
+
+    final req = http.MultipartRequest('POST', uri)
+      ..headers[HttpHeaders.acceptHeader] = 'application/json'
+      ..headers['X-Request-For'] = '::1'
+      ..fields['UserId'] = userId;
+
+    // ----- ServicesId as EMPTY ARRAY -----
+    // In multipart/form-data, an "array" is represented by repeating the same key.
+    // To send an EMPTY array, just DO NOT add any 'ServicesId' fields/files at all.
+    // (Do NOT send '[]' as text; ASP.NET model binder won't parse JSON here.)
+    // for (final id in servicesId) { ... }  // <— intentionally omitted
+
+    http.MultipartFile _part(String name, NamedBytes f) {
+      final ct = (f.mimeType != null && f.mimeType!.trim().isNotEmpty)
+          ? MediaType.parse(f.mimeType!.toLowerCase() == 'image/jpg'
+              ? 'image/jpeg'
+              : f.mimeType!)
+          : null;
+      return http.MultipartFile.fromBytes(
+        name,
+        f.bytes,
+        filename: (f.fileName.isEmpty) ? 'upload.bin' : f.fileName,
+        contentType: ct,
+      );
+    }
+
+    // Required files
+    req.files.add(_part('ProfilePicture', profilePicture));
+    req.files.add(_part('Doc_Insurance', docInsurance));
+    req.files.add(_part('Doc_Addressproof', docAddressProof));
+    req.files.add(_part('Doc_Idverification', docIdVerification));
+
+    // ----- Doc_Certification as EMPTY BINARY -----
+    // Always include the part, but with zero bytes.
+    req.files.add(http.MultipartFile.fromBytes(
+      'Doc_Certification',
+      const <int>[],         // zero-byte payload
+      filename: '',          // empty filename is fine
+      contentType: MediaType('application', 'octet-stream'),
+    ));
+
+    final streamed = await req.send().timeout(timeout);
+    final res = await http.Response.fromStream(streamed);
+    return _handleSubmitResponse(res);
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
 
  @override
 Future<Result<UserDetails>> fetchUserDetails({required String userId}) async {

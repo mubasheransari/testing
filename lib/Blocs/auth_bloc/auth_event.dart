@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'package:taskoon/Models/named_bytes.dart';
 
 import '../../Models/auth_model.dart';
 
@@ -217,6 +218,38 @@ class LoadUserDetailsRequested extends AuthenticationEvent {
   @override
   List<Object?> get props => [userId];
 }
+// authentication_event.dart
+class OnboardUserRequested extends AuthenticationEvent {
+  final String userId;
+  final List<int> servicesId;
+  final NamedBytes profilePicture;
+  final NamedBytes? docCertification; // null => empty
+  final NamedBytes docInsurance;
+  final NamedBytes docAddressProof;
+  final NamedBytes docIdVerification;
+
+   OnboardUserRequested({
+    required this.userId,
+    this.servicesId = const [],
+    required this.profilePicture,
+    this.docCertification,
+    required this.docInsurance,
+    required this.docAddressProof,
+    required this.docIdVerification,
+  });
+
+  @override
+  List<Object?> get props => [
+        userId,
+        servicesId,
+        profilePicture,
+        docCertification,
+        docInsurance,
+        docAddressProof,
+        docIdVerification,
+      ];
+}
+
 
 // class LoadUserDetailsRequested extends AuthenticationEvent {
 //   final String userId;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/services_group_model.dart' as ms;
 import 'package:taskoon/Screens/Tasker_Onboarding/payment_screen.dart';
@@ -83,6 +84,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   static const softBG = Color(0xFFF9F7FF);
 
   // General uploads (not sent here; different API likely)
+  PickedDoc? profilePicture;
   PickedDoc? idDoc;
   PickedDoc? addressDoc;
   PickedDoc? insuranceDoc;
@@ -286,6 +288,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 220),
               children: [
                 // —— General cards (local only) ——
+                       DocumentUploadCard(
+                  title: 'Profile Picture',
+                  subtitle: 'Recent Profile Picture',
+                  requiredBadge: RequiredBadge.required,
+                  pickedFileName: profilePicture == null ? null : '${profilePicture!.name}  •  ${_fmtBytes(profilePicture!.size)}',
+                  onChooseFile: () async {
+                    final picked = await _pickDoc();
+                    if (picked != null) setState(() => profilePicture = picked);
+                  },
+                ),
+                 const SizedBox(height: 18),
                 DocumentUploadCard(
                   title: 'ID Verification',
                   subtitle: 'Government-issued photo ID',
@@ -361,11 +374,45 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                         backgroundColor: _allServiceCertsUploaded ? purple : purple.withOpacity(.4),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed:  !_allServiceCertsUploaded
+
+                      onPressed: !_allServiceCertsUploaded
+    ? null
+    : () {
+        // Require the 4 mandatory files before dispatch
+        if (profilePicture == null || idDoc == null || addressDoc == null || insuranceDoc == null) {
+          _err('Please upload Profile Picture, ID Verification, Address Proof and Insurance.');
+          return;
+        }
+
+        // Small helper to convert your PickedDoc -> NamedBytes (used by the event/repo)
+        NamedBytes _nb(PickedDoc p) => NamedBytes(
+              fileName: p.name,
+              bytes: p.bytes,
+              mimeType: p.mime ?? _guessMime(p.ext) ?? 'application/octet-stream',
+            );
+
+        // 🚀 Dispatch the onboarding event
+        context.read<AuthenticationBloc>().add(
+          OnboardUserRequested(
+            userId: widget.userId,
+            servicesId: const <int>[],             // send ServicesId as EMPTY
+            profilePicture: _nb(profilePicture!),  // required
+            docCertification: null,                // send Doc_Certification as EMPTY
+            docInsurance: _nb(insuranceDoc!),      // required
+            docAddressProof: _nb(addressDoc!),     // required
+            docIdVerification: _nb(idDoc!),        // required
+          ),
+        );
+
+        // Keep your existing flow
+        Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentScreen()));
+      },
+
+                    /*  onPressed:  !_allServiceCertsUploaded
                           ? null
                           :(){
                         Navigator.push(context, MaterialPageRoute(builder: (context)=> PaymentScreen()));
-                      },
+                      },*/
                       // onPressed: !_allServiceCertsUploaded
                       //     ? null
                       //     : () {
