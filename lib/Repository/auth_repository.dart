@@ -127,6 +127,7 @@ abstract class AuthRepository {
     required String emailAddress,
     required String password,
     String? address,
+        String? abn,  
   });
 
   Future<Result<LoginResponse>> signIn({
@@ -1193,6 +1194,7 @@ Result<RegistrationResponse> _handleSubmitResponse(http.Response res) {
     required String password,
     String? address,
     List<SelectableItem>? desiredService,
+        String? abn,  
   }) {
     final req = RegistrationRequest.tasker(
       fullName: fullName,
@@ -1200,6 +1202,7 @@ Result<RegistrationResponse> _handleSubmitResponse(http.Response res) {
       emailAddress: emailAddress,
       password: password,
       address: address,
+           abn: abn,   
       // desiredService: desiredService ?? const [],
     ); // 
     return register(req);

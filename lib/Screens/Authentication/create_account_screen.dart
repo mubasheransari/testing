@@ -270,6 +270,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         email: email,
         password: password,
         address: addrCtrl.text.trim(),
+        abn: _normalizeAbn(abanCtrl.text),  
         //   desiredService: const [],
       ));
     } else {
@@ -460,7 +461,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       const SizedBox(height: 14),
 
                       if (_isTasker) ...[
-                        _label('Address (Required)'),
+
+
+  _label('ABN'),                           // <-- ADD
+  _filledField(
+    controller: abanCtrl,
+    hint: 'ABN',
+    keyboardType: TextInputType.text,
+  ),
+        const SizedBox(height: 14),
+                        _label('Address'),
                         _filledField(
                             controller: addrCtrl,
                             hint: 'Address',

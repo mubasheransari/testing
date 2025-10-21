@@ -74,6 +74,7 @@ class RegisterCompanyRequested extends AuthenticationEvent {
 class RegisterTaskerRequested extends AuthenticationEvent {
   final String fullName, phoneNumber, email, password;
   final String? address;
+    final String? abn;     
 
   RegisterTaskerRequested({
     required this.fullName,
@@ -81,6 +82,7 @@ class RegisterTaskerRequested extends AuthenticationEvent {
     required this.email,
     required this.password,
     this.address,
+    this.abn
   });
 }
 

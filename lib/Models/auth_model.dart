@@ -155,6 +155,7 @@ class RegistrationRequest {
     required String emailAddress,
     required String password,
     String? address,
+        String? abn,   
   }) =>
       RegistrationRequest._(
         type: AccountType.TASKER,
@@ -163,6 +164,7 @@ class RegistrationRequest {
         emailAddress: emailAddress,
         password: password,
         address: address,
+              abn: abn,
       );
 
   Map<String, dynamic> toJson() {
@@ -194,6 +196,7 @@ class RegistrationRequest {
         break;
       case AccountType.TASKER:
         base['address'] = address ?? '';
+          base['abn'] = abn ?? ''; 
         break;
     }
     return base.cleaned();
