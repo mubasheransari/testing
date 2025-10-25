@@ -52,6 +52,7 @@ dependencies:
   mime: ^1.0.6
   url_launcher:
   get_storage: 
+  google_maps_flutter: ^2.6.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.2 

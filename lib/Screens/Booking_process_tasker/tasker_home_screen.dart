@@ -1,19 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/new_task_alert.dart';
 
-/// TASKOON — Tasker Home (Redesigned)
-/// ------------------------------------------------------------
-/// • Modern gradient header with curved bottom.
-/// • Floating profile + earnings cards (glass-like).
-/// • KPI chips row (rating, acceptance, completion).
-/// • Upcoming & Current task cards with clean CTAs.
-/// • Availability switch baked into header.
-///
-/// Hook points (replace stubs with real data / BLoC):
-///   - onAvailabilityChanged
-///   - onDirectionTap
-///   - onViewMoreUpcoming / onViewMoreCurrent
-///   - replace `_mock...` values with your state
-/// ------------------------------------------------------------
+
 
 class TaskerHomeRedesign extends StatefulWidget {
   const TaskerHomeRedesign({super.key});
@@ -161,7 +149,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
   void _onViewMoreUpcoming() {}
   void _onViewMoreCurrent() {}
-  void _onDirectionTap() {}
+  void _onDirectionTap() {
+    Navigator.push(context, MaterialPageRoute(builder: (context)=> TaskAlertGlassScreen()));
+  }
 }
 
 /* ===================== UI PARTS ===================== */
