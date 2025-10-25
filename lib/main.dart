@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
-import 'package:taskoon/routes.dart';
+import 'package:taskoon/Routes/routes.dart';
 import 'package:taskoon/theme.dart';
 import 'Blocs/auth_bloc/auth_bloc.dart';
 import 'Repository/auth_repository.dart';
@@ -52,7 +52,7 @@ return RepositoryProvider.value(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.splash,//Routes.personalInfo, // Routes.splash,
+          initialRoute:Routes.taskerHomeScreen,//Routes.personalInfo, // Routes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>

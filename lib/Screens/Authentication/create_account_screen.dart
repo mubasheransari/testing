@@ -86,7 +86,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   String _normalizeAbn(String raw) =>
-      raw.replaceAll(RegExp(r'[^0-9]'), ''); // only digits
+      raw.replaceAll(RegExp(r'[^0-9]'), ''); // only digits Testing@123
 
   // ---- validation + toasts ---------------------------------------
 
