@@ -33,7 +33,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   final _title = 'Handyman, Pro';
   final _badges = const [
     _Badge(label: 'ID', icon: Icons.verified, bg: Color(0xFFE8F5E9), fg: Color(0xFF2E7D32)),
-    _Badge(label: 'Police Check', icon: Icons.shield_moon, bg: Color(0xFFE3F2FD), fg: Color(0xFF1565C0)),
+    _Badge(label: 'Police\nCheck', icon: Icons.shield_moon, bg: Color(0xFFE3F2FD), fg: Color(0xFF1565C0)),
   ];
 
   double rating = 4.9;
@@ -270,26 +270,40 @@ class _GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1B20) : Colors.white,
-        borderRadius: BorderRadius.circular(_TaskerHomeRedesignState.kRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final compact = w < 360;
+        final wide = w > 720;
+
+        final radius = compact ? 16.0 : (wide ? 24.0 : _TaskerHomeRedesignState.kRadius);
+        final padAll = compact ? 12.0 : (wide ? 18.0 : 14.0);
+        final marginV = compact ? 4.0 : 6.0;
+        final blur = wide ? 22.0 : 18.0;
+        final offsetY = wide ? 10.0 : 8.0;
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: marginV),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A1B20) : Colors.white,
+            borderRadius: BorderRadius.circular(radius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: blur,
+                offset: Offset(0, offsetY),
+              ),
+            ],
+            border: Border.all(
+              color: isDark ? const Color(0xFF2A2C33) : const Color(0xFFF0ECF6),
+            ),
           ),
-        ],
-        border: Border.all(
-          color: isDark ? const Color(0xFF2A2C33) : const Color(0xFFF0ECF6),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: child,
-      ),
+          child: Padding(
+            padding: EdgeInsets.all(padAll),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
@@ -309,29 +323,47 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(radius: 28, backgroundImage: NetworkImage(avatarUrl)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 2),
-              Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final b in badges) _BadgeChip(badge: b),
-                ],
-              )
-            ],
-          ),
-        )
-      ],
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final narrow = w < 340;
+        final wide = w > 600;
+
+        final avatarR = narrow ? 24.0 : (wide ? 32.0 : 28.0);
+        final gap = narrow ? 10.0 : 12.0;
+        final nameStyle = TextStyle(
+          fontSize: narrow ? 15 : (wide ? 18 : 16),
+          fontWeight: FontWeight.w700,
+        );
+        final titleStyle = TextStyle(
+          color: Colors.grey.shade600,
+          fontSize: narrow ? 11 : (wide ? 13 : 12),
+        );
+
+        final info = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final b in badges) _BadgeChip(badge: b)],
+            ),
+          ],
+        );
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(radius: avatarR, backgroundImage: NetworkImage(avatarUrl)),
+            SizedBox(width: gap),
+            Expanded(child: info),
+          ],
+        );
+      },
     );
   }
 }
@@ -351,51 +383,85 @@ class _EarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Earnings', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F1F8),
-                borderRadius: BorderRadius.circular(20),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final isNarrow = w < 340;
+        final isMedium = w < 420;
+
+        final titleStyle = TextStyle(
+          fontSize: isMedium ? 11 : 12,
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.w600,
+        );
+
+        final switcher = Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F1F8),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SegmentPill(
+                label: 'Week',
+                selected: period == 'Week',
+                onTap: () => onChangePeriod('Week'),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              _SegmentPill(
+                label: 'Month',
+                selected: period == 'Month',
+                onTap: () => onChangePeriod('Month'),
+              ),
+            ],
+          ),
+        );
+
+        final header = isNarrow
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SegmentPill(
-                    label: 'Week',
-                    selected: period == 'Week',
-                    onTap: () => onChangePeriod('Week'),
-                  ),
-                  _SegmentPill(
-                    label: 'Month',
-                    selected: period == 'Month',
-                    onTap: () => onChangePeriod('Month'),
-                  ),
+                  Text('Earnings', style: titleStyle),
+                  const SizedBox(height: 8),
+                  switcher,
                 ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Earnings', style: titleStyle),
+                  switcher,
+                ],
+              );
+
+        final amountText = FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '\$${amount.toStringAsFixed(0)}',
+            style: TextStyle(fontSize: isMedium ? 24 : 26, fontWeight: FontWeight.w800),
+          ),
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('\$${amount.toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+            header,
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [Expanded(child: amountText)],
+            ),
+            const SizedBox(height: 4),
+            Text(sub, style: TextStyle(color: Colors.grey.shade600, fontSize: isMedium ? 11 : 12)),
           ],
-        ),
-        const SizedBox(height: 4),
-        Text(sub, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-      ],
+        );
+      },
     );
   }
 }
+
 
 class _SegmentPill extends StatelessWidget {
   const _SegmentPill({required this.label, required this.selected, required this.onTap});
@@ -669,7 +735,7 @@ class _BadgeChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(badge.icon, size: 14, color: badge.fg),
-          const SizedBox(width: 6),
+          const SizedBox(width: 3),
           Text(badge.label, style: TextStyle(fontSize: 11, color: badge.fg, fontWeight: FontWeight.w700)),
         ],
       ),
