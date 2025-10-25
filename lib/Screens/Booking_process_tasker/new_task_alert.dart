@@ -5,18 +5,33 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:taskoon/Constants/constants.dart';
 
 
+// task_alert_glass_map.dart
+import 'dart:math';
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+/// New Task Alert — Glassmorphism + Google Maps (AU)
+/// - Real Google Map as background
+/// - Initial camera & job marker in Australia (default: Sydney)
+/// - Extra random markers scattered across Australia
+/// - Fully interactive map (pan/zoom/tilt/rotate)
+/// - Glass top bar, details panel, bottom bar
+
 class TaskAlertGlassScreen extends StatefulWidget {
   const TaskAlertGlassScreen({
     super.key,
     this.onAccept,
-    this.job = const LatLng(-33.8688, 151.2093), // Sydney by default
+    this.job = const LatLng(-33.8688, 151.2093), // Sydney
     this.randomMarkersCount = 18,
   });
 
-  /// Task location (must be in Australia per your request)
+  /// Task/job location (Australia)
   final LatLng job;
 
-  /// Count of extra random markers distributed around Australia
+  /// Number of extra random markers placed across Australia
   final int randomMarkersCount;
 
   final VoidCallback? onAccept;
@@ -26,19 +41,18 @@ class TaskAlertGlassScreen extends StatefulWidget {
 }
 
 class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
-  static const _purple = Color(0xFF5C2E91);
-  static const _purpleDark = Color(0xFF411C6E);
-
   final Set<Marker> _markers = <Marker>{};
   GoogleMapController? _controller;
 
-  // Australia bbox (rough): lat: -43.6..-10.7, lng: 113.3..153.6
+  // Australia bounds (rough)
   static const double _minLat = -43.6;
   static const double _maxLat = -10.7;
   static const double _minLng = 113.3;
   static const double _maxLng = 153.6;
 
-  // Subtle greyscale map style to match your mock
+  static const Color _purple = Color(0xFF5C2E91);
+
+  // Greyscale map style similar to your mock
   static const String _greyMapStyle = '''
   [
     {"elementType":"geometry","stylers":[{"color":"#ebe3cd"}]},
@@ -56,13 +70,13 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
   @override
   void initState() {
     super.initState();
-    _initMarkers();
+    _seedMarkers();
   }
 
-  void _initMarkers() {
+  void _seedMarkers() {
     final rnd = Random();
 
-    // Initial job marker in Australia
+    // Primary job marker
     _markers.add(
       Marker(
         markerId: const MarkerId('job'),
@@ -71,7 +85,7 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
       ),
     );
 
-    // Random extra markers across Australia
+    // Random markers across Australia
     for (int i = 0; i < widget.randomMarkersCount; i++) {
       final lat = _minLat + rnd.nextDouble() * (_maxLat - _minLat);
       final lng = _minLng + rnd.nextDouble() * (_maxLng - _minLng);
@@ -93,15 +107,24 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
       backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFF7F7FA),
       body: Stack(
         children: [
-          // --- GOOGLE MAP ---
+          // --- GOOGLE MAP (fully interactive) ---
           Positioned.fill(
             child: GoogleMap(
               initialCameraPosition: CameraPosition(target: widget.job, zoom: 11.8),
               markers: _markers,
+              // Explicit gesture enables
+              scrollGesturesEnabled: true,
+              zoomGesturesEnabled: true,
+              rotateGesturesEnabled: true,
+              tiltGesturesEnabled: true,
+              zoomControlsEnabled: true, // + / - buttons on Android
               myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
               mapToolbarEnabled: false,
               buildingsEnabled: true,
+              // Claim gestures even if under translucent layers/scrollables
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+              },
               onMapCreated: (c) async {
                 _controller = c;
                 await c.setMapStyle(_greyMapStyle);
@@ -109,19 +132,21 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
             ),
           ),
 
-          // Subtle overlay for contrast on top/bottom
+          // Contrast overlay that DOES NOT block touches
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.10),
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.18),
-                  ],
-                  stops: const [0, .5, 1],
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.10),
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.18),
+                    ],
+                    stops: const [0, .5, 1],
+                  ),
                 ),
               ),
             ),
@@ -184,12 +209,12 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
           ),
         ],
       ),
-
     );
   }
 }
 
 /* ---------------------------- Glass Widgets --------------------------- */
+
 class _GlassBar extends StatelessWidget {
   const _GlassBar({required this.child});
   final Widget child;
@@ -217,7 +242,7 @@ class _GlassBar extends StatelessWidget {
                 color: Colors.black.withOpacity(.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
-              ),
+              )
             ],
           ),
           child: child,
@@ -237,19 +262,20 @@ class _GlassPanel extends StatelessWidget {
       builder: (context, c) {
         final w = c.maxWidth;
         final radius = w >= 640 ? 28.0 : 22.0;
-        final padH = w >= 400 ? 18.0 : 14.0;
-
         return ClipRRect(
           borderRadius: BorderRadius.circular(radius),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: padH, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: w >= 400 ? 18 : 14, vertical: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.white.withOpacity(0.22), Colors.white.withOpacity(0.10)],
+                  colors: [
+                    Colors.white.withOpacity(0.22),
+                    Colors.white.withOpacity(0.10),
+                  ],
                 ),
                 border: Border.all(color: Colors.white.withOpacity(0.28)),
                 boxShadow: [
@@ -298,6 +324,7 @@ class _IconButtonGlass extends StatelessWidget {
 }
 
 /* ------------------------------ Details UI ---------------------------- */
+
 class _TaskDetails extends StatelessWidget {
   const _TaskDetails();
 
@@ -332,9 +359,9 @@ class _TaskDetails extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            _InfoRow(icon: Icons.person_rounded, label: 'Susan P'),
+            const _InfoRow(icon: Icons.person_rounded, label: 'Susan P'),
             const SizedBox(height: 8),
-            _InfoRow(icon: Icons.qr_code_rounded, label: 'Moving help'),
+            const _InfoRow(icon: Icons.qr_code_rounded, label: 'Moving help'),
             const SizedBox(height: 8),
 
             Row(
@@ -441,5 +468,4 @@ class _RightStat extends StatelessWidget {
     );
   }
 }
-
 
