@@ -50,8 +50,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const ReviewSubmit());
       case Routes.success:
         return MaterialPageRoute(builder: (_) => const Success());
-        case Routes.appShellScreen:
-        return MaterialPageRoute(builder: (_) => const AppShell());
+        // case Routes.appShellScreen:
+        // return MaterialPageRoute(builder: (_) => const AppShell());
         case Routes.taskerHomeScreen:
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
                 case Routes.takerHomeBottomNavBarRoot:

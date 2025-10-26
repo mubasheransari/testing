@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
+import 'package:taskoon/Constants/constants.dart' as _Colors;
 import 'package:taskoon/Screens/Booking_process_tasker/earning_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 
@@ -17,8 +18,8 @@ class TaskoonApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8F7FB),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Constants.primaryDark,
-          primary:  Constants.primaryDark,
+          seedColor:  _Colors.Constants.primaryDark,
+          primary:        _Colors.Constants.primaryDark,
           onPrimary: Colors.white,
         ),
         textTheme: const TextTheme(
@@ -97,23 +98,23 @@ class GlassBottomNav extends StatelessWidget {
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(36),
-          topRight: Radius.circular(36),
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
+          bottomLeft: Radius.circular(25),
+          bottomRight: Radius.circular(25),
         ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
           child: Container(
-            height: 72,
+            height: 70,
             decoration: BoxDecoration(
               // purple base with subtle glass gradient + border
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                   Constants.primaryDark,
-                   Constants.primaryDark,
+                   _Colors.Constants.primaryDark,
+                _Colors.Constants.primaryDark
                 ],
               ),
               border: Border.all(color: Colors.white.withOpacity(.08)),
