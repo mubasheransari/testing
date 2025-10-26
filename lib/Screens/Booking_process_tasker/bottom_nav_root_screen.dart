@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Constants/constants.dart' as _Colors;
 import 'package:taskoon/Screens/Booking_process_tasker/earning_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/more_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasks_screen.dart';
 
@@ -50,7 +51,7 @@ class _RootNavState extends State<_RootNav> {
     TaskerHomeRedesign(),
     EarningsScreen(), // the screen you asked to design
     TasksScreen(),
-    EarningsScreen(),
+    MoreScreen(),
   ];
 
   @override
