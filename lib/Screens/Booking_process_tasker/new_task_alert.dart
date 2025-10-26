@@ -398,7 +398,7 @@ class _TaskDetails extends StatelessWidget {
                 onPressed: () {
                 showReportDownloadDialog(
       context,
-      topBadgeAsset: 'assets/taskoon_logo.png',
+      topBadgeAsset: 'assets/accept_icon.png',
       watermarkAsset: 'assets/taskoon_logo.png',
       downloadIconAsset: 'assets/taskoon_logo.png',
       shareIconAsset: 'assets/taskoon_logo.png',

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:taskoon/Constants/constants.dart';
 
 Future<void> showReportDownloadDialog(
   BuildContext context, {
@@ -269,6 +270,7 @@ class _DownloadDialogCard extends StatelessWidget {
                           child: Image.asset(
                             topBadgeAsset,
                             fit: BoxFit.contain,
+                            color: Color(0xFF5C2E91)
                           ),
                         ),
                       ),
