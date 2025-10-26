@@ -2,6 +2,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/emergency_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
 
 /// Modern, attractive “More” screen (matches your palette & rounded style).
@@ -68,7 +69,10 @@ class MoreScreen extends StatelessWidget {
                 _MoreTile(
                   icon: Icons.menu_book_rounded,
                   label: 'Guidelines',
-                  onTap: () {/* TODO: open guidelines */},
+                  onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(builder: (context)=> GuidelinesScreen()));
+
+                  },
                 ),
                 const SizedBox(height: 14),
                 _MoreTile(
