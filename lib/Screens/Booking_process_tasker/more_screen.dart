@@ -1,6 +1,7 @@
 // lib/screens/more_screen.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/emergency_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
 
 /// Modern, attractive “More” screen (matches your palette & rounded style).
@@ -73,7 +74,10 @@ class MoreScreen extends StatelessWidget {
                 _MoreTile(
                   icon: Icons.notifications_active_rounded,
                   label: 'Emergency',
-                  onTap: () {/* TODO: open emergency */},
+                  onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(builder: (context)=> EmergencyScreen()));
+
+                  },
                 ),
               ],
             ),
