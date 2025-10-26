@@ -69,16 +69,16 @@ class _HeaderBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Constants.primaryDark),
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
+            // IconButton(
+            //   icon: Icon(Icons.arrow_back_ios_new_rounded,
+            //       color: Constants.primaryDark),
+            //   onPressed: () => Navigator.of(context).maybePop(),
+            // ),
             const SizedBox(width: 4),
             Text(
               title,
               style: TextStyle(
-                color: Constants.primaryDark,
+                color: Colors.black,
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
               ),
@@ -112,13 +112,13 @@ class _TodayEarningCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      padding: const EdgeInsets.fromLTRB(125, 18, 125, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Todays earnings',
-              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-          const Spacer(),
+              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+         const Spacer(),
           Text('\$$amount',
               style:
                   const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 34)),
@@ -134,29 +134,31 @@ class _WeeklyEarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
-      radius: 22,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Weekly earnings',
-                style: TextStyle(
-                    color:Constants.primaryDark,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16)),
-            const SizedBox(height: 6),
-            Text('Sun 00:00 Sat 23:59',
-                style: TextStyle(color: Colors.black.withOpacity(.55), fontSize: 12)),
-            const SizedBox(height: 10),
-            Text('\$$amount',
-                style: TextStyle(
-                  color: Constants.primaryDark,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 30,
-                )),
-          ],
+    return SizedBox(
+      width: MediaQuery.of(context).size.width*0.90,
+      child: _GlassCard(
+        radius: 22,
+        child: Padding(
+      padding: const EdgeInsets.fromLTRB(65, 18, 65, 18),
+      
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Weekly earnings',
+                                style: TextStyle(
+                    color: Constants.primaryDark, fontWeight: FontWeight.w800, fontSize: 22)),
+              const SizedBox(height: 6),
+              Text('Sun 00:00 Sat 23:59',
+                  style: TextStyle(color: Colors.black.withOpacity(.55), fontSize: 12)),
+              const SizedBox(height: 6),
+              Text('\$$amount',
+                  style: TextStyle(
+                    color: Constants.primaryDark,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 30,
+                  )),
+            ],
+          ),
         ),
       ),
     );
@@ -168,20 +170,23 @@ class _CompletedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
-      radius: 36,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('12 tasks completed',
-                style: TextStyle(
-                    color: Constants.primaryDark, fontWeight: FontWeight.w800, fontSize: 22)),
-            const SizedBox(height: 6),
-            Text('Last task ended 5 mins ago',
-                style: TextStyle(color: Colors.black.withOpacity(.55))),
-          ],
+    return SizedBox(
+            width: MediaQuery.of(context).size.width*0.90,
+      child: _GlassCard(
+        radius: 36,
+        child: Padding(
+                padding: const EdgeInsets.fromLTRB(65, 18, 65, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('12 tasks completed',
+                  style: TextStyle(
+                      color: Constants.primaryDark, fontWeight: FontWeight.w800, fontSize: 22)),
+              const SizedBox(height: 6),
+              Text('Last task ended 5 mins ago',
+                  style: TextStyle(color: Colors.black.withOpacity(.55))),
+            ],
+          ),
         ),
       ),
     );
@@ -196,7 +201,7 @@ class _TaskRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      contentPadding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       title: Text('John S.',
           style: TextStyle(
               color:Constants.primaryDark, fontWeight: FontWeight.w800, fontSize: 18)),
