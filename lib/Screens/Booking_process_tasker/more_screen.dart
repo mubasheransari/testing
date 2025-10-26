@@ -1,6 +1,7 @@
 // lib/screens/more_screen.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
 
 /// Modern, attractive “More” screen (matches your palette & rounded style).
 /// No external packages required.
@@ -58,7 +59,9 @@ class MoreScreen extends StatelessWidget {
                 _MoreTile(
                   icon: Icons.person_rounded,
                   label: 'My account',
-                  onTap: () {/* TODO: open account */},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=> MyAccountScreen()));
+                  },
                 ),
                 const SizedBox(height: 14),
                 _MoreTile(
