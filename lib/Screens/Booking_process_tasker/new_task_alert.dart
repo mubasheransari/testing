@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:taskoon/widgets/dialog_widget.dart';
 
 /// New Task Alert — Glassmorphism + Google Maps (AU)
 /// - Real Google Map as background
@@ -394,7 +395,17 @@ class _TaskDetails extends StatelessWidget {
               height: 52,
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                showReportDownloadDialog(
+      context,
+      topBadgeAsset: 'assets/taskoon_logo.png',
+      watermarkAsset: 'assets/taskoon_logo.png',
+      downloadIconAsset: 'assets/taskoon_logo.png',
+      shareIconAsset: 'assets/taskoon_logo.png',
+      onDownload: () { /* save PDF */ },
+      onShare: () { /* share file */ },
+    );
+                },
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: Constants.primary,
