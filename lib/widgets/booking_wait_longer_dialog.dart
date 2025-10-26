@@ -41,13 +41,13 @@ Future<void> showDialogBookingWaitLonger(
               subtitle: subtitle,
               topBadgeAsset: topBadgeAsset,
               watermarkAsset: watermarkAsset,
-              primaryLabel: "YES, I'M UP!",
+              primaryLabel: "Yes, I'm Up!",
               primaryIcon: Icons.task_alt,
               onPrimary: () {
                 Navigator.of(context).pop();
                 onAccept?.call();
               },
-              secondaryLabel: 'NO, THANK YOU',
+              secondaryLabel: 'No',
               secondaryIcon: Icons.cancel,
               onSecondary: () {
                 Navigator.of(context).pop();
@@ -361,7 +361,7 @@ class _ActionButton extends StatelessWidget {
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: const TextStyle(fontWeight: FontWeight.w600,fontSize: 14),
               ),
             ),
           ],
