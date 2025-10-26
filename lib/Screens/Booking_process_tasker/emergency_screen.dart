@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/emergency_form_tabs.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 
@@ -135,9 +136,11 @@ class _EmergencyScreenState extends State<EmergencyScreen>
   }
 
   Future<void> _shareLocation() async {
-    final link =
-        'https://www.google.com/maps/search/?api=1&query=${_center.latitude},${_center.longitude}';
-    await Share.share('My current location:\n$link');
+    // final link =
+    //     'https://www.google.com/maps/search/?api=1&query=${_center.latitude},${_center.longitude}';
+    // await Share.share('My current location:\n$link');
+
+    Navigator.push(context, MaterialPageRoute(builder: (context)=> EmergencyFormTabsScreen()));
   }
 
   void _onSupport() {
