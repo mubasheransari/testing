@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/chat_with_tasker.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/prestart_safety_check_screen.dart';
 
 class ArrivalConfirmGlassScreen extends StatefulWidget {
   const ArrivalConfirmGlassScreen({super.key});
@@ -119,7 +120,7 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                                 HapticFeedback.lightImpact();
                                 setState(() => arrived = true);
                                 if (context.mounted) {
-                                  Navigator.push(context, MaterialPageRoute(builder: (context)=> ChatApp()));
+                                  Navigator.push(context, MaterialPageRoute(builder: (context)=> PrestartSafetyCheckScreen()));
                                   // ScaffoldMessenger.of(context).showSnackBar(
                                   //   const SnackBar(
                                   //     behavior: SnackBarBehavior.floating,

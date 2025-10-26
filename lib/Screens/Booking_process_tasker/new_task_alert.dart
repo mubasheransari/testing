@@ -407,18 +407,21 @@ class _TaskDetails extends StatelessWidget {
         topBadgeAsset: 'assets/accept_icon.png',
         watermarkAsset: 'assets/taskoon_logo.png',
         onAccept: () {
+              Navigator.of(context).pop();
+                     Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
+
           // After accepting, optionally open the “wait longer” dialog
-          showDialogBookingWaitLonger(
-            context,
-            topBadgeAsset: 'assets/accept_icon.png',
-            watermarkAsset: 'assets/taskoon_logo.png',
-            onAccept: () {
-           Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
-            },
-            onCancel: () {
-              // handle “no, thank you”
-            },
-          );
+          // showDialogBookingWaitLonger(
+          //   context,
+          //   topBadgeAsset: 'assets/accept_icon.png',
+          //   watermarkAsset: 'assets/taskoon_logo.png',
+          //   onAccept: () {
+          //  Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
+          //   },
+          //   onCancel: () {
+          //     // handle “no, thank you”
+          //   },
+          // );
         },
         onCancel: () {
           // handle cancel of the first dialog
