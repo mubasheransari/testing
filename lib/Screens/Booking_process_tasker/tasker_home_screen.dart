@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/new_task_alert.dart';
 
 
-
 class TaskerHomeRedesign extends StatefulWidget {
   const TaskerHomeRedesign({super.key});
 

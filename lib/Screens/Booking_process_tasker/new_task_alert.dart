@@ -3,24 +3,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:taskoon/Constants/constants.dart';
-
-// task_alert_glass_map.dart
-import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/arriaved_confirmation_screen.dart';
 import 'package:taskoon/widgets/booking_accept_dialog.dart';
 import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
 
-/// New Task Alert — Glassmorphism + Google Maps (AU)
-/// - Real Google Map as background
-/// - Initial camera & job marker in Australia (default: Sydney)
-/// - Extra random markers scattered across Australia
-/// - Fully interactive map (pan/zoom/tilt/rotate)
-/// - Glass top bar, details panel, bottom bar
+
 
 class TaskAlertGlassScreen extends StatefulWidget {
   const TaskAlertGlassScreen({

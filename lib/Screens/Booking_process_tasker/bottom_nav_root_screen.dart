@@ -5,6 +5,7 @@ import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Constants/constants.dart' as _Colors;
 import 'package:taskoon/Screens/Booking_process_tasker/earning_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/tasks_screen.dart';
 
 class TaskoonApp extends StatelessWidget {
   const TaskoonApp({super.key});
@@ -48,7 +49,7 @@ class _RootNavState extends State<_RootNav> {
   final _pages = const [
     TaskerHomeRedesign(),
     EarningsScreen(), // the screen you asked to design
-    EarningsScreen(),
+    TasksScreen(),
     EarningsScreen(),
   ];
 
