@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/arriaved_confirmation_screen.dart';
 import 'package:taskoon/widgets/booking_accept_dialog.dart';
 import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
 
@@ -407,48 +408,47 @@ class _TaskDetails extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            SizedBox(
-              height: 52,
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  showBookingAcceptDialog(
-                    context,
-                    topBadgeAsset: 'assets/accept_icon.png',
-                    watermarkAsset: 'assets/taskoon_logo.png',
-                    downloadIconAsset: 'assets/taskoon_logo.png',
-                    shareIconAsset: 'assets/taskoon_logo.png',
-                    accept: () {
-                       print("click");
-//  showDialogBookingWaitLonger(
-//                     context,
-//                     topBadgeAsset: 'assets/accept_icon.png',
-//                     watermarkAsset: 'assets/taskoon_logo.png',
-//                     downloadIconAsset: 'assets/taskoon_logo.png',
-//                     shareIconAsset: 'assets/taskoon_logo.png',
-//                     accept: () {
+      SizedBox(
+  height: 52,
+  width: double.infinity,
+  child: ElevatedButton(
+    onPressed: () {
+      showBookingAcceptDialog(
+        context,
+        topBadgeAsset: 'assets/accept_icon.png',
+        watermarkAsset: 'assets/taskoon_logo.png',
+        onAccept: () {
+          // After accepting, optionally open the “wait longer” dialog
+          showDialogBookingWaitLonger(
+            context,
+            topBadgeAsset: 'assets/accept_icon.png',
+            watermarkAsset: 'assets/taskoon_logo.png',
+            onAccept: () {
+           Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
+            },
+            onCancel: () {
+              // handle “no, thank you”
+            },
+          );
+        },
+        onCancel: () {
+          // handle cancel of the first dialog
+        },
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      elevation: 0,
+      backgroundColor:  Constants.primaryDark,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    child: const Text(
+      'ACCEPT BOOKING',
+      style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: .4),
+    ),
+  ),
+),
 
-                      
-//                     },
-//                     cancel: () {/* share file */},
-//                   );
-
-                    },
-                    cancel: () {/* share file */},
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
-                  backgroundColor: Constants.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('ACCEPT BOOKING',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800, letterSpacing: .4)),
-              ),
-            ),
           ],
         );
       },

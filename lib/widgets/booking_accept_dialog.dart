@@ -3,21 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
 
+
 Future<void> showBookingAcceptDialog(
   BuildContext context, {
   // Assets
-  required String topBadgeAsset, // e.g. 'assets/dialog/badge_doc.png'
-  required String watermarkAsset, // e.g. 'assets/dialog/watermark_wheel.png'
-  String? downloadIconAsset, // e.g. 'assets/dialog/ic_download.png'
-  String? shareIconAsset, // e.g. 'assets/dialog/ic_share.png'
+  required String topBadgeAsset,
+  required String watermarkAsset,
+  String? downloadIconAsset,
+  String? shareIconAsset,
 
   // Text
   String title = 'Accept Booking',
   String subtitle = 'Do you want to accept the booking?',
 
   // Actions
-  VoidCallback? accept,
-  VoidCallback? cancel,
+  VoidCallback? onAccept,
+  VoidCallback? onCancel,
 }) {
   return showGeneralDialog(
     context: context,
@@ -26,44 +27,37 @@ Future<void> showBookingAcceptDialog(
     barrierColor: Colors.black.withOpacity(.15),
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (_, __, ___) {
-      final width = MediaQuery.of(context).size.width * 0.80; // responsive
+      final width = MediaQuery.of(context).size.width * 0.80;
       return Stack(
         fit: StackFit.expand,
         children: [
-          // Frosted scrim
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: const SizedBox.expand(),
           ),
-          // Dialog card
           Center(
-            child: _DownloadDialogCard(
+            child: _DecisionDialogCard(
               width: width,
               title: title,
               subtitle: subtitle,
               topBadgeAsset: topBadgeAsset,
               watermarkAsset: watermarkAsset,
-              downloadIconAsset: downloadIconAsset,
-              shareIconAsset: shareIconAsset,
-              accept: () {
-                   showDialogBookingWaitLonger(
-                    context,
-                    topBadgeAsset: 'assets/accept_icon.png',
-                    watermarkAsset: 'assets/taskoon_logo.png',
-                    downloadIconAsset: 'assets/taskoon_logo.png',
-                    shareIconAsset: 'assets/taskoon_logo.png',
-                    accept: () {
-
-                      
-                    },
-                    cancel: () {/* share file */},
-                  );
-
-
-           
-                Navigator.of(context).maybePop(); // close after download
+              // optional icons (unused visually here but kept for parity)
+              primaryLabel: 'Accept',
+              primaryIcon: Icons.task_alt,
+              onPrimary: () {
+                Navigator.of(context).pop(); // close this dialog first
+                onAccept?.call();
               },
-              cancle: cancel, // keep open; caller can close if desired
+              secondaryLabel: 'Cancel',
+              secondaryIcon: Icons.cancel,
+              onSecondary: () {
+                Navigator.of(context).pop();
+                onCancel?.call();
+              },
+              secondaryOutlined: true,
+              warningText:
+                  'Cancellations may affect your future bookings',
             ),
           ),
         ],
@@ -86,46 +80,55 @@ Future<void> showBookingAcceptDialog(
     },
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                         PRIVATE WIDGETS (same file)                         */
-/* -------------------------------------------------------------------------- */
-
-// Glassmorphic dialog card used by showReportDownloadDialog()
-class _DownloadDialogCard extends StatelessWidget {
-  const _DownloadDialogCard({
+class _DecisionDialogCard extends StatelessWidget {
+  const _DecisionDialogCard({
     required this.width,
     required this.title,
     required this.subtitle,
     required this.topBadgeAsset,
     required this.watermarkAsset,
-    this.downloadIconAsset,
-    this.shareIconAsset,
-    this.accept,
-    this.cancle,
+    // Primary (right) action
+    required this.primaryLabel,
+    required this.primaryIcon,
+    required this.onPrimary,
+    // Secondary (left) action
+    required this.secondaryLabel,
+    required this.secondaryIcon,
+    required this.onSecondary,
+    this.secondaryOutlined = false,
+    // Optional extra texts
+    this.warningText,
+    this.highlightText,
+    this.highlightColor,
   });
 
   final double width;
   final String title;
   final String subtitle;
 
-  // Assets
   final String topBadgeAsset;
   final String watermarkAsset;
-  final String? downloadIconAsset;
-  final String? shareIconAsset;
 
-  // Actions
-  final VoidCallback? accept;
-  final VoidCallback? cancle;
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final VoidCallback onPrimary;
+
+  final String secondaryLabel;
+  final IconData secondaryIcon;
+  final VoidCallback onSecondary;
+  final bool secondaryOutlined;
+
+  final String? warningText;   // red line (optional)
+  final String? highlightText; // green line (optional)
+  final Color? highlightColor;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final clampedW = width.clamp(300.0, 420.0);
+    final double clampedW = width.clamp(300.0, 420.0) as double;
 
     return Material(
-      color: Colors.white.withOpacity(0.10),
+      color: Colors.transparent,
       child: Container(
         width: clampedW,
         constraints: const BoxConstraints(minWidth: 300, maxWidth: 420),
@@ -134,9 +137,9 @@ class _DownloadDialogCard extends StatelessWidget {
           children: [
             // Glass card
             ClipRRect(
-              // borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -147,21 +150,21 @@ class _DownloadDialogCard extends StatelessWidget {
                         Colors.white.withOpacity(isDark ? 0.06 : 0.18),
                       ],
                     ),
-                    // border: Border.all(
-                    //   color: Colors.white.withOpacity(isDark ? 0.20 : 0.30),
-                    // ),
-                    // boxShadow: [
-                    //   BoxShadow(
-                    //     color: Colors.black.withOpacity(0.20),
-                    //     blurRadius: 28,
-                    //     offset: const Offset(0, 16),
-                    //   ),
-                    // ],
-                    // borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(isDark ? 0.20 : 0.30),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.20),
+                        blurRadius: 28,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Stack(
                     children: [
-                      // Watermark (bottom-right, non-interactive)
+                      // Watermark
                       Positioned(
                         right: -8,
                         bottom: -8,
@@ -182,8 +185,7 @@ class _DownloadDialogCard extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SizedBox(
-                                height: 26), // space for the top badge overlap
+                            const SizedBox(height: 26), // space for top badge
                             Text(
                               title,
                               textAlign: TextAlign.center,
@@ -203,44 +205,49 @@ class _DownloadDialogCard extends StatelessWidget {
                                 color: isDark ? Colors.white70 : Colors.black87,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Cancellations may effect your future bookings',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
+                            if (warningText != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                warningText!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
                                   fontSize: 14.5,
                                   height: 1.35,
                                   color: Colors.red,
-                                  fontWeight: FontWeight.w600),
-                            ),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                            if (highlightText != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                highlightText!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  height: 1.35,
+                                  color: highlightColor ?? Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 18),
                             Row(
                               children: [
-                                // Expanded(
-                                //   child: _ActionButton(
-                                //     label: 'Download PDF',
-                                //     iconAsset: downloadIconAsset,
-                                //     fallbackIcon: Icons.download_rounded,
-                                //     onPressed: onDownload,
-                                //   ),
-                                // ),
-                                const SizedBox(width: 12),
                                 Expanded(
                                   child: _ActionButton(
-                                    label: 'Cancel',
-                                    iconAsset: null,
-                                    fallbackIcon: Icons.cancel,
-                                    outlined: true,
-                                    onPressed: cancle,
+                                    label: secondaryLabel,
+                                    fallbackIcon: secondaryIcon,
+                                    outlined: secondaryOutlined,
+                                    onPressed: onSecondary,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _ActionButton(
-                                    label: 'Accept',
-                                    iconAsset: null,
-                                    fallbackIcon: Icons.task_alt,
-                                    onPressed: accept,
+                                    label: primaryLabel,
+                                    fallbackIcon: primaryIcon,
+                                    onPressed: onPrimary,
                                   ),
                                 ),
                               ],
@@ -254,7 +261,7 @@ class _DownloadDialogCard extends StatelessWidget {
               ),
             ),
 
-            // Top circular badge that overlaps the card
+            // Top circular badge
             Positioned(
               top: -28,
               left: 0,
@@ -285,7 +292,7 @@ class _DownloadDialogCard extends StatelessWidget {
                           child: Image.asset(
                             topBadgeAsset,
                             fit: BoxFit.contain,
-                            color: Color(0xFF5C2E91)
+                            color:  Constants.primaryDark,
                           ),
                         ),
                       ),
@@ -305,13 +312,11 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.label,
     required this.fallbackIcon,
-    this.iconAsset,
     this.onPressed,
     this.outlined = false,
   });
 
   final String label;
-  final String? iconAsset;
   final IconData fallbackIcon;
   final VoidCallback? onPressed;
   final bool outlined;
@@ -320,12 +325,12 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bg = outlined
+    final Color bg = outlined
         ? Colors.white.withOpacity(isDark ? 0.02 : 0.06)
-        : const Color(0xFF5C2E91);
-    final fg =
+        :  Constants.primaryDark;
+    final Color fg =
         outlined ? (isDark ? Colors.white : Colors.black87) : Colors.white;
-    final borderColor = outlined
+    final Color borderColor = outlined
         ? Colors.white.withOpacity(isDark ? 0.25 : 0.28)
         : Colors.transparent;
 
@@ -336,9 +341,8 @@ class _ActionButton extends StatelessWidget {
         style: ButtonStyle(
           backgroundColor: MaterialStatePropertyAll<Color>(bg),
           foregroundColor: MaterialStatePropertyAll<Color>(fg),
-          overlayColor: MaterialStatePropertyAll<Color>(
-            Colors.white.withOpacity(0.08),
-          ),
+          overlayColor:
+              MaterialStatePropertyAll<Color>(Colors.white.withOpacity(0.08)),
           shape: MaterialStatePropertyAll<RoundedRectangleBorder>(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -352,21 +356,8 @@ class _ActionButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (iconAsset != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Image.asset(
-                  iconAsset!,
-                  width: 18,
-                  height: 18,
-                  fit: BoxFit.contain,
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Icon(fallbackIcon, size: 20),
-              ),
+            Icon(fallbackIcon, size: 20),
+            const SizedBox(width: 8),
             Flexible(
               child: Text(
                 label,
