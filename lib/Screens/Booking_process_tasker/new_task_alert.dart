@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:taskoon/Constants/constants.dart';
 
-
 // task_alert_glass_map.dart
 import 'dart:math';
 import 'dart:ui';
@@ -12,7 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:taskoon/widgets/dialog_widget.dart';
+import 'package:taskoon/widgets/booking_accept_dialog.dart';
+import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
 
 /// New Task Alert — Glassmorphism + Google Maps (AU)
 /// - Real Google Map as background
@@ -94,7 +94,8 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
         Marker(
           markerId: MarkerId('rnd_$i'),
           position: LatLng(lat, lng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         ),
       );
     }
@@ -105,13 +106,15 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFF7F7FA),
+      backgroundColor:
+          isDark ? const Color(0xFF0F0F12) : const Color(0xFFF7F7FA),
       body: Stack(
         children: [
           // --- GOOGLE MAP (fully interactive) ---
           Positioned.fill(
             child: GoogleMap(
-              initialCameraPosition: CameraPosition(target: widget.job, zoom: 11.8),
+              initialCameraPosition:
+                  CameraPosition(target: widget.job, zoom: 11.8),
               markers: _markers,
               // Explicit gesture enables
               scrollGesturesEnabled: true,
@@ -124,7 +127,8 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
               buildingsEnabled: true,
               // Claim gestures even if under translucent layers/scrollables
               gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+                Factory<OneSequenceGestureRecognizer>(
+                    () => EagerGestureRecognizer()),
               },
               onMapCreated: (c) async {
                 _controller = c;
@@ -178,18 +182,24 @@ class _TaskAlertGlassScreenState extends State<TaskAlertGlassScreen> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(.10),
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: Colors.white.withOpacity(.22)),
+                            border: Border.all(
+                                color: Colors.white.withOpacity(.22)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(Icons.notifications_active_rounded, size: 16, color: Colors.white),
+                              Icon(Icons.notifications_active_rounded,
+                                  size: 16, color: Colors.white),
                               SizedBox(width: 6),
-                              Text('Live', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                              Text('Live',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -268,7 +278,8 @@ class _GlassPanel extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: w >= 400 ? 18 : 14, vertical: 16),
+              padding: EdgeInsets.symmetric(
+                  horizontal: w >= 400 ? 18 : 14, vertical: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -353,25 +364,31 @@ class _TaskDetails extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                Text('Earnings', style: text.bodyMedium?.copyWith(color: muted, fontWeight: FontWeight.w600)),
+                Text('Earnings',
+                    style: text.bodyMedium
+                        ?.copyWith(color: muted, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 8),
-                Text('\$12.00', style: text.titleLarge?.copyWith(color: const Color(0xFF12B76A), fontWeight: FontWeight.w900)),
+                Text('\$12.00',
+                    style: text.titleLarge?.copyWith(
+                        color: const Color(0xFF12B76A),
+                        fontWeight: FontWeight.w900)),
               ],
             ),
             const SizedBox(height: 12),
-
             const _InfoRow(icon: Icons.person_rounded, label: 'Susan P'),
             const SizedBox(height: 8),
             const _InfoRow(icon: Icons.qr_code_rounded, label: 'Moving help'),
             const SizedBox(height: 8),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 _InfoIcon(icon: Icons.access_time_rounded),
                 SizedBox(width: 8),
                 Expanded(
-                  child: Text('Today, 2:00', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                  child: Text('Today, 2:00',
+                      style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontWeight: FontWeight.w600)),
                 ),
                 SizedBox(width: 8),
                 _RightStat(value: '2 hours'),
@@ -380,8 +397,8 @@ class _TaskDetails extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-
-            const _InfoRow(icon: Icons.location_on_rounded, label: 'Resto Padang Gahar'),
+            const _InfoRow(
+                icon: Icons.location_on_rounded, label: 'Resto Padang Gahar'),
             Padding(
               padding: const EdgeInsets.only(left: 28, top: 2),
               child: Text(
@@ -389,30 +406,47 @@ class _TaskDetails extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: Colors.grey.shade600),
               ),
             ),
-
             const SizedBox(height: 18),
             SizedBox(
               height: 52,
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                showReportDownloadDialog(
-      context,
-      topBadgeAsset: 'assets/accept_icon.png',
-      watermarkAsset: 'assets/taskoon_logo.png',
-      downloadIconAsset: 'assets/taskoon_logo.png',
-      shareIconAsset: 'assets/taskoon_logo.png',
-      onDownload: () { /* save PDF */ },
-      onShare: () { /* share file */ },
-    );
+                  showBookingAcceptDialog(
+                    context,
+                    topBadgeAsset: 'assets/accept_icon.png',
+                    watermarkAsset: 'assets/taskoon_logo.png',
+                    downloadIconAsset: 'assets/taskoon_logo.png',
+                    shareIconAsset: 'assets/taskoon_logo.png',
+                    accept: () {
+                       print("click");
+//  showDialogBookingWaitLonger(
+//                     context,
+//                     topBadgeAsset: 'assets/accept_icon.png',
+//                     watermarkAsset: 'assets/taskoon_logo.png',
+//                     downloadIconAsset: 'assets/taskoon_logo.png',
+//                     shareIconAsset: 'assets/taskoon_logo.png',
+//                     accept: () {
+
+                      
+//                     },
+//                     cancel: () {/* share file */},
+//                   );
+
+                    },
+                    cancel: () {/* share file */},
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: Constants.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('ACCEPT BOOKING', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: .4)),
+                child: const Text('ACCEPT BOOKING',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800, letterSpacing: .4)),
               ),
             ),
           ],
@@ -435,7 +469,11 @@ class _InfoRow extends StatelessWidget {
         _InfoIcon(icon: icon),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: muted, fontWeight: FontWeight.w600)),
+          child: Text(label,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: muted, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -474,9 +512,9 @@ class _RightStat extends StatelessWidget {
       ),
       child: Text(
         value,
-        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF383B45)),
+        style: const TextStyle(
+            fontWeight: FontWeight.w800, color: Color(0xFF383B45)),
       ),
     );
   }
 }
-

@@ -1,8 +1,8 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:taskoon/Constants/constants.dart';
 
-Future<void> showReportDownloadDialog(
+import 'package:flutter/material.dart';
+
+Future<void> showDialogBookingWaitLonger(
   BuildContext context, {
   // Assets
   required String topBadgeAsset, // e.g. 'assets/dialog/badge_doc.png'
@@ -11,12 +11,12 @@ Future<void> showReportDownloadDialog(
   String? shareIconAsset, // e.g. 'assets/dialog/ic_share.png'
 
   // Text
-  String title = 'Accept Booking',
-  String subtitle = 'Do you want to accept the booking?',
+  String title = 'Service Extension Request',
+  String subtitle = 'The user needs you a bit longer, are you up for it?',
 
   // Actions
-  VoidCallback? onDownload,
-  VoidCallback? onShare,
+  VoidCallback? accept,
+  VoidCallback? cancel,
 }) {
   return showGeneralDialog(
     context: context,
@@ -44,11 +44,25 @@ Future<void> showReportDownloadDialog(
               watermarkAsset: watermarkAsset,
               downloadIconAsset: downloadIconAsset,
               shareIconAsset: shareIconAsset,
-              onDownload: () {
-                onDownload?.call();
-                Navigator.of(context).maybePop(); // close after download
+              accept: () {
+                print("click");
+
+                showDialogBookingWaitLonger(
+                    context,
+                    topBadgeAsset: 'assets/accept_icon.png',
+                    watermarkAsset: 'assets/taskoon_logo.png',
+                    downloadIconAsset: 'assets/taskoon_logo.png',
+                    shareIconAsset: 'assets/taskoon_logo.png',
+                    accept: () {
+
+                      
+                    },
+                    cancel: () {/* share file */},
+                  );
+                
+               // Navigator.of(context).maybePop(); // close after download
               },
-              onShare: onShare, // keep open; caller can close if desired
+              cancel: cancel, // keep open; caller can close if desired
             ),
           ),
         ],
@@ -86,8 +100,8 @@ class _DownloadDialogCard extends StatelessWidget {
     required this.watermarkAsset,
     this.downloadIconAsset,
     this.shareIconAsset,
-    this.onDownload,
-    this.onShare,
+    this.accept,
+    this.cancel,
   });
 
   final double width;
@@ -101,8 +115,8 @@ class _DownloadDialogCard extends StatelessWidget {
   final String? shareIconAsset;
 
   // Actions
-  final VoidCallback? onDownload;
-  final VoidCallback? onShare;
+  final VoidCallback? accept;
+  final VoidCallback? cancel;
 
   @override
   Widget build(BuildContext context) {
@@ -190,12 +204,12 @@ class _DownloadDialogCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Cancellations may effect your future bookings',
+                              "Earn an extra 12.50'\$'",
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontSize: 14.5,
                                   height: 1.35,
-                                  color: Colors.red,
+                                  color: Colors.green,
                                   fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 18),
@@ -212,20 +226,20 @@ class _DownloadDialogCard extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _ActionButton(
-                                    label: 'Cancel',
+                                    label: 'NO, THANK YOU',
                                     iconAsset: null,
                                     fallbackIcon: Icons.cancel,
                                     outlined: true,
-                                    onPressed: onShare,
+                                    onPressed: cancel,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _ActionButton(
-                                    label: 'Accept',
+                                    label: "YES, I'M UP!",
                                     iconAsset: null,
                                     fallbackIcon: Icons.task_alt,
-                                    onPressed: onDownload,
+                                    onPressed: accept,
                                   ),
                                 ),
                               ],
