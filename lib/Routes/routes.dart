@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/app_shell.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/splash_screen.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/consent.dart';
@@ -25,6 +26,7 @@ class Routes {
   static const cerificationScreen = '/Certifications-screen';
   static const appShellScreen = '/app_Shell-screen';
   static const taskerHomeScreen = '/taskerhome-screen';
+  static const takerHomeBottomNavBarRoot = '/tasker_home_bottom_nav_bar';
 }
 
 class AppRouter {
@@ -52,6 +54,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const AppShell());
         case Routes.taskerHomeScreen:
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
+                case Routes.takerHomeBottomNavBarRoot:
+        return MaterialPageRoute(builder: (_) => const TaskoonApp());
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

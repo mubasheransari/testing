@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:taskoon/Constants/constants.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/chat_with_tasker.dart';
 
 class ArrivalConfirmGlassScreen extends StatefulWidget {
   const ArrivalConfirmGlassScreen({super.key});
@@ -118,12 +119,13 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                                 HapticFeedback.lightImpact();
                                 setState(() => arrived = true);
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      behavior: SnackBarBehavior.floating,
-                                      content: Text('Client notified: You have arrived.'),
-                                    ),
-                                  );
+                                  Navigator.push(context, MaterialPageRoute(builder: (context)=> ChatApp()));
+                                  // ScaffoldMessenger.of(context).showSnackBar(
+                                  //   const SnackBar(
+                                  //     behavior: SnackBarBehavior.floating,
+                                  //     content: Text('Client notified: You have arrived.'),
+                                  //   ),
+                                  // );
                                 }
                               },
                               trackColor: arrived == true ? Constants.primaryDark : Color(0xFF2E7D32), // dark green
