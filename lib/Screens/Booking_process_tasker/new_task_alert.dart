@@ -401,32 +401,20 @@ class _TaskDetails extends StatelessWidget {
   height: 52,
   width: double.infinity,
   child: ElevatedButton(
-    onPressed: () {
-      showBookingAcceptDialog(
-        context,
-        topBadgeAsset: 'assets/accept_icon.png',
-        watermarkAsset: 'assets/taskoon_logo.png',
-        onAccept: () {
-              Navigator.of(context).pop();
-                     Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
+    onPressed: () async{
+final accepted = await showBookingAcceptDialog(
+  context,
+  topBadgeAsset: 'assets/accept_icon.png',
+  watermarkAsset: 'assets/taskoon_logo.png',
+);
 
-          // After accepting, optionally open the “wait longer” dialog
-          // showDialogBookingWaitLonger(
-          //   context,
-          //   topBadgeAsset: 'assets/accept_icon.png',
-          //   watermarkAsset: 'assets/taskoon_logo.png',
-          //   onAccept: () {
-          //  Navigator.push(context, MaterialPageRoute(builder: (context)=> ArrivalConfirmGlassScreen()));
-          //   },
-          //   onCancel: () {
-          //     // handle “no, thank you”
-          //   },
-          // );
-        },
-        onCancel: () {
-          // handle cancel of the first dialog
-        },
-      );
+if (accepted == true && context.mounted) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const ArrivalConfirmGlassScreen()),
+  );
+}
+
+
     },
     style: ElevatedButton.styleFrom(
       elevation: 0,
