@@ -112,11 +112,11 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                 ),
                 child: Row(
                   children: [
-                    // IconButton(
-                    //   icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    //       color: _p),
-                    //   onPressed: () => Navigator.of(context).maybePop(),
-                    // ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: _p),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
                     const SizedBox(width: 6),
                     const Text(
                       'My account',

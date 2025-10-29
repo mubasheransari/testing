@@ -151,7 +151,7 @@ class _PrestartSafetyCheckScreenState extends State<PrestartSafetyCheckScreen> {
             const _SectionHeading(
               icon: Icons.place_outlined,
               title: 'Job location and task details',
-              trailing: '(auto filled)',
+              trailing: '',
             ),
 
             const SizedBox(height: 14),

@@ -3,6 +3,7 @@ import 'package:taskoon/Screens/Booking_process_tasker/app_shell.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/splash_screen.dart';
+import 'package:taskoon/Screens/User_booking/user_booking_nav_bar.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/consent.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/document_upload.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/personal_info.dart';
@@ -27,6 +28,7 @@ class Routes {
   static const appShellScreen = '/app_Shell-screen';
   static const taskerHomeScreen = '/taskerhome-screen';
   static const takerHomeBottomNavBarRoot = '/tasker_home_bottom_nav_bar';
+  static const userHomeBottomNavBarRoot = '/user_home_bottom_nav_bar';
 }
 
 class AppRouter {
@@ -56,6 +58,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
                 case Routes.takerHomeBottomNavBarRoot:
         return MaterialPageRoute(builder: (_) => const TaskoonApp());
+                    case Routes.userHomeBottomNavBarRoot:
+        return MaterialPageRoute(builder: (_) => const UserBottomNavBar());
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

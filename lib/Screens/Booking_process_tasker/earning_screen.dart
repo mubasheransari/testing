@@ -637,7 +637,7 @@ class _SectionTitle extends StatelessWidget {
     return _GlassCard(
       radius: 30,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: const EdgeInsets.fromLTRB(19, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -948,6 +948,7 @@ class _GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: MediaQuery.of(context).size.width *0.95,
       margin: margin,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/booking_calcel_dialog.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/task_completion_screen.dart';
 
 class TaskCountdownScreen extends StatefulWidget {
   const TaskCountdownScreen({
@@ -116,29 +118,30 @@ class _TaskCountdownScreenState extends State<TaskCountdownScreen> {
 
   void _onComplete() {
     _ticker?.cancel();
-    // TODO: trigger your completion flow here
+   Navigator.push(context, MaterialPageRoute(builder: (context)=> TaskCompletionScreen()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Task marked complete')),
     );
   }
 
   void _onCancel() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Cancel task?'),
-        content: const Text(
-            'Cancelling will void payment and may affect future bookings.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, cancel')),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      _ticker?.cancel();
-      Navigator.maybePop(context);
-    }
+    showTaskerCancelledDialog(context);
+    // final ok = await showDialog<bool>(
+    //   context: context,
+    //   builder: (_) => AlertDialog(
+    //     title: const Text('Cancel task?'),
+    //     content: const Text(
+    //         'Cancelling will void payment and may affect future bookings.'),
+    //     actions: [
+    //       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+    //       ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, cancel')),
+    //     ],
+    //   ),
+    // );
+    // if (ok == true && mounted) {
+    //   _ticker?.cancel();
+    //   Navigator.maybePop(context);
+    // }
   }
 
   @override

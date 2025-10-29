@@ -90,6 +90,12 @@ flutter:
   assets:
     - assets/
 
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/Poppins-Regular.ttf
+          weight: 400  
+
   # To add assets to your application, add an assets section, like this:
 
   #   - images/a_dot_ham.jpeg

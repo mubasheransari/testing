@@ -189,11 +189,11 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                 ),
                 child: Row(
                   children: [
-                    // IconButton(
-                    //   icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    //       color: Color(0xFF5C2E91)),
-                    //   onPressed: () => Navigator.of(context).maybePop(),
-                    // ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Color(0xFF5C2E91)),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
                     const SizedBox(width: 6),
                     const Text(
                       'Emergency',
