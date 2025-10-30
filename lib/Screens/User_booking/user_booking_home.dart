@@ -278,9 +278,8 @@ class _PromoCard extends StatelessWidget {
                 ),
               ),
               child:  Text(
-                
                 'BROWSE CATEGORIES',
-                style: TextStyle( fontFamily: 'Poppins',fontWeight: FontWeight.w600, letterSpacing: .2),
+                style: TextStyle( fontFamily: 'Poppins',fontWeight: FontWeight.w600, letterSpacing: .1,fontSize: 13),
               ),
             ),
           ),
