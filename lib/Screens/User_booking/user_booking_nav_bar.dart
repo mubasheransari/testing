@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 
 class UserBottomNavBar extends StatelessWidget {
@@ -45,7 +46,7 @@ class _RootNavState extends State<_RootNav> {
 
   final _pages = const [
     UserBookingHome(),
-    UserBookingHome(), // the screen you asked to design
+    GuidelinesScreen(), // the screen you asked to design
     UserBookingHome(),
     UserBookingHome(),
   ];
