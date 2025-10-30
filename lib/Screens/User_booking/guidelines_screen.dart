@@ -18,14 +18,14 @@ class GuidelinesScreenn extends StatelessWidget {
               child: Row(
                 children: [
                   // back
-                  InkWell(
-                    onTap: () => Navigator.maybePop(context),
-                    borderRadius: BorderRadius.circular(999),
-                    child: const Padding(
-                      padding: EdgeInsets.all(6.0),
-                      child: Icon(Icons.arrow_back, color: kPurple, size: 26),
-                    ),
-                  ),
+                  // InkWell(
+                  //   onTap: () => Navigator.maybePop(context),
+                  //   borderRadius: BorderRadius.circular(999),
+                  //   child: const Padding(
+                  //     padding: EdgeInsets.all(6.0),
+                  //     child: Icon(Icons.arrow_back, color: kPurple, size: 26),
+                  //   ),
+                  // ),
                   const SizedBox(width: 14),
 
                    const  Text(
@@ -33,7 +33,7 @@ class GuidelinesScreenn extends StatelessWidget {
                 style: TextStyle(
                  color: kPurple,
                   fontFamily: 'Poppins',
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w600,
                   height: 1.1,
                 ),
