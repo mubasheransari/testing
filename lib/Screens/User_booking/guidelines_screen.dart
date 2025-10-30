@@ -8,7 +8,7 @@ class GuidelinesScreenn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: const Color(0xFFF8F7FB),
       body: SafeArea(
         child: Column(
@@ -17,47 +17,26 @@ class GuidelinesScreenn extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
-                  // back
-                  // InkWell(
-                  //   onTap: () => Navigator.maybePop(context),
-                  //   borderRadius: BorderRadius.circular(999),
-                  //   child: const Padding(
-                  //     padding: EdgeInsets.all(6.0),
-                  //     child: Icon(Icons.arrow_back, color: kPurple, size: 26),
-                  //   ),
-                  // ),
-                  const SizedBox(width: 14),
-
-                   const  Text(
-                'Guidelines',
-                style: TextStyle(
-                 color: kPurple,
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  height: 1.1,
-                ),
-              ),
-                  // const Text(
-                  //   'Guidelines',
-                  //   style: TextStyle(
-                  //     fontSize: 30,
-                  //     fontWeight: FontWeight.w700,
-                  //     color: kPurple,
-                  //     height: 1.0,
-                  //   ),
-                  // ),
+                  SizedBox(width: 14),
+                  Text(
+                    'Guidelines',
+                    style: TextStyle(
+                      color: kPurple,
+                      fontFamily: 'Poppins',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      height: 1.1,
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            // BODY
-          const  Expanded(
+            Expanded(
               child: SingleChildScrollView(
-                padding:  EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children:  [
+                  children: [
                     SizedBox(height: 4),
                     _ImportantCard(),
                     SizedBox(height: 14),
@@ -108,7 +87,7 @@ class GuidelinesScreenn extends StatelessWidget {
                         'Be respectful in all interactions',
                       ],
                     ),
-                    SizedBox(height: 80), 
+                    SizedBox(height: 80),
                   ],
                 ),
               ),
@@ -119,8 +98,6 @@ class GuidelinesScreenn extends StatelessWidget {
     );
   }
 }
-
-
 
 class _ImportantCard extends StatelessWidget {
   const _ImportantCard();
@@ -141,47 +118,54 @@ class _ImportantCard extends StatelessWidget {
           ),
         ],
       ),
-      child:const Row(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children:  [
-          _IconBadge(
-            icon: Icons.warning_amber_rounded,
-            bg: Color(0xFFFFE4A2),
-            fg: Color(0xFFFFB52E),
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 20,
           ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Important',
-                  style: TextStyle(
-                    fontSize: 18.5,
-                    fontWeight: FontWeight.w700,
-                    color: GuidelinesScreenn.kPurple,
-                  ),
+          Row(
+            children: [
+              _IconBadge(
+                icon: Icons.warning_amber_rounded,
+                bg: Color(0xFFFFE4A2),
+                fg: Color(0xFFFFB52E),
+              ),
+              SizedBox(
+                width: 5,
+              ),
+              Text(
+                'Important',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 18.5,
+                  fontWeight: FontWeight.w700,
+                  color: GuidelinesScreenn.kPurple,
                 ),
-                SizedBox(height: 6),
-                Text(
-                  'Please read these guidelines carefully to ensure a safe and smooth service experience.',
-                  style: TextStyle(
-                    fontSize: 14.2,
-                    height: 1.4,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
-                  ),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Please read these guidelines carefully to ensure a safe and smooth service experience.',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14.2,
+                  height: 1.4,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 }
-
-
 
 class _GuidelineCard extends StatelessWidget {
   const _GuidelineCard({
@@ -223,6 +207,7 @@ class _GuidelineCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
+                    fontFamily: 'Poppins',
                     fontWeight: FontWeight.w700,
                     fontSize: 19,
                     color: GuidelinesScreenn.kPurple,
@@ -253,14 +238,13 @@ class _IconBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: bg ?? const Color(0xFFF0EBFF),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Icon(icon, color: fg ?? GuidelinesScreenn.kPurple, size: 22),
-    );
+        width: 35,
+        height: 35,
+        decoration: BoxDecoration(
+          color: bg ?? const Color(0xFFF0EBFF),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Image.asset('assets/shield-exclamation.png'));
   }
 }
 
@@ -288,6 +272,7 @@ class _BulletText extends StatelessWidget {
             child: Text(
               text,
               style: TextStyle(
+                fontFamily: 'Poppins',
                 fontSize: 14.3,
                 height: 1.3,
                 color: Colors.grey.shade900,
