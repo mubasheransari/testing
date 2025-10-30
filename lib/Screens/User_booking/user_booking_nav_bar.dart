@@ -94,13 +94,13 @@ class GlassBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      minimum: const EdgeInsets.fromLTRB(10, 0, 10, 52),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
+          topLeft: Radius.circular(5),
+          topRight: Radius.circular(5),
+          bottomLeft: Radius.circular(5),
+          bottomRight: Radius.circular(5),
         ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),

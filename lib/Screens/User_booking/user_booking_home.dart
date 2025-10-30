@@ -54,7 +54,7 @@ class UserBookingHome extends StatelessWidget {
                 style: TextStyle(
                   color: brand.primary,
                   fontFamily: 'Poppins',
-                  fontSize: 26,
+                  fontSize: 20,
                   fontWeight: FontWeight.w500,
                   height: 1.1,
                 ),
@@ -70,7 +70,7 @@ class UserBookingHome extends StatelessWidget {
                     style: TextStyle(
                        fontFamily: 'Poppins',
                       color: brand.textMuted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -82,7 +82,7 @@ class UserBookingHome extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: brand.outline),
                   boxShadow: [
                     BoxShadow(
@@ -95,7 +95,7 @@ class UserBookingHome extends StatelessWidget {
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search for services....',
-                    hintStyle: TextStyle(color: brand.textMuted, fontFamily: 'Poppins',),
+                    hintStyle: TextStyle(color: brand.textMuted, fontFamily: 'Poppins',fontWeight: FontWeight.w500,fontSize: 14),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     border: InputBorder.none,
@@ -114,7 +114,7 @@ class UserBookingHome extends StatelessWidget {
 
               // Promo card
               _PromoCard(
-                width: w,
+                width: w *0.99,
                 onTap: () {},
               ),
 
@@ -122,7 +122,7 @@ class UserBookingHome extends StatelessWidget {
 
               // Image banner
               ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(12),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: Image.network(
@@ -151,7 +151,7 @@ class UserBookingHome extends StatelessWidget {
                   Expanded(
                     child: _QuickActionCard(
                       title: 'Book Service',
-                      subtitle: 'Find and book\nprofessional services',
+                      subtitle: 'Book\nprofessional services',
                       icon: Icons.event_available_rounded,
                       onTap: () {},
                     ),
@@ -225,7 +225,7 @@ class _PromoCard extends StatelessWidget {
     const brand = _Brand();
 
     return Container(
-      width: width,
+      width: MediaQuery.of(context).size.width *90,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -233,7 +233,7 @@ class _PromoCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
             color: brand.primary.withOpacity(.25),
@@ -267,20 +267,20 @@ class _PromoCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           SizedBox(
-            height: 44,
+            height: 38,
             child: TextButton(
               onPressed: onTap,
               style: TextButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: brand.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(5),
                 ),
               ),
-              child: const Text(
+              child:  Text(
                 
                 'BROWSE CATEGORIES',
-                style: TextStyle( fontFamily: 'Poppins',fontWeight: FontWeight.w800, letterSpacing: .3),
+                style: TextStyle( fontFamily: 'Poppins',fontWeight: FontWeight.w600, letterSpacing: .2),
               ),
             ),
           ),
@@ -307,62 +307,65 @@ class _QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const brand = _Brand();
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: brand.primary, width: 1),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.04),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: brand.primary.withOpacity(.10),
-                borderRadius: BorderRadius.circular(10),
+    return Container(
+      height: 97,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: brand.primary, width: 1),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.04),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
               ),
-              child: Icon(icon, color: brand.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: brand.primary.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: brand.primary),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                           fontFamily: 'Poppins',
+                          color: brand.primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                        )),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
                       style: TextStyle(
                          fontFamily: 'Poppins',
-                        color: brand.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15.5,
-                      )),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                       fontFamily: 'Poppins',
-                      color: brand.textMuted,
-                      height: 1.25,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
+                        color: brand.textMuted,
+                        height: 1.05,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
