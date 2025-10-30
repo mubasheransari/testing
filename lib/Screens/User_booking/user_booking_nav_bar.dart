@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
+import 'package:taskoon/Screens/User_booking/guidelines_screen.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 
 class UserBottomNavBar extends StatelessWidget {
@@ -46,7 +47,7 @@ class _RootNavState extends State<_RootNav> {
 
   final _pages = const [
     UserBookingHome(),
-    GuidelinesScreen(), // the screen you asked to design
+    GuidelinesScreenn(), // the screen you asked to design
     UserBookingHome(),
     UserBookingHome(),
   ];
@@ -94,13 +95,13 @@ class GlassBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(10, 0, 10, 52),
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(5),
-          topRight: Radius.circular(5),
-          bottomLeft: Radius.circular(5),
-          bottomRight: Radius.circular(5),
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
+          bottomLeft: Radius.circular(25),
+          bottomRight: Radius.circular(25),
         ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
