@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
+import 'package:taskoon/Screens/User_booking/select_service.dart';
 
 
 
@@ -50,7 +53,7 @@ class UserBookingHome extends StatelessWidget {
             children: [
               // Greeting + location
               Text(
-                'Good Morning',
+                'Good Morning ${context.read<AuthenticationBloc>().state.serviceGroups.length}',
                 style: TextStyle(
                   color: brand.primary,
                   fontFamily: 'Poppins',
@@ -153,7 +156,9 @@ class UserBookingHome extends StatelessWidget {
                       title: 'Book Service',
                       subtitle: 'Book\nprofessional services',
                       icon: Icons.event_available_rounded,
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=> ServiceCertificatesGridScreen()));
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/app_shell.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
@@ -58,8 +61,18 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
                 case Routes.takerHomeBottomNavBarRoot:
         return MaterialPageRoute(builder: (_) => const TaskoonApp());
-                    case Routes.userHomeBottomNavBarRoot:
-        return MaterialPageRoute(builder: (_) => const UserBottomNavBar());
+
+        case Routes.userHomeBottomNavBarRoot:
+  return MaterialPageRoute(
+    builder: (context) {
+      // fire your bloc event once we land on this route
+      context.read<AuthenticationBloc>().add(LoadServicesRequested());
+      return const UserBottomNavBar();
+    },
+  );
+        //             case Routes.userHomeBottomNavBarRoot:
+        // return MaterialPageRoute(builder: (_) => const UserBottomNavBar()
+        
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

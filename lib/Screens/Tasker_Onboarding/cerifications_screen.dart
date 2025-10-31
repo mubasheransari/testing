@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
-import '../../Constants/constants.dart';
 import '../../Models/services_group_model.dart';
-import '../../Models/services_ui_model.dart';
 import 'choose_service_cerifications.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
-import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/services_ui_model.dart' as ui;
 
