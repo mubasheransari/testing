@@ -402,7 +402,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
 
-    Navigator.push(context, MaterialPageRoute(builder: (context)=> ServiceInProgressScreen()));
+    Navigator.push(context, MaterialPageRoute(builder: (context)=> ServiceProgressScreen(totalMinutes: 3,)));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
