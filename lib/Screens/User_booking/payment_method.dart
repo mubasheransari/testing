@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/User_booking/checkout_screen.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
@@ -109,8 +110,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                     onTap: _onSelect,
                     leading: _roundedIcon(
                       child: Image.asset(
-                        'assets/apple-pay.png',
-                        height: 20,
+                        'assets/apple_pay.png',
+                        height: 30,
+                        width: 30,
+                        fit: BoxFit.fill,
                       ),
                     ),
                     title: 'Apple Pay',
@@ -121,7 +124,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                     onTap: _onSelect,
                     leading: _roundedIcon(
                       child: Image.asset(
-                        'assets/gpay.png',
+                        'assets/google_pay_icon.jpg',
                         height: 20,
                       ),
                     ),
@@ -178,7 +181,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    // handle select
+                                    Navigator.push(context, MaterialPageRoute(builder: (context)=> CheckoutScreen()));
+
                   },
                   child: const Text(
                     'SELECT',
