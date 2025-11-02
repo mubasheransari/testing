@@ -214,10 +214,16 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                               color: purple.withOpacity(.85)),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(
-                              _fmtDate(_selectedDate),
-                              style: const TextStyle(
-                                  color: purple, fontWeight: FontWeight.w500),
+                            child: SizedBox(
+                              height: 43,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top:12.5),
+                                child: Text(
+                                  _fmtDate(_selectedDate),
+                                  style: const TextStyle(
+                                      color: purple, fontWeight: FontWeight.w500),
+                                ),
+                              ),
                             ),
                           ),
                           const Icon(Icons.chevron_right_rounded,
@@ -342,12 +348,13 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.search_rounded, size: 20),
+                  icon: const Icon(Icons.search_rounded, size: 20, color: Colors.white),
                   label: const Text(
                     'FIND TASKER',
                     style: TextStyle(
                       letterSpacing: .3,
                       fontWeight: FontWeight.w700,
+                      color: Colors.white
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -565,22 +572,48 @@ class _PlacesSheetState extends State<_PlacesSheet> {
   bool _loading = false;
 
   Future<void> _search(String q) async {
-    if (q.trim().isEmpty) {
-      setState(() => _preds = []);
+  if (q.trim().isEmpty) {
+    setState(() => _preds = []);
+    return;
+  }
+  setState(() => _loading = true);
+  final res = await widget.googlePlace.autocomplete.get(
+    q,
+    components: [gp.Component('country', 'au')],
+    language: 'en',
+  );
+  setState(() {
+    _loading = false;
+    if (res == null) {
+      debugPrint('Places: response is null');
+      _preds = [];
       return;
     }
-    setState(() => _loading = true);
-    final res = await widget.googlePlace.autocomplete.get(
-      q,
-      // 🇦🇺 restrict to Australia
-      components: [gp.Component('country', 'au')],
-      language: 'en',
-    );
-    setState(() {
-      _loading = false;
-      _preds = res?.predictions ?? [];
-    });
-  }
+    if (res.status != null) {
+      debugPrint('Places error: ${res.status}');
+    }
+    _preds = res.predictions ?? [];
+  });
+}
+
+
+  // Future<void> _search(String q) async {
+  //   if (q.trim().isEmpty) {
+  //     setState(() => _preds = []);
+  //     return;
+  //   }
+  //   setState(() => _loading = true);
+  //   final res = await widget.googlePlace.autocomplete.get(
+  //     q,
+  //     // 🇦🇺 restrict to Australia
+  //     components: [gp.Component('country', 'au')],
+  //     language: 'en',
+  //   );
+  //   setState(() {
+  //     _loading = false;
+  //     _preds = res?.predictions ?? [];
+  //   });
+  // }
 
   Future<void> _pick(gp.AutocompletePrediction p) async {
     gp.DetailsResponse? d;
