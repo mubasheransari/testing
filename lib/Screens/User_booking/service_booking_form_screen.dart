@@ -1,24 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
-
-
-import 'dart:ui';
-import 'package:flutter/material.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_google_places/flutter_google_places.dart';
-import 'package:google_maps_webservice/places.dart';
-
-// put your real key here
-import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:google_place/google_place.dart';
-
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
 
@@ -26,8 +7,12 @@ import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
 
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
-  const ServiceBookingFormScreen({super.key, required this.group});
-
+  final ServiceOption? initialService; 
+ServiceBookingFormScreen({
+    super.key,
+    required this.group,
+    this.initialService,
+  });
   @override
   State<ServiceBookingFormScreen> createState() =>
       _ServiceBookingFormScreenState();
@@ -58,6 +43,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   @override
   void initState() {
     super.initState();
+        _selectedSubcategory = widget.initialService;
     _googlePlace = gp.GooglePlace(_kPlacesApiKey);
   }
 
