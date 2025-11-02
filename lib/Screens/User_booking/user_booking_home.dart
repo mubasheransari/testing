@@ -53,7 +53,7 @@ class UserBookingHome extends StatelessWidget {
             children: [
               // Greeting + location
               Text(
-                'Good Morning ${context.read<AuthenticationBloc>().state.serviceGroups.length}',
+                'Good Morning',
                 style: TextStyle(
                   color: brand.primary,
                   fontFamily: 'Poppins',

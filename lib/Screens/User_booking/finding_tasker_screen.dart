@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/User_booking/tasker_confirmation_screen.dart';
 
-class FindingYourTaskerScreen extends StatelessWidget {
+class FindingYourTaskerScreen extends StatefulWidget {
   const FindingYourTaskerScreen({super.key});
 
   // colors picked from screenshot
@@ -9,11 +10,29 @@ class FindingYourTaskerScreen extends StatelessWidget {
   static const Color ringGold2 = Color(0xFFD7A939);
 
   @override
+  State<FindingYourTaskerScreen> createState() => _FindingYourTaskerScreenState();
+}
+
+class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const TaskerConfirmationScreen(), // <- your real screen
+        ),
+      );
+    });
+  }
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: bgPurple,
+      backgroundColor: FindingYourTaskerScreen.bgPurple,
       body: Stack(
         children: [
           // top wave
