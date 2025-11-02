@@ -32,11 +32,9 @@ class ServiceBookingFormScreen extends StatefulWidget {
 
 class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   static const purple = Color(0xFF4A2C73);
-  static const surface = Color(0xFFF7F3FF);
 
-  // TODO: put your real key here
+  // TODO: real key
   static const _kPlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
-
   late final gp.GooglePlace _googlePlace;
 
   ServiceOption? _selectedSubcategory;
@@ -44,9 +42,11 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
-  bool _bookNow = false;
   final _locationCtrl = TextEditingController();
   gp.DetailsResponse? _pickedPlaceDetails;
+
+  // validation flag
+  bool _showErrors = false;
 
   @override
   void initState() {
@@ -72,32 +72,25 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   }
 
   Future<void> _pickStartTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
+    final picked =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (picked != null) setState(() => _startTime = picked);
   }
 
   Future<void> _pickEndTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
+    final picked =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (picked != null) setState(() => _endTime = picked);
   }
 
-  String _fmtDate(DateTime? d) {
-    if (d == null) return 'Select date';
-    return '${d.day}/${d.month}/${d.year}';
-  }
+  String _fmtDate(DateTime? d) =>
+      d == null ? 'Select date' : '${d.day}/${d.month}/${d.year}';
 
   String _fmtTime(TimeOfDay? t) {
     if (t == null) return 'Pick time';
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  // 🇦🇺 open sheet
   Future<void> _openPlacesSheet() async {
     await showModalBottomSheet(
       context: context,
@@ -116,6 +109,21 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
         );
       },
     );
+  }
+
+  void _onSubmit() {
+    setState(() => _showErrors = true);
+
+    final isValid = _selectedSubcategory != null &&
+        _selectedDate != null &&
+        _startTime != null &&
+        _endTime != null &&
+        _locationCtrl.text.trim().isNotEmpty &&
+        _selectedTaskerLevel != null;
+
+    if (!isValid) return;
+
+    // proceed with API payload...
   }
 
   @override
@@ -169,6 +177,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                       label: 'Service details',
                     ),
                     const SizedBox(height: 10),
+
+                    // Subcategory
                     _ModernFieldShell(
                       label: 'Subcategory',
                       child: DropdownButtonHideUnderline(
@@ -188,8 +198,9 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                               child: Text(
                                 s.name,
                                 style: const TextStyle(
-                                    color: purple,
-                                    fontWeight: FontWeight.w500),
+                                  color: purple,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             );
                           }).toList(),
@@ -198,13 +209,23 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    if (_showErrors && _selectedSubcategory == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select a subcategory',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
 
+                    const SizedBox(height: 18),
                     const _SectionTitle(
                       icon: Icons.calendar_month_rounded,
                       label: 'Schedule',
                     ),
                     const SizedBox(height: 10),
+
+                    // Date
                     _ModernFieldShell(
                       label: 'Booking date(s)',
                       onTap: _pickDate,
@@ -217,11 +238,12 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                             child: SizedBox(
                               height: 43,
                               child: Padding(
-                                padding: const EdgeInsets.only(top:12.5),
+                                padding: const EdgeInsets.only(top: 12.5),
                                 child: Text(
                                   _fmtDate(_selectedDate),
                                   style: const TextStyle(
-                                      color: purple, fontWeight: FontWeight.w500),
+                                      color: purple,
+                                      fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ),
@@ -231,6 +253,15 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         ],
                       ),
                     ),
+                    if (_showErrors && _selectedDate == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select a booking date',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
+
                     const SizedBox(height: 10),
                     Text(
                       'One booking fee',
@@ -239,6 +270,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         fontSize: 11.5,
                       ),
                     ),
+
                     const SizedBox(height: 16),
                     Text(
                       'Duration',
@@ -268,14 +300,24 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    if (_showErrors &&
+                        (_startTime == null || _endTime == null))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select both start & end time',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
 
+                    const SizedBox(height: 14),
                     const _SectionTitle(
                       icon: Icons.place_rounded,
                       label: 'Location',
                     ),
                     const SizedBox(height: 10),
-                    // 👉 Google Places here
+
+                    // Google Places
                     _ModernFieldShell(
                       label: 'Location',
                       onTap: _openPlacesSheet,
@@ -304,8 +346,17 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    if (_showErrors &&
+                        _locationCtrl.text.trim().isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select a location',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
 
+                    const SizedBox(height: 18),
                     const _SectionTitle(
                       icon: Icons.workspace_premium_rounded,
                       label: 'Tasker level',
@@ -340,6 +391,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         ),
                       ),
                     ),
+                    if (_showErrors && _selectedTaskerLevel == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select tasker level',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -348,13 +407,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.search_rounded, size: 20, color: Colors.white),
+                  icon: const Icon(Icons.search_rounded,
+                      size: 20, color: Colors.white),
                   label: const Text(
                     'FIND TASKER',
                     style: TextStyle(
                       letterSpacing: .3,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white
+                      color: Colors.white,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -364,10 +424,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    // submit
-                    // you can also read _pickedPlaceDetails?.result?.geometry?.location
-                  },
+                  onPressed: _onSubmit,
                 ),
               ),
             ],
@@ -378,9 +435,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                  widgets                                   */
-/* -------------------------------------------------------------------------- */
+/* ---------------- small widgets ---------------- */
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.icon, required this.label});
@@ -548,7 +603,7 @@ class _HeaderHero extends StatelessWidget {
   }
 }
 
-/* ---------------- bottom sheet for Google Places ---------------- */
+/* ---------------- Google Places bottom sheet ---------------- */
 
 class _PlacesSheet extends StatefulWidget {
   const _PlacesSheet({
@@ -572,48 +627,25 @@ class _PlacesSheetState extends State<_PlacesSheet> {
   bool _loading = false;
 
   Future<void> _search(String q) async {
-  if (q.trim().isEmpty) {
-    setState(() => _preds = []);
-    return;
-  }
-  setState(() => _loading = true);
-  final res = await widget.googlePlace.autocomplete.get(
-    q,
-    components: [gp.Component('country', 'au')],
-    language: 'en',
-  );
-  setState(() {
-    _loading = false;
-    if (res == null) {
-      debugPrint('Places: response is null');
-      _preds = [];
+    if (q.trim().isEmpty) {
+      setState(() => _preds = []);
       return;
     }
-    if (res.status != null) {
+    setState(() => _loading = true);
+    final res = await widget.googlePlace.autocomplete.get(
+      q,
+      // 🇦🇺 focus on AU
+      components: [gp.Component('country', 'au')],
+      language: 'en',
+    );
+    setState(() {
+      _loading = false;
+      _preds = res?.predictions ?? [];
+    });
+    if (res?.status != null && res!.status != 'OK') {
       debugPrint('Places error: ${res.status}');
     }
-    _preds = res.predictions ?? [];
-  });
-}
-
-
-  // Future<void> _search(String q) async {
-  //   if (q.trim().isEmpty) {
-  //     setState(() => _preds = []);
-  //     return;
-  //   }
-  //   setState(() => _loading = true);
-  //   final res = await widget.googlePlace.autocomplete.get(
-  //     q,
-  //     // 🇦🇺 restrict to Australia
-  //     components: [gp.Component('country', 'au')],
-  //     language: 'en',
-  //   );
-  //   setState(() {
-  //     _loading = false;
-  //     _preds = res?.predictions ?? [];
-  //   });
-  // }
+  }
 
   Future<void> _pick(gp.AutocompletePrediction p) async {
     gp.DetailsResponse? d;
