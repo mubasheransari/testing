@@ -46,7 +46,6 @@ dependencies:
   sms_autofill:
   camera:
   google_mlkit_face_detection:
-  google_fonts: ^6.3.2
   webview_flutter:
   file_picker: ^8.1.3
   mime: ^1.0.6
@@ -57,6 +56,10 @@ dependencies:
   video_player: ^2.9.1
   geolocator: ^10.1.0
   share_plus: ^10.0.2
+  google_fonts:
+  google_maps_webservice:
+  flutter_google_places:
+  google_place:
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.2 
