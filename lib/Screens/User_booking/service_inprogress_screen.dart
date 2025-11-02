@@ -161,17 +161,17 @@ class _ServiceProgressScreenState extends State<ServiceProgressScreen> {
     switch (_stage) {
       case 0:
         title = 'Service has begun!';
-        asset = 'assets/illus_service_start.png'; // replace with real
+        asset = 'assets/service_begin_1.png'; // replace with real
         steps = [1, 0, 0];
         break;
       case 1:
         title = 'Service in progress';
-        asset = 'assets/illus_service_inprogress.png';
+        asset = 'assets/service_inprogress.png';
         steps = [1, 1, 0];
         break;
       default:
         title = "Looks like time's almost up";
-        asset = 'assets/illus_service_almost.png';
+        asset = 'assets/service_done.png';
         steps = [1, 1, 1];
         timeColor = _red;
         break;
