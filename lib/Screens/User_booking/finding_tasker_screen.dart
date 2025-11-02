@@ -1,94 +1,64 @@
 import 'package:flutter/material.dart';
 
-class FindingTaskerScreen extends StatelessWidget {
-  const FindingTaskerScreen({super.key});
+class FindingYourTaskerScreen extends StatelessWidget {
+  const FindingYourTaskerScreen({super.key});
 
-  static const Color kPurple = Color(0xFF3E0B6F); // base taskoon purple
-  static const Color kGold1 = Color(0xFFF2CB6B);
-  static const Color kGold2 = Color(0xFFFFE397);
+  // colors picked from screenshot
+  static const Color bgPurple = Color(0xFF43106F);
+  static const Color ringGold1 = Color(0xFFF9DB75);
+  static const Color ringGold2 = Color(0xFFD7A939);
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: kPurple,
+      backgroundColor: bgPurple,
       body: Stack(
         children: [
-          // top blob
+          // top wave
           Positioned(
-            top: -size.height * .18,
-            left: -size.width * .2,
-            child: _blob(size.width * 1.1, size.width * 1.1,
-                const [Color(0xFF5B1A96), kPurple]),
+            top: 0,
+            left: 0,
+            right: 0,
+            height: size.height * 0.32,
+            child: CustomPaint(
+              painter: _TopWavePainter(),
+            ),
           ),
-          // bottom blob
+          // bottom wave
           Positioned(
-            bottom: -size.height * .25,
-            right: -size.width * .3,
-            child: _blob(size.width * 1.2, size.width * 1.1,
-                const [kPurple, Color(0xFF5B1A96)]),
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: size.height * 0.30,
+            child: CustomPaint(
+              painter: _BottomWavePainter(),
+            ),
           ),
 
-          // center content
+          // center logo + text
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // concentric gold circle with T
+                // double golden ring with purple inside
                 Container(
-                  width: 148,
-                  height: 148,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [kGold1, kGold2],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
+                  width: 190,
+                  height: 190,
+                
                   child: Center(
-                    child: Container(
-                      width: 118,
-                      height: 118,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: kPurple,
-                        border: Border.all(
-                          width: 4,
-                          color: Colors.white.withOpacity(.15),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(.25),
-                            blurRadius: 12,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          'T',
-                          style: TextStyle(
-                            fontFamily: 'ClashGrotesk', // if you have it
-                            fontSize: 56,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
+                    child: Image.asset('assets/user_finding_tasker.png')
                   ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 28),
                 const Text(
                   'Finding your tasker',
                   style: TextStyle(
+                           fontFamily: 'Poppins',
+                    fontSize: 23,
                     color: Colors.white,
-                    fontSize: 20,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: .2,
                   ),
                 ),
               ],
@@ -98,19 +68,69 @@ class FindingTaskerScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _blob(double w, double h, List<Color> colors) {
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors.map((c) => c.withOpacity(.85)).toList(),
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(w),
-      ),
-    );
+/// top organic shape (light-purple overlay)
+class _TopWavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF542383).withOpacity(0.55)
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, size.height * 0.55)
+      ..quadraticBezierTo(size.width * 0.25, size.height * 0.20,
+          size.width * 0.55, size.height * 0.35)
+      ..quadraticBezierTo(size.width * 0.78, size.height * 0.48,
+          size.width, size.height * 0.28)
+      ..lineTo(size.width, 0)
+      ..lineTo(0, 0)
+      ..close();
+
+    canvas.drawPath(path, paint);
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// bottom organic shape (darker/layered like screenshot)
+class _BottomWavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint1 = Paint()
+      ..color = const Color(0xFF341157).withOpacity(0.65)
+      ..style = PaintingStyle.fill;
+
+    final path1 = Path()
+      ..moveTo(0, size.height * 0.35)
+      ..quadraticBezierTo(
+          size.width * 0.25, size.height * 0.15, size.width * 0.45, size.height * 0.35)
+      ..quadraticBezierTo(
+          size.width * 0.72, size.height * 0.68, size.width, size.height * 0.40)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(path1, paint1);
+
+    // a second subtle blob on the right
+    final paint2 = Paint()
+      ..color = const Color(0xFF4B1475).withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    final path2 = Path()
+      ..moveTo(size.width * 0.35, size.height * 0.50)
+      ..quadraticBezierTo(
+          size.width * 0.65, size.height * 0.15, size.width, size.height * 0.35)
+      ..lineTo(size.width, size.height)
+      ..lineTo(size.width * 0.35, size.height)
+      ..close();
+
+    canvas.drawPath(path2, paint2);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
