@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:taskoon/Screens/User_booking/payment_method.dart';
 
 class TaskerConfirmationScreen extends StatelessWidget {
   const TaskerConfirmationScreen({super.key});
@@ -169,7 +170,11 @@ class TaskerConfirmationScreen extends StatelessWidget {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    // go to payment
+                     Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const PaymentMethodScreen(), // <- your real screen
+        ),
+      );
                   },
                   child: const Text(
                     'PROCEED TO PAYMENT',
