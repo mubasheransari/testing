@@ -20,6 +20,9 @@ import 'package:google_place/google_place.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_place/google_place.dart' as gp;
+import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
+
+
 
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
@@ -33,7 +36,7 @@ class ServiceBookingFormScreen extends StatefulWidget {
 class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   static const purple = Color(0xFF4A2C73);
 
-  // TODO: real key
+  // keep google places
   static const _kPlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
   late final gp.GooglePlace _googlePlace;
 
@@ -42,10 +45,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
-  final _locationCtrl = TextEditingController();
+
+  // manual location (VISIBLE)
+  final _manualLocationCtrl = TextEditingController();
+
+  // google places location (HIDDEN for now)
+  final _placesLocationCtrl = TextEditingController();
   gp.DetailsResponse? _pickedPlaceDetails;
 
-  // validation flag
   bool _showErrors = false;
 
   @override
@@ -56,7 +63,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
 
   @override
   void dispose() {
-    _locationCtrl.dispose();
+    _manualLocationCtrl.dispose();
+    _placesLocationCtrl.dispose();
     super.dispose();
   }
 
@@ -91,6 +99,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
+  // Google places sheet – kept but hidden in UI
   Future<void> _openPlacesSheet() async {
     await showModalBottomSheet(
       context: context,
@@ -102,7 +111,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
           onPlacePicked: (prediction, details) {
             Navigator.pop(ctx);
             setState(() {
-              _locationCtrl.text = prediction.description ?? '';
+              _placesLocationCtrl.text = prediction.description ?? '';
               _pickedPlaceDetails = details;
             });
           },
@@ -118,12 +127,13 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
         _selectedDate != null &&
         _startTime != null &&
         _endTime != null &&
-        _locationCtrl.text.trim().isNotEmpty &&
+        _manualLocationCtrl.text.trim().isNotEmpty &&
         _selectedTaskerLevel != null;
 
     if (!isValid) return;
+    Navigator.push(context, MaterialPageRoute(builder: (context)=> FindingTaskerScreen()));
 
-    // proceed with API payload...
+    // submit payload...
   }
 
   @override
@@ -178,7 +188,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Subcategory
+                    // subcategory
                     _ModernFieldShell(
                       label: 'Subcategory',
                       child: DropdownButtonHideUnderline(
@@ -225,7 +235,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Date
+                    // date
                     _ModernFieldShell(
                       label: 'Booking date(s)',
                       onTap: _pickDate,
@@ -270,8 +280,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         fontSize: 11.5,
                       ),
                     ),
-
                     const SizedBox(height: 16),
+
                     Text(
                       'Duration',
                       style: TextStyle(
@@ -317,44 +327,68 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Google Places
+                    // VISIBLE: simple textfield
                     _ModernFieldShell(
-                      label: 'Location',
-                      onTap: _openPlacesSheet,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search_rounded,
-                              size: 19, color: purple),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: IgnorePointer(
-                              child: TextField(
-                                controller: _locationCtrl,
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  border: InputBorder.none,
-                                  hintText:
-                                      'Search street, city, state (AU & global)',
-                                  hintStyle: TextStyle(color: purple),
-                                ),
-                                style: const TextStyle(color: purple),
-                              ),
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right_rounded,
-                              color: purple),
-                        ],
+                      label: 'Location (manual)',
+                      child: TextField(
+                        controller: _manualLocationCtrl,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: 'Enter your address / house / suburb',
+                          hintStyle: TextStyle(color: purple),
+                        ),
+                        style: const TextStyle(color: purple),
                       ),
                     ),
                     if (_showErrors &&
-                        _locationCtrl.text.trim().isEmpty)
+                        _manualLocationCtrl.text.trim().isEmpty)
                       const Padding(
                         padding: EdgeInsets.only(top: 4),
                         child: Text(
-                          'Please select a location',
+                          'Please enter location',
                           style: TextStyle(color: Colors.red, fontSize: 12),
                         ),
                       ),
+
+                    // HIDDEN FOR NOW: google places textfield
+                    Offstage(
+                      offstage: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 10),
+                          _ModernFieldShell(
+                            label: 'Location (Google Places)',
+                            onTap: _openPlacesSheet,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.search_rounded,
+                                    size: 19, color: purple),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: IgnorePointer(
+                                    child: TextField(
+                                      controller: _placesLocationCtrl,
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        border: InputBorder.none,
+                                        hintText:
+                                            'Search street, city, state (AU)',
+                                        hintStyle: TextStyle(color: purple),
+                                      ),
+                                      style: const TextStyle(color: purple),
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: purple),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     const SizedBox(height: 18),
                     const _SectionTitle(
@@ -634,7 +668,6 @@ class _PlacesSheetState extends State<_PlacesSheet> {
     setState(() => _loading = true);
     final res = await widget.googlePlace.autocomplete.get(
       q,
-      // 🇦🇺 focus on AU
       components: [gp.Component('country', 'au')],
       language: 'en',
     );
@@ -721,6 +754,707 @@ class _PlacesSheetState extends State<_PlacesSheet> {
     );
   }
 }
+
+// class ServiceBookingFormScreen extends StatefulWidget {
+//   final CertificationGroup group;
+//   const ServiceBookingFormScreen({super.key, required this.group});
+
+//   @override
+//   State<ServiceBookingFormScreen> createState() =>
+//       _ServiceBookingFormScreenState();
+// }
+
+// class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
+//   static const purple = Color(0xFF4A2C73);
+
+//   // TODO: real key
+//   static const _kPlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+//   late final gp.GooglePlace _googlePlace;
+
+//   ServiceOption? _selectedSubcategory;
+//   String? _selectedTaskerLevel;
+//   DateTime? _selectedDate;
+//   TimeOfDay? _startTime;
+//   TimeOfDay? _endTime;
+//   final _locationCtrl = TextEditingController();
+//   gp.DetailsResponse? _pickedPlaceDetails;
+
+//   // validation flag
+//   bool _showErrors = false;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _googlePlace = gp.GooglePlace(_kPlacesApiKey);
+//   }
+
+//   @override
+//   void dispose() {
+//     _locationCtrl.dispose();
+//     super.dispose();
+//   }
+
+//   Future<void> _pickDate() async {
+//     final now = DateTime.now();
+//     final picked = await showDatePicker(
+//       context: context,
+//       firstDate: now,
+//       lastDate: DateTime(now.year + 1),
+//       initialDate: now,
+//     );
+//     if (picked != null) setState(() => _selectedDate = picked);
+//   }
+
+//   Future<void> _pickStartTime() async {
+//     final picked =
+//         await showTimePicker(context: context, initialTime: TimeOfDay.now());
+//     if (picked != null) setState(() => _startTime = picked);
+//   }
+
+//   Future<void> _pickEndTime() async {
+//     final picked =
+//         await showTimePicker(context: context, initialTime: TimeOfDay.now());
+//     if (picked != null) setState(() => _endTime = picked);
+//   }
+
+//   String _fmtDate(DateTime? d) =>
+//       d == null ? 'Select date' : '${d.day}/${d.month}/${d.year}';
+
+//   String _fmtTime(TimeOfDay? t) {
+//     if (t == null) return 'Pick time';
+//     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+//   }
+
+//   Future<void> _openPlacesSheet() async {
+//     await showModalBottomSheet(
+//       context: context,
+//       isScrollControlled: true,
+//       backgroundColor: Colors.transparent,
+//       builder: (ctx) {
+//         return _PlacesSheet(
+//           googlePlace: _googlePlace,
+//           onPlacePicked: (prediction, details) {
+//             Navigator.pop(ctx);
+//             setState(() {
+//               _locationCtrl.text = prediction.description ?? '';
+//               _pickedPlaceDetails = details;
+//             });
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   void _onSubmit() {
+//     setState(() => _showErrors = true);
+
+//     final isValid = _selectedSubcategory != null &&
+//         _selectedDate != null &&
+//         _startTime != null &&
+//         _endTime != null &&
+//         _locationCtrl.text.trim().isNotEmpty &&
+//         _selectedTaskerLevel != null;
+
+//     if (!isValid) return;
+
+//     // proceed with API payload...
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final subs = widget.group.services;
+
+//     return Scaffold(
+//       backgroundColor: const Color(0xFFF1EFF5),
+//       appBar: AppBar(
+//         elevation: 0,
+//         backgroundColor: const Color(0xFFF1EFF5),
+//         leading: IconButton(
+//           icon: const Icon(Icons.chevron_left_rounded, color: purple),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//         title: const Text(
+//           'Service Booking Form',
+//           style: TextStyle(
+//             fontSize: 22,
+//             color: purple,
+//             fontWeight: FontWeight.w500,
+//           ),
+//         ),
+//         centerTitle: true,
+//       ),
+//       body: SafeArea(
+//         child: SingleChildScrollView(
+//           padding: const EdgeInsets.fromLTRB(16, 6, 16, 18),
+//           child: Column(
+//             children: [
+//               _HeaderHero(title: widget.group.name),
+//               const SizedBox(height: 16),
+//               Container(
+//                 decoration: BoxDecoration(
+//                   color: Colors.white,
+//                   borderRadius: BorderRadius.circular(18),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.black.withOpacity(.03),
+//                       blurRadius: 18,
+//                       offset: const Offset(0, 12),
+//                     ),
+//                   ],
+//                 ),
+//                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     const _SectionTitle(
+//                       icon: Icons.list_alt_rounded,
+//                       label: 'Service details',
+//                     ),
+//                     const SizedBox(height: 10),
+
+//                     // Subcategory
+//                     _ModernFieldShell(
+//                       label: 'Subcategory',
+//                       child: DropdownButtonHideUnderline(
+//                         child: DropdownButton<ServiceOption>(
+//                           isExpanded: true,
+//                           value: _selectedSubcategory,
+//                           icon: const Icon(Icons.expand_more_rounded,
+//                               color: purple),
+//                           hint: const Text(
+//                             'Select subcategory',
+//                             style: TextStyle(
+//                                 color: purple, fontWeight: FontWeight.w500),
+//                           ),
+//                           items: subs.map((s) {
+//                             return DropdownMenuItem<ServiceOption>(
+//                               value: s,
+//                               child: Text(
+//                                 s.name,
+//                                 style: const TextStyle(
+//                                   color: purple,
+//                                   fontWeight: FontWeight.w500,
+//                                 ),
+//                               ),
+//                             );
+//                           }).toList(),
+//                           onChanged: (val) =>
+//                               setState(() => _selectedSubcategory = val),
+//                         ),
+//                       ),
+//                     ),
+//                     if (_showErrors && _selectedSubcategory == null)
+//                       const Padding(
+//                         padding: EdgeInsets.only(top: 4),
+//                         child: Text(
+//                           'Please select a subcategory',
+//                           style: TextStyle(color: Colors.red, fontSize: 12),
+//                         ),
+//                       ),
+
+//                     const SizedBox(height: 18),
+//                     const _SectionTitle(
+//                       icon: Icons.calendar_month_rounded,
+//                       label: 'Schedule',
+//                     ),
+//                     const SizedBox(height: 10),
+
+//                     // Date
+//                     _ModernFieldShell(
+//                       label: 'Booking date(s)',
+//                       onTap: _pickDate,
+//                       child: Row(
+//                         children: [
+//                           Icon(Icons.event_rounded,
+//                               color: purple.withOpacity(.85)),
+//                           const SizedBox(width: 10),
+//                           Expanded(
+//                             child: SizedBox(
+//                               height: 43,
+//                               child: Padding(
+//                                 padding: const EdgeInsets.only(top: 12.5),
+//                                 child: Text(
+//                                   _fmtDate(_selectedDate),
+//                                   style: const TextStyle(
+//                                       color: purple,
+//                                       fontWeight: FontWeight.w500),
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                           const Icon(Icons.chevron_right_rounded,
+//                               color: purple),
+//                         ],
+//                       ),
+//                     ),
+//                     if (_showErrors && _selectedDate == null)
+//                       const Padding(
+//                         padding: EdgeInsets.only(top: 4),
+//                         child: Text(
+//                           'Please select a booking date',
+//                           style: TextStyle(color: Colors.red, fontSize: 12),
+//                         ),
+//                       ),
+
+//                     const SizedBox(height: 10),
+//                     Text(
+//                       'One booking fee',
+//                       style: TextStyle(
+//                         color: purple.withOpacity(.7),
+//                         fontSize: 11.5,
+//                       ),
+//                     ),
+
+//                     const SizedBox(height: 16),
+//                     Text(
+//                       'Duration',
+//                       style: TextStyle(
+//                         color: purple.withOpacity(.9),
+//                         fontSize: 12.5,
+//                         fontWeight: FontWeight.w600,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 8),
+//                     Row(
+//                       children: [
+//                         Expanded(
+//                           child: _TimeBox(
+//                             label: 'Start time',
+//                             value: _fmtTime(_startTime),
+//                             onTap: _pickStartTime,
+//                           ),
+//                         ),
+//                         const SizedBox(width: 10),
+//                         Expanded(
+//                           child: _TimeBox(
+//                             label: 'End time',
+//                             value: _fmtTime(_endTime),
+//                             onTap: _pickEndTime,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                     if (_showErrors &&
+//                         (_startTime == null || _endTime == null))
+//                       const Padding(
+//                         padding: EdgeInsets.only(top: 4),
+//                         child: Text(
+//                           'Please select both start & end time',
+//                           style: TextStyle(color: Colors.red, fontSize: 12),
+//                         ),
+//                       ),
+
+//                     const SizedBox(height: 14),
+//                     const _SectionTitle(
+//                       icon: Icons.place_rounded,
+//                       label: 'Location',
+//                     ),
+//                     const SizedBox(height: 10),
+
+//                     // Google Places
+//                     _ModernFieldShell(
+//                       label: 'Location',
+//                       onTap: _openPlacesSheet,
+//                       child: Row(
+//                         children: [
+//                           const Icon(Icons.search_rounded,
+//                               size: 19, color: purple),
+//                           const SizedBox(width: 8),
+//                           Expanded(
+//                             child: IgnorePointer(
+//                               child: TextField(
+//                                 controller: _locationCtrl,
+//                                 decoration: const InputDecoration(
+//                                   isDense: true,
+//                                   border: InputBorder.none,
+//                                   hintText:
+//                                       'Search street, city, state (AU & global)',
+//                                   hintStyle: TextStyle(color: purple),
+//                                 ),
+//                                 style: const TextStyle(color: purple),
+//                               ),
+//                             ),
+//                           ),
+//                           const Icon(Icons.chevron_right_rounded,
+//                               color: purple),
+//                         ],
+//                       ),
+//                     ),
+//                     if (_showErrors &&
+//                         _locationCtrl.text.trim().isEmpty)
+//                       const Padding(
+//                         padding: EdgeInsets.only(top: 4),
+//                         child: Text(
+//                           'Please select a location',
+//                           style: TextStyle(color: Colors.red, fontSize: 12),
+//                         ),
+//                       ),
+
+//                     const SizedBox(height: 18),
+//                     const _SectionTitle(
+//                       icon: Icons.workspace_premium_rounded,
+//                       label: 'Tasker level',
+//                     ),
+//                     const SizedBox(height: 10),
+//                     _ModernFieldShell(
+//                       label: 'Tasker level',
+//                       child: DropdownButtonHideUnderline(
+//                         child: DropdownButton<String>(
+//                           isExpanded: true,
+//                           value: _selectedTaskerLevel,
+//                           icon: const Icon(Icons.expand_more_rounded,
+//                               color: purple),
+//                           hint: const Text(
+//                             'Tasker / Pro tasker',
+//                             style: TextStyle(color: purple),
+//                           ),
+//                           items: const [
+//                             DropdownMenuItem(
+//                               value: 'tasker',
+//                               child: Text('Tasker',
+//                                   style: TextStyle(color: purple)),
+//                             ),
+//                             DropdownMenuItem(
+//                               value: 'pro_tasker',
+//                               child: Text('Pro tasker',
+//                                   style: TextStyle(color: purple)),
+//                             ),
+//                           ],
+//                           onChanged: (val) =>
+//                               setState(() => _selectedTaskerLevel = val),
+//                         ),
+//                       ),
+//                     ),
+//                     if (_showErrors && _selectedTaskerLevel == null)
+//                       const Padding(
+//                         padding: EdgeInsets.only(top: 4),
+//                         child: Text(
+//                           'Please select tasker level',
+//                           style: TextStyle(color: Colors.red, fontSize: 12),
+//                         ),
+//                       ),
+//                   ],
+//                 ),
+//               ),
+//               const SizedBox(height: 18),
+//               SizedBox(
+//                 width: double.infinity,
+//                 height: 56,
+//                 child: ElevatedButton.icon(
+//                   icon: const Icon(Icons.search_rounded,
+//                       size: 20, color: Colors.white),
+//                   label: const Text(
+//                     'FIND TASKER',
+//                     style: TextStyle(
+//                       letterSpacing: .3,
+//                       fontWeight: FontWeight.w700,
+//                       color: Colors.white,
+//                     ),
+//                   ),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: purple,
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(17),
+//                     ),
+//                     elevation: 0,
+//                   ),
+//                   onPressed: _onSubmit,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// /* ---------------- small widgets ---------------- */
+
+// class _SectionTitle extends StatelessWidget {
+//   const _SectionTitle({required this.icon, required this.label});
+//   final IconData icon;
+//   final String label;
+//   @override
+//   Widget build(BuildContext context) {
+//     const purple = Color(0xFF4A2C73);
+//     return Row(
+//       children: [
+//         Icon(icon, size: 18, color: purple),
+//         const SizedBox(width: 6),
+//         Text(
+//           label,
+//           style: const TextStyle(
+//             color: purple,
+//             fontWeight: FontWeight.w700,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+
+// class _ModernFieldShell extends StatelessWidget {
+//   const _ModernFieldShell({
+//     required this.label,
+//     required this.child,
+//     this.onTap,
+//   });
+
+//   final String label;
+//   final Widget child;
+//   final VoidCallback? onTap;
+
+//   static const purple = Color(0xFF4A2C73);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final box = Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+//       decoration: BoxDecoration(
+//         color: const Color(0xFFFBF8FF),
+//         border: Border.all(color: purple.withOpacity(.25), width: 1),
+//         borderRadius: BorderRadius.circular(14),
+//       ),
+//       child: child,
+//     );
+
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Text(
+//           label,
+//           style: TextStyle(
+//             color: purple.withOpacity(.8),
+//             fontSize: 12.5,
+//             fontWeight: FontWeight.w500,
+//           ),
+//         ),
+//         const SizedBox(height: 5),
+//         onTap != null
+//             ? InkWell(
+//                 borderRadius: BorderRadius.circular(14),
+//                 onTap: onTap,
+//                 child: box,
+//               )
+//             : box,
+//       ],
+//     );
+//   }
+// }
+
+// class _TimeBox extends StatelessWidget {
+//   const _TimeBox({
+//     required this.label,
+//     required this.value,
+//     required this.onTap,
+//   });
+
+//   final String label;
+//   final String value;
+//   final VoidCallback onTap;
+
+//   static const purple = Color(0xFF4A2C73);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return InkWell(
+//       borderRadius: BorderRadius.circular(14),
+//       onTap: onTap,
+//       child: Container(
+//         height: 50,
+//         decoration: BoxDecoration(
+//           color: const Color(0xFFFBF8FF),
+//           border: Border.all(color: purple.withOpacity(.25), width: 1),
+//           borderRadius: BorderRadius.circular(14),
+//         ),
+//         padding: const EdgeInsets.symmetric(horizontal: 12),
+//         child: Row(
+//           children: [
+//             Icon(Icons.access_time_rounded,
+//                 size: 18, color: purple.withOpacity(.85)),
+//             const SizedBox(width: 10),
+//             Expanded(
+//               child: Text(
+//                 value.isEmpty ? label : value,
+//                 style: const TextStyle(
+//                   color: purple,
+//                   fontWeight: FontWeight.w500,
+//                 ),
+//               ),
+//             ),
+//             const Icon(Icons.chevron_right_rounded, color: purple),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _HeaderHero extends StatelessWidget {
+//   const _HeaderHero({required this.title});
+//   final String title;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     const purple = Color(0xFF4A2C73);
+//     return Container(
+//       width: double.infinity,
+//       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+//       decoration: BoxDecoration(
+//         gradient: const LinearGradient(
+//           colors: [Color(0xFFE2D3FF), Color(0xFFFBF8FF)],
+//           begin: Alignment.topLeft,
+//           end: Alignment.bottomRight,
+//         ),
+//         borderRadius: BorderRadius.circular(18),
+//       ),
+//       child: Row(
+//         children: [
+//           Expanded(
+//             child: Text(
+//               'Book: $title',
+//               style: const TextStyle(
+//                 color: purple,
+//                 fontWeight: FontWeight.w800,
+//                 fontSize: 19,
+//               ),
+//             ),
+//           ),
+//           const SizedBox(width: 12),
+//           Container(
+//             height: 44,
+//             width: 44,
+//             decoration: BoxDecoration(
+//               color: Colors.white.withOpacity(.9),
+//               shape: BoxShape.circle,
+//             ),
+//             child: const Icon(Icons.event_available_rounded, color: purple),
+//           )
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// /* ---------------- Google Places bottom sheet ---------------- */
+
+// class _PlacesSheet extends StatefulWidget {
+//   const _PlacesSheet({
+//     required this.googlePlace,
+//     required this.onPlacePicked,
+//   });
+
+//   final gp.GooglePlace googlePlace;
+//   final void Function(
+//     gp.AutocompletePrediction,
+//     gp.DetailsResponse?,
+//   ) onPlacePicked;
+
+//   @override
+//   State<_PlacesSheet> createState() => _PlacesSheetState();
+// }
+
+// class _PlacesSheetState extends State<_PlacesSheet> {
+//   final _searchCtrl = TextEditingController();
+//   List<gp.AutocompletePrediction> _preds = [];
+//   bool _loading = false;
+
+//   Future<void> _search(String q) async {
+//     if (q.trim().isEmpty) {
+//       setState(() => _preds = []);
+//       return;
+//     }
+//     setState(() => _loading = true);
+//     final res = await widget.googlePlace.autocomplete.get(
+//       q,
+//       // 🇦🇺 focus on AU
+//       components: [gp.Component('country', 'au')],
+//       language: 'en',
+//     );
+//     setState(() {
+//       _loading = false;
+//       _preds = res?.predictions ?? [];
+//     });
+//     if (res?.status != null && res!.status != 'OK') {
+//       debugPrint('Places error: ${res.status}');
+//     }
+//   }
+
+//   Future<void> _pick(gp.AutocompletePrediction p) async {
+//     gp.DetailsResponse? d;
+//     if (p.placeId != null) {
+//       d = await widget.googlePlace.details.get(p.placeId!);
+//     }
+//     widget.onPlacePicked(p, d);
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final inset = MediaQuery.of(context).viewInsets.bottom;
+//     return AnimatedPadding(
+//       duration: const Duration(milliseconds: 150),
+//       padding: EdgeInsets.only(bottom: inset),
+//       child: Container(
+//         height: 420,
+//         decoration: const BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+//         ),
+//         child: Column(
+//           children: [
+//             const SizedBox(height: 12),
+//             Container(
+//               width: 42,
+//               height: 4,
+//               decoration: BoxDecoration(
+//                 color: Colors.grey.shade300,
+//                 borderRadius: BorderRadius.circular(999),
+//               ),
+//             ),
+//             const SizedBox(height: 12),
+//             const Text(
+//               'Search address',
+//               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+//             ),
+//             const SizedBox(height: 8),
+//             Padding(
+//               padding: const EdgeInsets.symmetric(horizontal: 16),
+//               child: TextField(
+//                 controller: _searchCtrl,
+//                 onChanged: _search,
+//                 decoration: InputDecoration(
+//                   hintText: 'Street, city, state, house no…',
+//                   prefixIcon: const Icon(Icons.search_rounded),
+//                   filled: true,
+//                   fillColor: Colors.grey.shade100,
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(14),
+//                     borderSide: BorderSide.none,
+//                   ),
+//                 ),
+//               ),
+//             ),
+//             if (_loading) const LinearProgressIndicator(minHeight: 2),
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: _preds.length,
+//                 itemBuilder: (ctx, i) {
+//                   final p = _preds[i];
+//                   return ListTile(
+//                     leading: const Icon(Icons.place_outlined),
+//                     title: Text(p.description ?? ''),
+//                     onTap: () => _pick(p),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 /*
 
