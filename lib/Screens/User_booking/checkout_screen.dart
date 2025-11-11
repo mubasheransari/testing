@@ -415,7 +415,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     Navigator.push(context,
         MaterialPageRoute(builder: (_) => ServiceProgressScreen(totalMinutes: 3)));
 
-    ScaffoldMessenger.of(context).showSnackBar(
+  /*  ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           _method == 0
@@ -428,7 +428,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           style: const TextStyle(fontFamily: kFont),
         ),
       ),
-    );
+    );*/
   }
 }
 

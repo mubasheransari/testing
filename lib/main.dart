@@ -52,7 +52,7 @@ return RepositoryProvider.value(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.userHomeBottomNavBarRoot,//Routes.taskerHomeScreen,//Routes.personalInfo, // Routes.splash,
+          initialRoute:Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>

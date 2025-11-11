@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
+import 'package:taskoon/Screens/User_booking/feedback_screen.dart';
 import 'package:taskoon/Screens/User_booking/guidelines_screen.dart';
+import 'package:taskoon/Screens/User_booking/my_bookings.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 
 class UserBottomNavBar extends StatelessWidget {
@@ -47,9 +50,10 @@ class _RootNavState extends State<_RootNav> {
 
   final _pages = const [
     UserBookingHome(),
-    GuidelinesScreenn(), // the screen you asked to design
-    UserBookingHome(),
-    UserBookingHome(),
+ MyBookings(), //  GuidelinesScreenn(), // the screen you asked to design
+    FeedbackScreen(),
+    GuidelinesScreenn(),
+        MyAccountScreen(),
   ];
 
   @override
@@ -62,9 +66,10 @@ class _RootNavState extends State<_RootNav> {
         onTap: (i) => setState(() => _index = i),
         items: const [
           BottomItem(icon: Icons.home_rounded, label: 'Home'),
-          BottomItem(icon: Icons.calendar_month_rounded, label: 'Earning'),
-          BottomItem(icon: Icons.list_alt_rounded, label: 'Tasks'),
-          BottomItem(icon: Icons.menu_rounded, label: 'More'),
+          BottomItem(icon: Icons.event_note_rounded, label: 'Bookings'),
+          BottomItem(icon: Icons.list_alt_rounded, label: 'Feedback'),
+          BottomItem(icon: Icons.list_alt_rounded, label: 'Guidelines'),
+          BottomItem(icon: Icons.menu_rounded, label: 'Account'),
         ],
       ),
     );
