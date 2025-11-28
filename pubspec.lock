@@ -401,13 +401,13 @@ packages:
     source: hosted
     version: "2.1.1"
   google_api_headers:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: google_api_headers
-      sha256: b27a55935d5c51cedda8a925f5df8388cc327c94a47fef5a4335e8707e089878
+      sha256: "59ebb30d12fea5a77525b8e66cf3cec9593a9433dc0f0168497ebca1d3142311"
       url: "https://pub.dev"
     source: hosted
-    version: "1.6.0"
+    version: "2.0.3"
   google_fonts:
     dependency: "direct main"
     description:

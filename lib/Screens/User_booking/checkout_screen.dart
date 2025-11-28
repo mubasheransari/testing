@@ -109,7 +109,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
+                  const  Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

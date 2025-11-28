@@ -36,11 +36,11 @@ Future<bool?> showBookingAcceptDialog(
               primaryLabel: 'Accept',
               primaryIcon: Icons.task_alt,
               // close dialog on ROOT navigator and return true
-              onPrimary: () => Navigator.of(_, rootNavigator: true).pop(true),
+              onPrimary: () => Navigator.of(context, rootNavigator: true).pop(true),
               secondaryLabel: 'Cancel',
               secondaryIcon: Icons.cancel,
               // close dialog and return false
-              onSecondary: () => Navigator.of(_, rootNavigator: true).pop(false),
+              onSecondary: () => Navigator.of(context, rootNavigator: true).pop(false),
               secondaryOutlined: true,
               warningText: 'Cancellations may affect your future bookings',
             ),

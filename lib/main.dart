@@ -20,7 +20,7 @@ main() async {
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatelessWidget {//Testing@123
   const MyApp({super.key});
 
   @override
@@ -40,9 +40,10 @@ return RepositoryProvider.value(
         ..add(LoadServicesRequested())
         ..add(LoadTrainingVideosRequested());
 
-      // read saved user id (if any) to hydrate details on app start
+
       final box = GetStorage();
       final savedUserId = box.read<String>('userId');
+
       if (savedUserId != null && savedUserId.isNotEmpty) {
         bloc.add(LoadUserDetailsRequested(savedUserId));
       }
@@ -52,7 +53,7 @@ return RepositoryProvider.value(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
+          initialRoute:Routes.splash,//Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>

@@ -127,7 +127,7 @@ abstract class AuthRepository {
     required String emailAddress,
     required String password,
     String? address,
-        String? abn,  
+    String? abn,  
   });
 
   Future<Result<LoginResponse>> signIn({
@@ -1202,7 +1202,7 @@ Result<RegistrationResponse> _handleSubmitResponse(http.Response res) {
       emailAddress: emailAddress,
       password: password,
       address: address,
-           abn: abn,   
+      abn: abn,   
       // desiredService: desiredService ?? const [],
     ); // 
     return register(req);

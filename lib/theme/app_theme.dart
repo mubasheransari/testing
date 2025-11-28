@@ -52,11 +52,11 @@ class AppTheme {
           borderSide: const BorderSide(color: Tokens.primary, width: 1.6),
         ),
       ),
-      cardTheme: CardTheme(
-        color: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tokens.r16)),
-      ),
+      // cardTheme: CardTheme(
+      //   color: Colors.white,
+      //   elevation: 0,
+      //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tokens.r16)),
+      // ),
     );
   }
 }

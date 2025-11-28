@@ -133,7 +133,7 @@ class _ServiceProgressScreenState extends State<ServiceProgressScreen> {
               child: _ExtendTimeCard(
                 width: width,
                 onSelect: (minutes) =>
-                    Navigator.of(_, rootNavigator: true).pop(minutes),
+                    Navigator.of(context, rootNavigator: true).pop(minutes),
               ),
             ),
           ],
