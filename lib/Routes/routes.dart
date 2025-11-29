@@ -4,6 +4,7 @@ import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/app_shell.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/location_debug_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/splash_screen.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_nav_bar.dart';
@@ -32,6 +33,7 @@ class Routes {
   static const taskerHomeScreen = '/taskerhome-screen';
   static const takerHomeBottomNavBarRoot = '/tasker_home_bottom_nav_bar';
   static const userHomeBottomNavBarRoot = '/user_home_bottom_nav_bar';
+  static const locationSignalR = '/LocationSignalRScreen';
 }
 
 class AppRouter {
@@ -55,29 +57,28 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const ReviewSubmit());
       case Routes.success:
         return MaterialPageRoute(builder: (_) => const Success());
-        // case Routes.appShellScreen:
-        // return MaterialPageRoute(builder: (_) => const AppShell());
-        case Routes.taskerHomeScreen:
+      // case Routes.appShellScreen:
+      // return MaterialPageRoute(builder: (_) => const AppShell());
+      case Routes.taskerHomeScreen:
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
-                case Routes.takerHomeBottomNavBarRoot:
+      case Routes.takerHomeBottomNavBarRoot:
         return MaterialPageRoute(builder: (_) => const TaskoonApp());
+      case Routes.locationSignalR:
+        return MaterialPageRoute(builder: (_) => const LocationSignalRScreen());
 
-        case Routes.userHomeBottomNavBarRoot:
-  return MaterialPageRoute(
-    builder: (context) {
-      // fire your bloc event once we land on this route
-      context.read<AuthenticationBloc>().add(LoadServicesRequested());
-      return const UserBottomNavBar();
-    },
-  );
-        //             case Routes.userHomeBottomNavBarRoot:
-        // return MaterialPageRoute(builder: (_) => const UserBottomNavBar()
-        
+      case Routes.userHomeBottomNavBarRoot:
+        return MaterialPageRoute(
+          builder: (context) {
+            // fire your bloc event once we land on this route
+            context.read<AuthenticationBloc>().add(LoadServicesRequested());
+            return const UserBottomNavBar();
+          },
+        );
+
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Route not found')),
-          ),
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('Route not found'))),
         );
     }
   }

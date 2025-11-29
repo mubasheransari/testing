@@ -15,7 +15,6 @@ dependencies:
 
   # your deps (left unpinned as you had them)
   location:
-  http:
   bloc:
   flutter_bloc:
   equatable:
@@ -40,6 +39,8 @@ dependencies:
   google_maps_webservice:
   flutter_google_places:
   google_place:
+  http:
+  signalr_core: 
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.2
