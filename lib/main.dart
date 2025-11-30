@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Routes/routes.dart';
 import 'package:taskoon/theme.dart';
 import 'Blocs/auth_bloc/auth_bloc.dart';
@@ -20,6 +21,50 @@ main() async {
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 
+// class MyApp extends StatelessWidget {//Testing@123
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final authRepo = AuthRepositoryHttp(
+//       baseUrl: ApiConfig.baseUrl,
+//       endpoint: ApiConfig.signupEndpoint,
+//       timeout: const Duration(seconds: 20),
+//     );
+
+// return RepositoryProvider.value(
+//   value: authRepo,
+//   child: BlocProvider(
+//     create: (_) {
+//       final bloc = AuthenticationBloc(authRepo)
+//         ..add(LoadServiceDocumentsRequested())
+//         ..add(LoadServicesRequested())
+//         ..add(LoadTrainingVideosRequested());
+
+
+//       final box = GetStorage();
+//       final savedUserId = box.read<String>('userId');
+
+//       if (savedUserId != null && savedUserId.isNotEmpty) {
+//         bloc.add(LoadUserDetailsRequested(savedUserId));
+//       }
+//       return bloc;
+//     },
+//         child: MaterialApp(
+//           debugShowCheckedModeBanner: false,
+//           title: 'Taskoon',
+//           theme: AppTheme.light,
+//           initialRoute:Routes.takerHomeBottomNavBarRoot,//Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
+//           onGenerateRoute: AppRouter.onGenerateRoute,
+//           scaffoldMessengerKey: scaffoldMessengerKey,
+//           builder: (context, child) =>
+//               ConnectivityBannerHost(child: child ?? const SizedBox()),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 class MyApp extends StatelessWidget {//Testing@123
   const MyApp({super.key});
 
@@ -31,29 +76,39 @@ class MyApp extends StatelessWidget {//Testing@123
       timeout: const Duration(seconds: 20),
     );
 
-return RepositoryProvider.value(
-  value: authRepo,
-  child: BlocProvider(
-    create: (_) {
-      final bloc = AuthenticationBloc(authRepo)
-        ..add(LoadServiceDocumentsRequested())
-        ..add(LoadServicesRequested())
-        ..add(LoadTrainingVideosRequested());
+    return RepositoryProvider.value(
+      value: authRepo,
+      child: MultiBlocProvider(
+        providers: [
+          /// 🔹 AuthenticationBloc (existing)
+          BlocProvider<AuthenticationBloc>(
+            create: (_) {
+              final bloc = AuthenticationBloc(authRepo)
+                ..add(LoadServiceDocumentsRequested())
+                ..add(LoadServicesRequested())
+                ..add(LoadTrainingVideosRequested());
 
+              final box = GetStorage();
+              final savedUserId = box.read<String>('userId');
 
-      final box = GetStorage();
-      final savedUserId = box.read<String>('userId');
+              if (savedUserId != null && savedUserId.isNotEmpty) {
+                bloc.add(LoadUserDetailsRequested(savedUserId));
+              }
+              return bloc;
+            },
+          ),
 
-      if (savedUserId != null && savedUserId.isNotEmpty) {
-        bloc.add(LoadUserDetailsRequested(savedUserId));
-      }
-      return bloc;
-    },
+          /// 🔹 NEW: UserBookingBloc
+          BlocProvider<UserBookingBloc>(
+            create: (_) => UserBookingBloc(authRepo),
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.userHomeBottomNavBarRoot,//takerHomeBottomNavBarRoot,//Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
+          initialRoute: Routes.takerHomeBottomNavBarRoot,
+          // Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>
@@ -63,6 +118,7 @@ return RepositoryProvider.value(
     );
   }
 }
+
 
 
 // class MyApp extends StatelessWidget {

@@ -16,6 +16,7 @@ import 'package:mime/mime.dart';
 // ---------- ApiConfig ----------
 class ApiConfig {
   static const String baseUrl = 'http://192.3.3.187:83';
+    static const String baseUrlLocation = 'http://192.3.3.187:85';
   static const String signupEndpoint = '/api/auth/signup';
   static const String signInEndpoint = '/api/Auth/SignIn';
   static const String sendOTPThroughEmailEndpoint = '/api/otp/send/email';
@@ -228,7 +229,7 @@ class AuthRepositoryHttp implements AuthRepository {
     required double longitude,
   }) async {
     final uri =
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateLocationEndpoint}');
+        Uri.parse('${ApiConfig.baseUrlLocation}${ApiConfig.updateLocationEndpoint}');
 
     final body = <String, dynamic>{
       "userId": userId,

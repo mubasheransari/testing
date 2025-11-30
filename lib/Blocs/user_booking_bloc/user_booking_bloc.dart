@@ -48,37 +48,64 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     }
   }
 
-  // ---------- /api/Address/update/location ----------
-  Future<void> _onUpdateUserLocationRequested(
-    UpdateUserLocationRequested e,
-    Emitter<UserBookingState> emit,
-  ) async {
+Future<void> _onUpdateUserLocationRequested(
+  UpdateUserLocationRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  print('📥 [Bloc] UpdateUserLocationRequested received: '
+        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+          print('📥 [Bloc] UpdateUserLocationRequested received: '
+        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+          print('📥 [Bloc] UpdateUserLocationRequested received: '
+        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+          print('📥 [Bloc] UpdateUserLocationRequested received: '
+        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+          print('📥 [Bloc] UpdateUserLocationRequested received: '
+        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+
+  emit(state.copyWith(
+    locationStatus: UserLocationUpdateStatus.updating,
+    clearLocationError: true,
+  ));
+
+  final r = await repo.updateUserLocation(
+    userId: e.userId,
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess) {
+    print('✅ [Bloc] updateUserLocation SUCCESS');
+     print('✅ [Bloc] updateUserLocation SUCCESS');
+         print('✅ [Bloc] updateUserLocation SUCCESS');
+     print('✅ [Bloc] updateUserLocation SUCCESS');
+         print('✅ [Bloc] updateUserLocation SUCCESS');
+     print('✅ [Bloc] updateUserLocation SUCCESS');
+         print('✅ [Bloc] updateUserLocation SUCCESS');
+     print('✅ [Bloc] updateUserLocation SUCCESS');
+         print('✅ [Bloc] updateUserLocation SUCCESS');
+     print('✅ [Bloc] updateUserLocation SUCCESS');
+
     emit(state.copyWith(
-      locationStatus: UserLocationUpdateStatus.updating,
+      locationStatus: UserLocationUpdateStatus.success,
+      lastLatitude: e.latitude,
+      lastLongitude: e.longitude,
       clearLocationError: true,
     ));
-
-    final r = await repo.updateUserLocation(
-      userId: e.userId,
-      latitude: e.latitude,
-      longitude: e.longitude,
-    );
-
-    if (r.isSuccess) {
-      emit(state.copyWith(
-        locationStatus: UserLocationUpdateStatus.success,
-        lastLatitude: e.latitude,
-        lastLongitude: e.longitude,
-        clearLocationError: true,
-      ));
-    } else {
-      emit(state.copyWith(
-        locationStatus: UserLocationUpdateStatus.failure,
-        locationError:
-            r.failure?.message ?? 'Failed to update user location',
-      ));
-    }
+  } else {
+    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
+    
+    emit(state.copyWith(
+      locationStatus: UserLocationUpdateStatus.failure,
+      locationError: r.failure?.message ?? 'Failed to update user location',
+    ));
   }
+}
+
 }
 
 
