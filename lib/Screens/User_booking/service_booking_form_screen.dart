@@ -18,11 +18,13 @@ import 'package:google_place/google_place.dart' as gp;
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
   final ServiceOption? initialService;
+  final String subCategoryId;
 
   const ServiceBookingFormScreen({
     super.key,
     required this.group,
     this.initialService,
+    required this.subCategoryId
   });
 
   @override

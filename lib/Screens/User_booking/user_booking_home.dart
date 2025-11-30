@@ -156,6 +156,7 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
                           builder: (_) => ServiceBookingFormScreen(
                             group: g,
                             initialService: svc,
+                            subCategoryId: g.id.toString(),
                           ),
                         ),
                       );
@@ -210,6 +211,7 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
                       builder: (_) => ServiceBookingFormScreen(
                         group: _selectedGroup!,
                         initialService: svc,
+                        subCategoryId: svc.id.toString(),
                       ),
                     ),
                   );

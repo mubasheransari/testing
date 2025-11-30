@@ -12,7 +12,7 @@ import 'Service/internet_connectivity_banner.dart';
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init(); // <- ADD THIS
+  await GetStorage.init();
   runApp(const MyApp());
 }
 
@@ -53,7 +53,7 @@ return RepositoryProvider.value(
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute:Routes.takerHomeBottomNavBarRoot,//Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
+          initialRoute:Routes.userHomeBottomNavBarRoot,//takerHomeBottomNavBarRoot,//Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot, //takerHomeBottomNavBarRoot,//Routes.personalInfo, // Routes.splash,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,
           builder: (context, child) =>
