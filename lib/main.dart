@@ -107,7 +107,7 @@ class MyApp extends StatelessWidget {//Testing@123
           debugShowCheckedModeBanner: false,
           title: 'Taskoon',
           theme: AppTheme.light,
-          initialRoute: Routes.takerHomeBottomNavBarRoot,
+          initialRoute: Routes.userHomeBottomNavBarRoot,//takerHomeBottomNavBarRoot,
           // Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot,
           onGenerateRoute: AppRouter.onGenerateRoute,
           scaffoldMessengerKey: scaffoldMessengerKey,

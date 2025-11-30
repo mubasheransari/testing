@@ -306,7 +306,7 @@ class AuthRepositoryHttp implements AuthRepository {
     required String reason,
   }) async {
     final uri =
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingCancelEndpoint}');
+        Uri.parse('${ApiConfig.baseUrlLocation}${ApiConfig.bookingCancelEndpoint}');
 
     final body = <String, dynamic>{
       "bookingId": bookingId,
@@ -379,7 +379,7 @@ class AuthRepositoryHttp implements AuthRepository {
     required String bookingId,
   }) async {
     final uri =
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingAcceptEndpoint}');
+        Uri.parse('${ApiConfig.baseUrlLocation}${ApiConfig.bookingAcceptEndpoint}');
 
     final body = <String, dynamic>{
       "userId": userId,
@@ -452,7 +452,7 @@ class AuthRepositoryHttp implements AuthRepository {
     required double userLongitude,
   }) async {
     final uri =
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingFindEndpoint}');
+        Uri.parse('${ApiConfig.baseUrlLocation}${ApiConfig.bookingFindEndpoint}');
 
     final body = <String, dynamic>{
       "bookingId": bookingId,
