@@ -75,17 +75,34 @@ Future<Result<RegistrationResponse>> updateUserLocation({
     required double userLatitude,
     required double userLongitude,
   });
+  Future<Result<RegistrationResponse>> createBooking({
+  required String userId,
+  required int subCategoryId,
+  required DateTime bookingDate,
+  required String startTime,
+  required String endTime,
+  required String address,
+  required int taskerLevelId,
+
+  // 🔽 new (can keep optional with defaults if you want)
+  String currency = 'AUD',
+  int paymentType = 1,
+  int serviceType = 1,
+  int paymentMethod = 1,
+});
 
 
-    Future<Result<RegistrationResponse>> createBooking({
-    required String userId,
-    required int subCategoryId,
-    required DateTime bookingDate,
-    required String startTime,
-    required String endTime,
-    required String address,
-    required int taskerLevelId,
-  });
+
+  //   Future<Result<RegistrationResponse>> createBooking({
+  //   required String userId,
+  //   required int subCategoryId,
+  //   required DateTime bookingDate,
+  //   required String startTime,
+  //   required String endTime,
+  //   required String address,
+  //   required int taskerLevelId,
+  // });
+
   Future<Result<RegistrationResponse>> onboardUser({
     required String userId,
     List<int> servicesId,             // default = const []
@@ -519,85 +536,208 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
 
-    @override
-  Future<Result<RegistrationResponse>> createBooking({
-    required String userId,
-    required int subCategoryId,
-    required DateTime bookingDate,
-    required String startTime,
-    required String endTime,
-    required String address,
-    required int taskerLevelId,
-  }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingEndpoint}');
+@override
+Future<Result<RegistrationResponse>> createBooking({
+  required String userId,
+  required int subCategoryId,
+  required DateTime bookingDate,
+  required String startTime,
+  required String endTime,
+  required String address,
+  required int taskerLevelId,
+  String currency = 'AUD',
+  int paymentType = 1,
+  int serviceType = 1,
+  int paymentMethod = 1,
+}) async {
+  // Make sure you’re using the correct port for this API
+  final uri = Uri.parse('${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}');
 
-    final body = <String, dynamic>{
-      "userId": userId,
-      "subCategoryId": subCategoryId,
-      // Swagger shows ISO string with Z, so send UTC ISO
-      "bookingDate": bookingDate.toUtc().toIso8601String(),
-      "startTime": startTime,
-      "endTime": endTime,
-      "address": address,
-      "taskerLevelId": taskerLevelId,
-    };
+  // helper: "5" -> "05:00:00"
+  String _toTimeSpan(String v) {
+    if (v.contains(':')) return v; // already HH:mm / HH:mm:ss
+    final h = int.tryParse(v) ?? 0;
+    return '${h.toString().padLeft(2, '0')}:00:00';
+  }
 
-    try {
-      print('>>> BOOKING CREATE POST $uri');
-      print('>>> REQUEST: ${jsonEncode(body)}');
+  // 🔴 ROOT-LEVEL body (NO wrapper)
+  final body = <String, dynamic>{
+    'userId': userId,
+    'subCategoryId': subCategoryId,
+    'bookingDate': bookingDate.toUtc().toIso8601String(),
+    'startTime': _toTimeSpan(startTime),  // "9" -> "09:00:00"
+    'endTime': _toTimeSpan(endTime),      // "3" -> "03:00:00"
+    'address': address,
+    'taskerLevelId': taskerLevelId,
+    'currency': currency,
+    // backend complained when this was int → send as string
+    'paymentType': paymentType.toString(),
+    'serviceType': serviceType.toString(),
+    'paymentMethod': paymentMethod.toString(),
+    // backend: "The request field is required." → send dummy value
+    'request': '',
+  };
 
-      final res =
-          await http.post(uri, headers: _headers(), body: jsonEncode(body)).timeout(timeout);
+  try {
+    print('>>> BOOKING CREATE POST $uri');
+    print('>>> REQUEST: ${jsonEncode(body)}');
 
-      print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
-      print('<<< BOOKING CREATE BODY: ${res.body}');
+    final res = await http
+        .post(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
 
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final parsed = jsonDecode(res.body);
-        if (parsed is! Map<String, dynamic>) {
-          return Result.fail(Failure(
-            code: 'parse',
-            message: 'Invalid response format',
-            statusCode: res.statusCode,
-          ));
-        }
+    print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+    print('<<< BOOKING CREATE BODY: ${res.body}');
 
-        final resp = RegistrationResponse.fromJson(parsed);
-        if (!resp.isSuccess) {
-          return Result.fail(Failure(
-            code: 'validation',
-            message: resp.message ?? 'Booking creation failed',
-            statusCode: res.statusCode,
-          ));
-        }
-
-        return Result.ok(resp);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(
+          RegistrationResponse(isSuccess: true, message: 'Booking created'),
+        );
       }
 
-      String message = 'Server error (${res.statusCode})';
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(Failure(
+          code: 'parse',
+          message: 'Invalid response format',
+          statusCode: res.statusCode,
+        ));
+      }
+
+      final resp = RegistrationResponse.fromJson(parsed);
+      if (!resp.isSuccess) {
+        return Result.fail(Failure(
+          code: 'validation',
+          message: resp.message ?? 'Booking creation failed',
+          statusCode: res.statusCode,
+        ));
+      }
+
+      return Result.ok(resp);
+    }
+
+    // better error flattening
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
       try {
-        final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null) {
+        final err = jsonDecode(raw);
+        // Your API returns: { isSuccess, message, errors: [ {field, error}, ... ] }
+        if (err is Map && err['errors'] is List) {
+          final errors = (err['errors'] as List)
+              .map((e) => '${e['field']}: ${e['error']}')
+              .join(' • ');
+          if (errors.isNotEmpty) message = errors;
+        } else if (err is Map && err['message'] != null) {
           message = err['message'].toString();
         }
       } catch (_) {}
-      return Result.fail(
-        Failure(code: 'server', message: message, statusCode: res.statusCode),
-      );
-    } on SocketException {
-      return Result.fail(
-        Failure(code: 'network', message: 'No internet connection'),
-      );
-    } on TimeoutException {
-      return Result.fail(
-        Failure(code: 'timeout', message: 'Request timed out'),
-      );
-    } catch (e) {
-      return Result.fail(
-        Failure(code: 'unknown', message: e.toString()),
-      );
     }
+
+    return Result.fail(Failure(
+      code: 'server',
+      message: message,
+      statusCode: res.statusCode,
+    ));
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
   }
+}
+
+
+
+
+  //   @override
+  // Future<Result<RegistrationResponse>> createBooking({
+  //   required String userId,
+  //   required int subCategoryId,
+  //   required DateTime bookingDate,
+  //   required String startTime,
+  //   required String endTime,
+  //   required String address,
+  //   required int taskerLevelId,
+  // }) async {
+  //   final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingEndpoint}');
+
+  //   final body = <String, dynamic>{
+  //     "userId": userId,
+  //     "subCategoryId": subCategoryId,
+  //     // Swagger shows ISO string with Z, so send UTC ISO
+  //     "bookingDate": bookingDate.toUtc().toIso8601String(),
+  //     "startTime": startTime,
+  //     "endTime": endTime,
+  //     "address": address,
+  //     "taskerLevelId": taskerLevelId,
+  //   };
+
+  //   try {
+  //     print('>>> BOOKING CREATE POST $uri');
+  //     print('>>> REQUEST: ${jsonEncode(body)}');
+
+  //     final res =
+  //         await http.post(uri, headers: _headers(), body: jsonEncode(body)).timeout(timeout);
+
+  //     print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+  //     print('<<< BOOKING CREATE BODY: ${res.body}');
+
+  //     if (res.statusCode >= 200 && res.statusCode < 300) {
+  //       final parsed = jsonDecode(res.body);
+  //       if (parsed is! Map<String, dynamic>) {
+  //         return Result.fail(Failure(
+  //           code: 'parse',
+  //           message: 'Invalid response format',
+  //           statusCode: res.statusCode,
+  //         ));
+  //       }
+
+  //       final resp = RegistrationResponse.fromJson(parsed);
+  //       if (!resp.isSuccess) {
+  //         return Result.fail(Failure(
+  //           code: 'validation',
+  //           message: resp.message ?? 'Booking creation failed',
+  //           statusCode: res.statusCode,
+  //         ));
+  //       }
+
+  //       return Result.ok(resp);
+  //     }
+
+  //     String message = 'Server error (${res.statusCode})';
+  //     try {
+  //       final err = jsonDecode(res.body);
+  //       if (err is Map && err['message'] != null) {
+  //         message = err['message'].toString();
+  //       }
+  //     } catch (_) {}
+  //     return Result.fail(
+  //       Failure(code: 'server', message: message, statusCode: res.statusCode),
+  //     );
+  //   } on SocketException {
+  //     return Result.fail(
+  //       Failure(code: 'network', message: 'No internet connection'),
+  //     );
+  //   } on TimeoutException {
+  //     return Result.fail(
+  //       Failure(code: 'timeout', message: 'Request timed out'),
+  //     );
+  //   } catch (e) {
+  //     return Result.fail(
+  //       Failure(code: 'unknown', message: e.toString()),
+  //     );
+  //   }
+  // }
 
 
   @override

@@ -7,18 +7,22 @@ abstract class UserBookingEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
-
-/// POST /api/Booking/Create
 class CreateUserBookingRequested extends UserBookingEvent {
   final String userId;
   final int subCategoryId;
-  final DateTime bookingDate; // will be sent as ISO-8601 from bloc/repo
+  final DateTime bookingDate;
   final String startTime;
   final String endTime;
   final String address;
   final int taskerLevelId;
 
-  const CreateUserBookingRequested({
+  // new fields
+  final String currency;
+  final int paymentType;
+  final int serviceType;
+  final int paymentMethod;
+
+  CreateUserBookingRequested({
     required this.userId,
     required this.subCategoryId,
     required this.bookingDate,
@@ -26,6 +30,10 @@ class CreateUserBookingRequested extends UserBookingEvent {
     required this.endTime,
     required this.address,
     required this.taskerLevelId,
+    this.currency = 'AUD',
+    this.paymentType = 1,
+    this.serviceType = 1,
+    this.paymentMethod = 1,
   });
 
   @override
@@ -37,8 +45,44 @@ class CreateUserBookingRequested extends UserBookingEvent {
         endTime,
         address,
         taskerLevelId,
+        currency,
+        paymentType,
+        serviceType,
+        paymentMethod,
       ];
 }
+
+/// POST /api/Booking/Create
+// class CreateUserBookingRequested extends UserBookingEvent {
+//   final String userId;
+//   final int subCategoryId;
+//   final DateTime bookingDate; // will be sent as ISO-8601 from bloc/repo
+//   final String startTime;
+//   final String endTime;
+//   final String address;
+//   final int taskerLevelId;
+
+//   const CreateUserBookingRequested({
+//     required this.userId,
+//     required this.subCategoryId,
+//     required this.bookingDate,
+//     required this.startTime,
+//     required this.endTime,
+//     required this.address,
+//     required this.taskerLevelId,
+//   });
+
+//   @override
+//   List<Object?> get props => [
+//         userId,
+//         subCategoryId,
+//         bookingDate,
+//         startTime,
+//         endTime,
+//         address,
+//         taskerLevelId,
+//       ];
+// }
 class UpdateUserLocationRequested extends UserBookingEvent {
   final String userId;
   final double latitude;

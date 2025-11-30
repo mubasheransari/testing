@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
 
-
-import 'package:flutter/material.dart';
-import 'package:google_place/google_place.dart' as gp;
-
-import 'package:flutter/material.dart';
-import 'package:google_place/google_place.dart' as gp;
 
 // === MODELS YOU ALREADY HAVE ===
 // class CertificationGroup { final String name; final List<ServiceOption> services; ... }
@@ -136,11 +133,22 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
         _selectedTaskerLevel != null;
 
     if (!isValid) return;
+context.read<UserBookingBloc>().add(
+  CreateUserBookingRequested(
+    userId: '8e6f4229-5041-4f77-9732-7d50736f6fb0',
+    subCategoryId:int.parse(widget.subCategoryId),
+    bookingDate: _selectedDate!,
+    startTime: _startTime!.hour.toString(),
+    endTime:  _endTime!.hour.toString(),
+    address:  _manualLocationCtrl.text.trim(),
+    taskerLevelId: 2,
+  ),
+);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const FindingYourTaskerScreen()),
-    );
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(builder: (_) => const FindingYourTaskerScreen()),
+    // );
   }
 
   @override
