@@ -2,10 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-class _Colors {
-  static const primary = Color(0xFF5C2E91);
-  static const primaryDark = Color(0xFF411C6E);
-}
+
 
 
 class TasksScreen extends StatelessWidget {
