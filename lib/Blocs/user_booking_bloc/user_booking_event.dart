@@ -39,3 +39,17 @@ class CreateUserBookingRequested extends UserBookingEvent {
         taskerLevelId,
       ];
 }
+class UpdateUserLocationRequested extends UserBookingEvent {
+  final String userId;
+  final double latitude;
+  final double longitude;
+
+  const UpdateUserLocationRequested({
+    required this.userId,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  @override
+  List<Object?> get props => [userId, latitude, longitude];
+}
