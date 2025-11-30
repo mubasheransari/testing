@@ -31,6 +31,13 @@ class ApiConfig {
   static const String userDetailsEndpoint = '/api/User/details';
   static const String onboardingUserEndpoint = '/api/User/onboardinguser';
   static const String trainingVideosEndpoint = '/api/Services/trainingvideos';
+  //user booking
+  static const String bookingEndpoint = '/api/booking/create';
+  static const String bookingFindEndpoint = '/api/Booking/Find';
+  static const String bookingAcceptEndpoint = '/api/Booking/accept';
+  static const String bookingCancelEndpoint = '/api/Booking/cancel';
+  static const String bookingGetEndpoint = '/api/Booking/booking';
+
 }
 
 extension on String {
@@ -43,6 +50,33 @@ extension on String {
 }
 
 abstract class AuthRepository {
+
+   Future<Result<RegistrationResponse>> cancelBooking({
+    required String bookingId,
+    required String userId,
+    required String reason,
+  });
+    Future<Result<RegistrationResponse>> acceptBooking({
+    required String userId,
+    required String bookingId,
+  });
+
+   Future<Result<RegistrationResponse>> findBooking({
+    required String bookingId,
+    required double userLatitude,
+    required double userLongitude,
+  });
+
+
+    Future<Result<RegistrationResponse>> createBooking({
+    required String userId,
+    required int subCategoryId,
+    required DateTime bookingDate,
+    required String startTime,
+    required String endTime,
+    required String address,
+    required int taskerLevelId,
+  });
   Future<Result<RegistrationResponse>> onboardUser({
     required String userId,
     List<int> servicesId,             // default = const []
@@ -178,6 +212,307 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+    @override
+  Future<Result<RegistrationResponse>> cancelBooking({
+    required String bookingId,
+    required String userId,
+    required String reason,
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingCancelEndpoint}');
+
+    final body = <String, dynamic>{
+      "bookingId": bookingId,
+      "userId": userId,
+      "reason": reason,
+    };
+
+    try {
+      print('>>> BOOKING CANCEL PUT $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .put(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< BOOKING CANCEL STATUS: ${res.statusCode}');
+      print('<<< BOOKING CANCEL BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(Failure(
+            code: 'validation',
+            message: resp.message ?? 'Booking cancel failed',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        return Result.ok(resp);
+      }
+
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+
+      return Result.fail(Failure(
+        code: 'server',
+        message: message,
+        statusCode: res.statusCode,
+      ));
+    } on SocketException {
+      return Result.fail(
+          Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(
+          Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(
+          Failure(code: 'unknown', message: e.toString()));
+    }
+  }
+
+
+    @override
+  Future<Result<RegistrationResponse>> acceptBooking({
+    required String userId,
+    required String bookingId,
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingAcceptEndpoint}');
+
+    final body = <String, dynamic>{
+      "userId": userId,
+      "bookingId": bookingId,
+    };
+
+    try {
+      print('>>> BOOKING ACCEPT POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< BOOKING ACCEPT STATUS: ${res.statusCode}');
+      print('<<< BOOKING ACCEPT BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(Failure(
+            code: 'validation',
+            message: resp.message ?? 'Booking accept failed',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        return Result.ok(resp);
+      }
+
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+
+      return Result.fail(Failure(
+        code: 'server',
+        message: message,
+        statusCode: res.statusCode,
+      ));
+    } on SocketException {
+      return Result.fail(
+          Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(
+          Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(
+          Failure(code: 'unknown', message: e.toString()));
+    }
+  }
+
+
+    @override
+  Future<Result<RegistrationResponse>> findBooking({
+    required String bookingId,
+    required double userLatitude,
+    required double userLongitude,
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingFindEndpoint}');
+
+    final body = <String, dynamic>{
+      "bookingId": bookingId,
+      "userLatitude": userLatitude,
+      "userLongitude": userLongitude,
+    };
+
+    try {
+      print('>>> BOOKING FIND POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< BOOKING FIND STATUS: ${res.statusCode}');
+      print('<<< BOOKING FIND BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(Failure(
+            code: 'validation',
+            message: resp.message ?? 'Booking find failed',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        return Result.ok(resp);
+      }
+
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+
+      return Result.fail(Failure(
+        code: 'server',
+        message: message,
+        statusCode: res.statusCode,
+      ));
+    } on SocketException {
+      return Result.fail(
+          Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(
+          Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(
+          Failure(code: 'unknown', message: e.toString()));
+    }
+  }
+
+
+    @override
+  Future<Result<RegistrationResponse>> createBooking({
+    required String userId,
+    required int subCategoryId,
+    required DateTime bookingDate,
+    required String startTime,
+    required String endTime,
+    required String address,
+    required int taskerLevelId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.bookingEndpoint}');
+
+    final body = <String, dynamic>{
+      "userId": userId,
+      "subCategoryId": subCategoryId,
+      // Swagger shows ISO string with Z, so send UTC ISO
+      "bookingDate": bookingDate.toUtc().toIso8601String(),
+      "startTime": startTime,
+      "endTime": endTime,
+      "address": address,
+      "taskerLevelId": taskerLevelId,
+    };
+
+    try {
+      print('>>> BOOKING CREATE POST $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res =
+          await http.post(uri, headers: _headers(), body: jsonEncode(body)).timeout(timeout);
+
+      print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+      print('<<< BOOKING CREATE BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(Failure(
+            code: 'validation',
+            message: resp.message ?? 'Booking creation failed',
+            statusCode: res.statusCode,
+          ));
+        }
+
+        return Result.ok(resp);
+      }
+
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+      return Result.fail(
+        Failure(code: 'server', message: message, statusCode: res.statusCode),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+
 
   @override
 Future<Result<List<TrainingVideo>>> fetchTrainingVideos() async {
