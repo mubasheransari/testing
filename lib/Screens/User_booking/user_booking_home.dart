@@ -3,10 +3,99 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:taskoon/Screens/User_booking/select_service.dart';
 import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
 
+
+// 🧩 ADD YOUR OWN IMPORTS HERE
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:signalr_core/signalr_core.dart';
+// import 'authentication_bloc.dart';
+// import 'service_booking_form_screen.dart';
+// import 'service_certificates_grid_screen.dart';
+// import 'models/certification_group.dart';
+// import 'services_status_enum.dart';
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:signalr_core/signalr_core.dart';
+
+
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:signalr_core/signalr_core.dart';
+
+
+
+/// ==================== SIGNALR LOCATION HUB SERVICE ====================
+
+class LocationHubService {
+  final String hubUrl;
+  late final HubConnection _connection;
+
+  LocationHubService({required this.hubUrl}) {
+    _connection = HubConnectionBuilder()
+        .withUrl(hubUrl)
+        .withAutomaticReconnect()
+        .build();
+  }
+
+  bool get isConnected => _connection.state == HubConnectionState.connected;
+
+  Future<void> start() async {
+    if (isConnected) {
+      print('🔌 Hub already connected');
+      return;
+    }
+    print('🔌 Connecting to hub: $hubUrl');
+    await _connection.start();
+    print('✅ Hub connected. State: ${_connection.state}');
+  }
+
+  Future<void> stop() async {
+    if (!isConnected) {
+      print('ℹ️ Hub already disconnected');
+      return;
+    }
+    print('🛑 Stopping hub connection');
+    await _connection.stop();
+    print('✅ Hub stopped. State: ${_connection.state}');
+  }
+
+  /// This assumes backend has a hub method like:
+  /// public Task UpdateLocation(LocationDto dto) { ... }
+  Future<void> sendLocation({
+    required String userId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final payload = <String, dynamic>{
+      'userId': userId,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+
+    print('📡 Sending location via SignalR: $payload');
+
+    // ⚠️ MUST MATCH HUB METHOD NAME
+    // Change 'update/location' to actual hub method (e.g. 'UpdateLocation')
+    await _connection.invoke(
+      'update/location',
+      args: [payload],
+    );
+
+    print('✅ Location sent via hub');
+  }
+}
+
+/// ==================== USER BOOKING HOME SCREEN ====================
 
 class UserBookingHome extends StatefulWidget {
   const UserBookingHome({super.key});
@@ -19,10 +108,31 @@ class _UserBookingHomeState extends State<UserBookingHome> {
   String _selectedChip = 'All';
   CertificationGroup? _selectedGroup; // to show its services
 
+  // 🔌 SignalR hub service
+  late final LocationHubService _hubService;
+
+  // (Optional) if later you want periodic sends, you can use this
+  Timer? _locationTimer;
+
+  // 👉 Demo values – replace with actual from auth + GPS
+  static const String _demoUserId =
+      '8e6f4229-5041-4f77-9732-7d50736f6fb0'; // resident/user
+  static const double _demoLat = 24.8607; // Karachi demo
+  static const double _demoLng = 67.0011;
+
   @override
   void initState() {
     super.initState();
+
+    // 1️⃣ Init hub service (customer / user hub URL)
+    _hubService = LocationHubService(
+      hubUrl:
+          'http://192.3.3.187:85/hubs/dispatch?userId=$_demoUserId',
+    );
+
+    // 2️⃣ Existing post-frame callback for loading services + starting hub
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ---- existing services loading logic ----
       final bloc = context.read<AuthenticationBloc>();
       final s = bloc.state;
       final hasData =
@@ -30,7 +140,102 @@ class _UserBookingHomeState extends State<UserBookingHome> {
       if (!hasData && s.servicesStatus == ServicesStatus.initial) {
         bloc.add(LoadServicesRequested());
       }
+
+      // ---- NEW: connect hub and send location + fire Bloc event ----
+      _connectHubAndSendLocationOnce();
     });
+  }
+
+  /// 👉 Dispatch REST API update to Bloc (UserBookingBloc)
+  void _dispatchLocationUpdateToApi() {
+    if (!mounted) return;
+
+    print(
+        '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$_demoUserId, lat=$_demoLat, lng=$_demoLng)');
+
+    context.read<UserBookingBloc>().add(
+          UpdateUserLocationRequested(
+            userId: _demoUserId,
+            latitude: _demoLat,
+            longitude: _demoLng,
+          ),
+        );
+  }
+
+  /// 🚀 Connect hub and send location once on screen open
+  Future<void> _connectHubAndSendLocationOnce() async {
+    print('▶️ _connectHubAndSendLocationOnce called');
+
+    try {
+      await _hubService.start();
+    } catch (e) {
+      print('🔥 Error connecting hub in UserBookingHome: $e');
+      // Optional: show UI error
+      return;
+    }
+
+    if (!_hubService.isConnected) {
+      print('⚠️ Hub not connected after start(), skipping sendLocation');
+      return;
+    }
+
+    // ✅ 1) Hit REST API via Bloc (same pattern as TaskerHome)
+    _dispatchLocationUpdateToApi();
+
+    // ✅ 2) Send via SignalR hub
+    try {
+      await _hubService.sendLocation(
+        userId: _demoUserId,
+        latitude: _demoLat,
+        longitude: _demoLng,
+      );
+      print('✅ Initial location sent from UserBookingHome');
+    } catch (e) {
+      print('🔥 Error sending location from UserBookingHome: $e');
+    }
+
+    // If you later want periodic updates for user side:
+    // _startPeriodicLocationUpdates(_demoUserId, _demoLat, _demoLng);
+  }
+
+  /// (Optional helper if you want continuous updates later)
+  void _startPeriodicLocationUpdates(
+      String userId, double lat, double lng) {
+    _locationTimer?.cancel();
+    _locationTimer =
+        Timer.periodic(const Duration(seconds: 30), (timer) async {
+      print(
+          '⏰ UserBookingHome tick #${timer.tick} — sending location via SignalR');
+      if (!_hubService.isConnected) {
+        print('⚠️ Hub disconnected, trying to reconnect...');
+        try {
+          await _hubService.start();
+        } catch (e) {
+          print('🔥 Reconnect failed: $e');
+          return;
+        }
+      }
+      try {
+        await _hubService.sendLocation(
+          userId: userId,
+          latitude: lat,
+          longitude: lng,
+        );
+      } catch (e) {
+        print('🔥 Error sending periodic location: $e');
+      }
+
+      // 👉 If you also want periodic REST API hit:
+      // _dispatchLocationUpdateToApi();
+    });
+  }
+
+  @override
+  void dispose() {
+    print('🧹 UserBookingHome.dispose() — stopping hub & timer');
+    _locationTimer?.cancel();
+    _hubService.stop();
+    super.dispose();
   }
 
   @override
@@ -58,196 +263,9 @@ class _UserBookingHomeState extends State<UserBookingHome> {
                 ),
               ),
               const SizedBox(height: 10),
-              // ⬇️ chips + below selected certificate services
-BlocBuilder<AuthenticationBloc, AuthenticationState>(
-  buildWhen: (p, c) =>
-      p.serviceGroups != c.serviceGroups ||
-      p.servicesStatus != c.servicesStatus,
-  builder: (context, state) {
-    final groups = state.serviceGroups;
-    final List<String> chipLabels = ['All'];
-    if (groups.isNotEmpty) {
-      chipLabels.addAll(groups.map((e) => e.name));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 34,
-          child: (state.servicesStatus == ServicesStatus.loading &&
-                  groups.isEmpty)
-              ? _buildLoadingChips()
-              : ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: chipLabels.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final label = chipLabels[i];
-                    final sel = label == _selectedChip;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedChip = label;
-                          _selectedGroup = label == 'All'
-                              ? null
-                              : groups.firstWhere(
-                                  (g) => g.name == label,
-                                  orElse: () => groups.first,
-                                );
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? const Color(0xFF5C2E91)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          border: sel
-                              ? null
-                              : Border.all(
-                                  color: const Color(0xFF5C2E91)
-                                      .withOpacity(.3),
-                                ),
-                        ),
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: sel
-                                ? Colors.white
-                                : const Color(0xFF5C2E91),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // ⬇️ when "All" is selected, show ALL services from ALL groups
-        if (_selectedGroup == null && groups.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text(
-            'All services',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              color: Color(0xFF75748A),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final g in groups)
-                for (final svc in g.services)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ServiceBookingFormScreen(
-                            group: g,
-                            initialService: svc,
-                            subCategoryId: g.id.toString(),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5C2E91).withOpacity(.06),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF5C2E91).withOpacity(.25),
-                        ),
-                      ),
-                      child: Text(
-                        svc.name, // uses each service name
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          color: Color(0xFF3E1E69),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-            ],
-          ),
-        ],
-
-        // ⬇️ when a specific group is selected, show only that group's services
-        if (_selectedGroup != null && _selectedGroup!.services.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            'Services in "${_selectedGroup!.name}"',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              color: Color(0xFF75748A),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _selectedGroup!.services.map((svc) {
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ServiceBookingFormScreen(
-                        group: _selectedGroup!,
-                        initialService: svc,
-                        subCategoryId: svc.id.toString(),
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5C2E91).withOpacity(.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF5C2E91).withOpacity(.25),
-                    ),
-                  ),
-                  child: Text(
-                    svc.name,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 12,
-                      color: Color(0xFF3E1E69),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ],
-    );
-  },
-),
-
 
               // ⬇️ chips + below selected certificate services
-            /*  BlocBuilder<AuthenticationBloc, AuthenticationState>(
+              BlocBuilder<AuthenticationBloc, AuthenticationState>(
                 buildWhen: (p, c) =>
                     p.serviceGroups != c.serviceGroups ||
                     p.servicesStatus != c.servicesStatus,
@@ -319,7 +337,67 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
                               ),
                       ),
 
-                      // ⬇️ show services of selected certificate
+                      // ⬇️ when "All" is selected, show ALL services from ALL groups
+                      if (_selectedGroup == null && groups.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        const Text(
+                          'All services',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13,
+                            color: Color(0xFF75748A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final g in groups)
+                              for (final svc in g.services)
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ServiceBookingFormScreen(
+                                          group: g,
+                                          initialService: svc,
+                                          subCategoryId: g.id.toString(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF5C2E91)
+                                          .withOpacity(.06),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFF5C2E91)
+                                            .withOpacity(.25),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      svc.name,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 12,
+                                        color: Color(0xFF3E1E69),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ],
+
+                      // ⬇️ when a specific group is selected, show only that group's services
                       if (_selectedGroup != null &&
                           _selectedGroup!.services.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -345,6 +423,7 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
                                     builder: (_) => ServiceBookingFormScreen(
                                       group: _selectedGroup!,
                                       initialService: svc,
+                                      subCategoryId: svc.id.toString(),
                                     ),
                                   ),
                                 );
@@ -378,7 +457,7 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
                     ],
                   );
                 },
-              ),*/
+              ),
 
               const SizedBox(height: 16),
               _buildActionRow(context),
@@ -392,6 +471,8 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
       ),
     );
   }
+
+  // ==================== UI HELPERS (unchanged) ====================
 
   AppBar _buildAppBar() {
     return AppBar(
@@ -654,8 +735,8 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
               )
             ],
           ),
-          child:const Column(
-            children: const [
+          child: const Column(
+            children: [
               Icon(Icons.inbox_rounded, size: 40, color: Color(0xFF75748A)),
               SizedBox(height: 8),
               Text(
@@ -683,8 +764,7 @@ BlocBuilder<AuthenticationBloc, AuthenticationState>(
   }
 }
 
-
-
+/// ==================== SMALL UI WIDGETS ====================
 
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
@@ -817,4 +897,1655 @@ class _ServiceHorizontalCard extends StatelessWidget {
     );
   }
 }
+
+/// ==================== SIGNALR LOCATION HUB SERVICE ====================
+
+// class LocationHubService {
+//   final String hubUrl;
+//   late final HubConnection _connection;
+
+//   LocationHubService({required this.hubUrl}) {
+//     _connection = HubConnectionBuilder()
+//         .withUrl(hubUrl)
+//         .withAutomaticReconnect()
+//         .build();
+//   }
+
+//   bool get isConnected => _connection.state == HubConnectionState.connected;
+
+//   Future<void> start() async {
+//     if (isConnected) {
+//       print('🔌 Hub already connected');
+//       return;
+//     }
+//     print('🔌 Connecting to hub: $hubUrl');
+//     await _connection.start();
+//     print('✅ Hub connected. State: ${_connection.state}');
+//   }
+
+//   Future<void> stop() async {
+//     if (!isConnected) {
+//       print('ℹ️ Hub already disconnected');
+//       return;
+//     }
+//     print('🛑 Stopping hub connection');
+//     await _connection.stop();
+//     print('✅ Hub stopped. State: ${_connection.state}');
+//   }
+
+//   /// This assumes backend has a hub method like:
+//   /// public Task UpdateLocation(LocationDto dto) { ... }
+//   Future<void> sendLocation({
+//     required String userId,
+//     required double latitude,
+//     required double longitude,
+//   }) async {
+//     final payload = <String, dynamic>{
+//       'userId': userId,
+//       'latitude': latitude,
+//       'longitude': longitude,
+//     };
+
+//     print('📡 Sending location via SignalR: $payload');
+
+//     // ⚠️ MUST MATCH HUB METHOD NAME
+//     // Change 'update/location' to actual hub method (e.g. 'UpdateLocation')
+//     await _connection.invoke(
+//       'update/location',
+//       args: [payload],
+//     );
+
+//     print('✅ Location sent via hub');
+//   }
+// }
+
+// /// ==================== USER BOOKING HOME SCREEN ====================
+
+// class UserBookingHome extends StatefulWidget {
+//   const UserBookingHome({super.key});
+
+//   @override
+//   State<UserBookingHome> createState() => _UserBookingHomeState();
+// }
+
+// class _UserBookingHomeState extends State<UserBookingHome> {
+//   String _selectedChip = 'All';
+//   CertificationGroup? _selectedGroup; // to show its services
+
+//   // 🔌 SignalR hub service
+//   late final LocationHubService _hubService;
+
+//   // (Optional) if later you want periodic sends, you can use this
+//   Timer? _locationTimer;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // 1️⃣ Init hub service (customer / user hub URL)
+//     _hubService = LocationHubService(
+//       hubUrl:
+//           'http://192.3.3.187:85/hubs/dispatch?userId=8e6f4229-5041-4f77-9732-7d50736f6fb0',
+//     );
+
+//     // 2️⃣ Existing post-frame callback for loading services + starting hub
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       // ---- existing services loading logic ----
+//       final bloc = context.read<AuthenticationBloc>();
+//       final s = bloc.state;
+//       final hasData =
+//           s.serviceGroups.isNotEmpty && s.servicesStatus == ServicesStatus.success;
+//       if (!hasData && s.servicesStatus == ServicesStatus.initial) {
+//         bloc.add(LoadServicesRequested());
+//       }
+
+//       // ---- NEW: connect hub and send location once ----
+//       _connectHubAndSendLocationOnce();
+//     });
+//   }
+
+//   /// 🚀 Connect hub and send location once on screen open
+//   Future<void> _connectHubAndSendLocationOnce() async {
+//     // TODO: Replace with actual logged-in user & GPS coords
+//     const userId = '8e6f4229-5041-4f77-9732-7d50736f6fb0';
+//     const double lat = 24.8607; // Karachi demo
+//     const double lng = 67.0011;
+
+//     print('▶️ _connectHubAndSendLocationOnce called');
+
+//     try {
+//       await _hubService.start();
+//     } catch (e) {
+//       print('🔥 Error connecting hub in UserBookingHome: $e');
+//       // Optional: show UI error
+//       return;
+//     }
+
+//     if (!_hubService.isConnected) {
+//       print('⚠️ Hub not connected after start(), skipping sendLocation');
+//       return;
+//     }
+
+//     try {
+//       await _hubService.sendLocation(
+//         userId: userId,
+//         latitude: lat,
+//         longitude: lng,
+//       );
+//       print('✅ Initial location sent from UserBookingHome');
+//     } catch (e) {
+//       print('🔥 Error sending location from UserBookingHome: $e');
+//     }
+
+//     // If you later want periodic updates for user side:
+//     // _startPeriodicLocationUpdates(userId, lat, lng);
+//   }
+
+//   /// (Optional helper if you want continuous updates later)
+//   void _startPeriodicLocationUpdates(
+//       String userId, double lat, double lng) {
+//     _locationTimer?.cancel();
+//     _locationTimer =
+//         Timer.periodic(const Duration(seconds: 30), (timer) async {
+//       print(
+//           '⏰ UserBookingHome tick #${timer.tick} — sending location via SignalR');
+//       if (!_hubService.isConnected) {
+//         print('⚠️ Hub disconnected, trying to reconnect...');
+//         try {
+//           await _hubService.start();
+//         } catch (e) {
+//           print('🔥 Reconnect failed: $e');
+//           return;
+//         }
+//       }
+//       try {
+//         await _hubService.sendLocation(
+//           userId: userId,
+//           latitude: lat,
+//           longitude: lng,
+//         );
+//       } catch (e) {
+//         print('🔥 Error sending periodic location: $e');
+//       }
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     print('🧹 UserBookingHome.dispose() — stopping hub & timer');
+//     _locationTimer?.cancel();
+//     _hubService.stop();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: _buildAppBar(),
+//       body: SafeArea(
+//         top: false,
+//         child: SingleChildScrollView(
+//           padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               _buildSearch(),
+//               const SizedBox(height: 14),
+//               _buildInfoCard(),
+//               const SizedBox(height: 18),
+//               const Text(
+//                 'What do you need today?',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 16,
+//                   color: Color(0xFF3E1E69),
+//                   fontWeight: FontWeight.w700,
+//                 ),
+//               ),
+//               const SizedBox(height: 10),
+
+//               // ⬇️ chips + below selected certificate services
+//               BlocBuilder<AuthenticationBloc, AuthenticationState>(
+//                 buildWhen: (p, c) =>
+//                     p.serviceGroups != c.serviceGroups ||
+//                     p.servicesStatus != c.servicesStatus,
+//                 builder: (context, state) {
+//                   final groups = state.serviceGroups;
+//                   final List<String> chipLabels = ['All'];
+//                   if (groups.isNotEmpty) {
+//                     chipLabels.addAll(groups.map((e) => e.name));
+//                   }
+
+//                   return Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       SizedBox(
+//                         height: 34,
+//                         child: (state.servicesStatus == ServicesStatus.loading &&
+//                                 groups.isEmpty)
+//                             ? _buildLoadingChips()
+//                             : ListView.separated(
+//                                 scrollDirection: Axis.horizontal,
+//                                 itemCount: chipLabels.length,
+//                                 separatorBuilder: (_, __) =>
+//                                     const SizedBox(width: 8),
+//                                 itemBuilder: (_, i) {
+//                                   final label = chipLabels[i];
+//                                   final sel = label == _selectedChip;
+//                                   return GestureDetector(
+//                                     onTap: () {
+//                                       setState(() {
+//                                         _selectedChip = label;
+//                                         _selectedGroup = label == 'All'
+//                                             ? null
+//                                             : groups.firstWhere(
+//                                                 (g) => g.name == label,
+//                                                 orElse: () => groups.first,
+//                                               );
+//                                       });
+//                                     },
+//                                     child: Container(
+//                                       padding: const EdgeInsets.symmetric(
+//                                           horizontal: 12, vertical: 6),
+//                                       decoration: BoxDecoration(
+//                                         color: sel
+//                                             ? const Color(0xFF5C2E91)
+//                                             : Colors.white,
+//                                         borderRadius:
+//                                             BorderRadius.circular(999),
+//                                         border: sel
+//                                             ? null
+//                                             : Border.all(
+//                                                 color: const Color(0xFF5C2E91)
+//                                                     .withOpacity(.3),
+//                                               ),
+//                                       ),
+//                                       child: Text(
+//                                         label,
+//                                         style: TextStyle(
+//                                           fontFamily: 'Poppins',
+//                                           color: sel
+//                                               ? Colors.white
+//                                               : const Color(0xFF5C2E91),
+//                                           fontWeight: FontWeight.w600,
+//                                           fontSize: 12.5,
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   );
+//                                 },
+//                               ),
+//                       ),
+
+//                       // ⬇️ when "All" is selected, show ALL services from ALL groups
+//                       if (_selectedGroup == null && groups.isNotEmpty) ...[
+//                         const SizedBox(height: 12),
+//                         const Text(
+//                           'All services',
+//                           style: TextStyle(
+//                             fontFamily: 'Poppins',
+//                             fontSize: 13,
+//                             color: Color(0xFF75748A),
+//                             fontWeight: FontWeight.w500,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Wrap(
+//                           spacing: 8,
+//                           runSpacing: 8,
+//                           children: [
+//                             for (final g in groups)
+//                               for (final svc in g.services)
+//                                 GestureDetector(
+//                                   onTap: () {
+//                                     Navigator.push(
+//                                       context,
+//                                       MaterialPageRoute(
+//                                         builder: (_) =>
+//                                             ServiceBookingFormScreen(
+//                                           group: g,
+//                                           initialService: svc,
+//                                           subCategoryId: g.id.toString(),
+//                                         ),
+//                                       ),
+//                                     );
+//                                   },
+//                                   child: Container(
+//                                     padding: const EdgeInsets.symmetric(
+//                                         horizontal: 12, vertical: 6),
+//                                     decoration: BoxDecoration(
+//                                       color: const Color(0xFF5C2E91)
+//                                           .withOpacity(.06),
+//                                       borderRadius: BorderRadius.circular(12),
+//                                       border: Border.all(
+//                                         color: const Color(0xFF5C2E91)
+//                                             .withOpacity(.25),
+//                                       ),
+//                                     ),
+//                                     child: Text(
+//                                       svc.name,
+//                                       style: const TextStyle(
+//                                         fontFamily: 'Poppins',
+//                                         fontSize: 12,
+//                                         color: Color(0xFF3E1E69),
+//                                         fontWeight: FontWeight.w500,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ),
+//                           ],
+//                         ),
+//                       ],
+
+//                       // ⬇️ when a specific group is selected, show only that group's services
+//                       if (_selectedGroup != null &&
+//                           _selectedGroup!.services.isNotEmpty) ...[
+//                         const SizedBox(height: 12),
+//                         Text(
+//                           'Services in "${_selectedGroup!.name}"',
+//                           style: const TextStyle(
+//                             fontFamily: 'Poppins',
+//                             fontSize: 13,
+//                             color: Color(0xFF75748A),
+//                             fontWeight: FontWeight.w500,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Wrap(
+//                           spacing: 8,
+//                           runSpacing: 8,
+//                           children: _selectedGroup!.services.map((svc) {
+//                             return GestureDetector(
+//                               onTap: () {
+//                                 Navigator.push(
+//                                   context,
+//                                   MaterialPageRoute(
+//                                     builder: (_) => ServiceBookingFormScreen(
+//                                       group: _selectedGroup!,
+//                                       initialService: svc,
+//                                       subCategoryId: svc.id.toString(),
+//                                     ),
+//                                   ),
+//                                 );
+//                               },
+//                               child: Container(
+//                                 padding: const EdgeInsets.symmetric(
+//                                     horizontal: 12, vertical: 6),
+//                                 decoration: BoxDecoration(
+//                                   color: const Color(0xFF5C2E91)
+//                                       .withOpacity(.06),
+//                                   borderRadius: BorderRadius.circular(12),
+//                                   border: Border.all(
+//                                     color: const Color(0xFF5C2E91)
+//                                         .withOpacity(.25),
+//                                   ),
+//                                 ),
+//                                 child: Text(
+//                                   svc.name,
+//                                   style: const TextStyle(
+//                                     fontFamily: 'Poppins',
+//                                     fontSize: 12,
+//                                     color: Color(0xFF3E1E69),
+//                                     fontWeight: FontWeight.w500,
+//                                   ),
+//                                 ),
+//                               ),
+//                             );
+//                           }).toList(),
+//                         ),
+//                       ],
+//                     ],
+//                   );
+//                 },
+//               ),
+
+//               const SizedBox(height: 16),
+//               _buildActionRow(context),
+//               const SizedBox(height: 20),
+//               _buildPopular(context),
+//               const SizedBox(height: 20),
+//               _buildRecent(),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   // ==================== UI HELPERS (unchanged) ====================
+
+//   AppBar _buildAppBar() {
+//     return AppBar(
+//       backgroundColor: Colors.white,
+//       surfaceTintColor: Colors.transparent,
+//       elevation: 0,
+//       centerTitle: false,
+//       titleSpacing: 16,
+//       title: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: const [
+//           Text(
+//             'Good morning 👋',
+//             style: TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 16,
+//               color: Color(0xFF5C2E91),
+//               fontWeight: FontWeight.w600,
+//             ),
+//           ),
+//           SizedBox(height: 3),
+//           Row(
+//             children: [
+//               Icon(Icons.location_on_rounded,
+//                   size: 15, color: Color(0xFF5C2E91)),
+//               SizedBox(width: 4),
+//               Text(
+//                 'Melbourne, AU',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 12.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//       actions: [
+//         IconButton(
+//           onPressed: () {},
+//           icon: const Icon(Icons.notifications_none_rounded,
+//               color: Color(0xFF5C2E91)),
+//         ),
+//         const Padding(
+//           padding: EdgeInsets.only(right: 16),
+//           child: CircleAvatar(
+//             radius: 18,
+//             backgroundImage: AssetImage('assets/avatar.png'),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildSearch() {
+//     return Material(
+//       elevation: 0,
+//       color: Colors.white,
+//       borderRadius: BorderRadius.circular(14),
+//       child: TextField(
+//         style: const TextStyle(fontFamily: 'Poppins'),
+//         decoration: InputDecoration(
+//           hintText: 'Search for services...',
+//           hintStyle: TextStyle(
+//             fontFamily: 'Poppins',
+//             color: Colors.grey.shade500,
+//             fontSize: 13.5,
+//           ),
+//           border: InputBorder.none,
+//           prefixIcon: const Icon(Icons.search_rounded),
+//           contentPadding:
+//               const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildInfoCard() {
+//     return Container(
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(16),
+//         border: Border.all(color: const Color(0xFF5C2E91).withOpacity(.07)),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.03),
+//             blurRadius: 14,
+//             offset: const Offset(0, 6),
+//           )
+//         ],
+//       ),
+//       padding: const EdgeInsets.all(14),
+//       child: Row(
+//         children: [
+//           Container(
+//             height: 40,
+//             width: 40,
+//             decoration: BoxDecoration(
+//               color: const Color(0xFF5C2E91).withOpacity(.12),
+//               borderRadius: BorderRadius.circular(12),
+//             ),
+//             child: const Icon(Icons.flash_on_rounded,
+//                 color: Color(0xFF5C2E91)),
+//           ),
+//           const SizedBox(width: 12),
+//           const Expanded(
+//             child: Text(
+//               '1 active booking today. Tap to view or reschedule.',
+//               style: TextStyle(
+//                 fontFamily: 'Poppins',
+//                 fontSize: 12.5,
+//                 color: Color(0xFF5C2E91),
+//               ),
+//             ),
+//           ),
+//           const Icon(Icons.chevron_right_rounded, color: Color(0xFF5C2E91)),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildLoadingChips() {
+//     return ListView.separated(
+//       scrollDirection: Axis.horizontal,
+//       itemBuilder: (_, __) => Container(
+//         width: 80,
+//         height: 28,
+//         decoration: BoxDecoration(
+//           color: Colors.grey.shade200,
+//           borderRadius: BorderRadius.circular(999),
+//         ),
+//       ),
+//       separatorBuilder: (_, __) => const SizedBox(width: 8),
+//       itemCount: 4,
+//     );
+//   }
+
+//   Widget _buildActionRow(BuildContext context) {
+//     return Row(
+//       children: [
+//         Expanded(
+//           child: _ActionCard(
+//             title: 'Book a service',
+//             subtitle: 'Schedule instantly',
+//             icon: Icons.event_available_rounded,
+//             onTap: () {
+//               Navigator.push(
+//                 context,
+//                 MaterialPageRoute(
+//                   builder: (_) => const ServiceCertificatesGridScreen(),
+//                 ),
+//               );
+//             },
+//           ),
+//         ),
+//         const SizedBox(width: 12),
+//         Expanded(
+//           child: _ActionCard(
+//             title: 'Track booking',
+//             subtitle: 'See status',
+//             icon: Icons.schedule_rounded,
+//             color: const Color(0xFF3DB38D),
+//             onTap: () {},
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildPopular(BuildContext context) {
+//     return Column(
+//       children: [
+//         Row(
+//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//           children: [
+//             const Text(
+//               'Popular near you',
+//               style: TextStyle(
+//                 fontFamily: 'Poppins',
+//                 fontSize: 15.5,
+//                 fontWeight: FontWeight.w700,
+//                 color: Color(0xFF3E1E69),
+//               ),
+//             ),
+//             TextButton(
+//               onPressed: () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(
+//                     builder: (_) => const ServiceCertificatesGridScreen(),
+//                   ),
+//                 );
+//               },
+//               child: const Text(
+//                 'View all',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   color: Color(0xFF5C2E91),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: 10),
+//         SizedBox(
+//           height: 150,
+//           child: ListView(
+//             scrollDirection: Axis.horizontal,
+//             children: const [
+//               _ServiceHorizontalCard(
+//                 title: 'House cleaning',
+//                 price: 'From \$45',
+//                 icon: Icons.cleaning_services_rounded,
+//               ),
+//               _ServiceHorizontalCard(
+//                 title: 'AC repair',
+//                 price: 'From \$60',
+//                 icon: Icons.ac_unit_rounded,
+//                 color: Color(0xFF3DB38D),
+//               ),
+//               _ServiceHorizontalCard(
+//                 title: 'Furniture assemble',
+//                 price: 'From \$35',
+//                 icon: Icons.chair_alt_rounded,
+//                 color: Color(0xFFEE8A41),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildRecent() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         const Text(
+//           'Recent activity',
+//           style: TextStyle(
+//             fontFamily: 'Poppins',
+//             fontSize: 15.5,
+//             fontWeight: FontWeight.w700,
+//             color: Color(0xFF3E1E69),
+//           ),
+//         ),
+//         const SizedBox(height: 12),
+//         Container(
+//           width: double.infinity,
+//           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+//           decoration: BoxDecoration(
+//             color: Colors.white,
+//             borderRadius: BorderRadius.circular(18),
+//             boxShadow: [
+//               BoxShadow(
+//                 color: Colors.black.withOpacity(.02),
+//                 blurRadius: 18,
+//                 offset: const Offset(0, 12),
+//               )
+//             ],
+//           ),
+//           child: const Column(
+//             children: [
+//               Icon(Icons.inbox_rounded, size: 40, color: Color(0xFF75748A)),
+//               SizedBox(height: 8),
+//               Text(
+//                 'No bookings yet',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//               SizedBox(height: 4),
+//               Text(
+//                 'Book a task to see it here.',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 12.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//                 textAlign: TextAlign.center,
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+
+// /// ==================== SMALL UI WIDGETS ====================
+
+// class _ActionCard extends StatelessWidget {
+//   const _ActionCard({
+//     required this.title,
+//     required this.subtitle,
+//     required this.icon,
+//     required this.onTap,
+//     this.color,
+//   });
+
+//   final String title;
+//   final String subtitle;
+//   final IconData icon;
+//   final VoidCallback onTap;
+//   final Color? color;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Material(
+//       color: Colors.white,
+//       borderRadius: BorderRadius.circular(16),
+//       child: InkWell(
+//         borderRadius: BorderRadius.circular(16),
+//         onTap: onTap,
+//         child: Container(
+//           height: 110,
+//           padding: const EdgeInsets.all(14),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Container(
+//                 height: 34,
+//                 width: 34,
+//                 decoration: BoxDecoration(
+//                   color: (color ?? const Color(0xFF5C2E91)).withOpacity(.12),
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: Icon(icon, color: color ?? const Color(0xFF5C2E91)),
+//               ),
+//               const Spacer(),
+//               Text(
+//                 title,
+//                 style: const TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 13.5,
+//                   fontWeight: FontWeight.w700,
+//                   color: Color(0xFF3E1E69),
+//                 ),
+//               ),
+//               const SizedBox(height: 2),
+//               Text(
+//                 subtitle,
+//                 style: const TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 11.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _ServiceHorizontalCard extends StatelessWidget {
+//   const _ServiceHorizontalCard({
+//     required this.title,
+//     required this.price,
+//     required this.icon,
+//     this.color,
+//   });
+
+//   final String title;
+//   final String price;
+//   final IconData icon;
+//   final Color? color;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       width: 150,
+//       margin: const EdgeInsets.only(right: 12),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.03),
+//             blurRadius: 16,
+//             offset: const Offset(0, 10),
+//           ),
+//         ],
+//       ),
+//       padding: const EdgeInsets.all(12),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             height: 34,
+//             width: 34,
+//             decoration: BoxDecoration(
+//               color: (color ?? const Color(0xFF5C2E91)).withOpacity(.12),
+//               borderRadius: BorderRadius.circular(12),
+//             ),
+//             child: Icon(icon, color: color ?? const Color(0xFF5C2E91), size: 18),
+//           ),
+//           const SizedBox(height: 10),
+//           Text(
+//             title,
+//             maxLines: 2,
+//             overflow: TextOverflow.ellipsis,
+//             style: const TextStyle(
+//               fontFamily: 'Poppins',
+//               fontWeight: FontWeight.w600,
+//             ),
+//           ),
+//           const SizedBox(height: 4),
+//           Text(
+//             price,
+//             style: const TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 11.5,
+//               color: Color(0xFF75748A),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+
+// class UserBookingHome extends StatefulWidget {
+//   const UserBookingHome({super.key});
+
+//   @override
+//   State<UserBookingHome> createState() => _UserBookingHomeState();
+// }
+
+// class _UserBookingHomeState extends State<UserBookingHome> {
+//   String _selectedChip = 'All';
+//   CertificationGroup? _selectedGroup; // to show its services
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       final bloc = context.read<AuthenticationBloc>();
+//       final s = bloc.state;
+//       final hasData =
+//           s.serviceGroups.isNotEmpty && s.servicesStatus == ServicesStatus.success;
+//       if (!hasData && s.servicesStatus == ServicesStatus.initial) {
+//         bloc.add(LoadServicesRequested());
+//       }
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: _buildAppBar(),
+//       body: SafeArea(
+//         top: false,
+//         child: SingleChildScrollView(
+//           padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               _buildSearch(),
+//               const SizedBox(height: 14),
+//               _buildInfoCard(),
+//               const SizedBox(height: 18),
+//               const Text(
+//                 'What do you need today?',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 16,
+//                   color: Color(0xFF3E1E69),
+//                   fontWeight: FontWeight.w700,
+//                 ),
+//               ),
+//               const SizedBox(height: 10),
+//               // ⬇️ chips + below selected certificate services
+// BlocBuilder<AuthenticationBloc, AuthenticationState>(
+//   buildWhen: (p, c) =>
+//       p.serviceGroups != c.serviceGroups ||
+//       p.servicesStatus != c.servicesStatus,
+//   builder: (context, state) {
+//     final groups = state.serviceGroups;
+//     final List<String> chipLabels = ['All'];
+//     if (groups.isNotEmpty) {
+//       chipLabels.addAll(groups.map((e) => e.name));
+//     }
+
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         SizedBox(
+//           height: 34,
+//           child: (state.servicesStatus == ServicesStatus.loading &&
+//                   groups.isEmpty)
+//               ? _buildLoadingChips()
+//               : ListView.separated(
+//                   scrollDirection: Axis.horizontal,
+//                   itemCount: chipLabels.length,
+//                   separatorBuilder: (_, __) => const SizedBox(width: 8),
+//                   itemBuilder: (_, i) {
+//                     final label = chipLabels[i];
+//                     final sel = label == _selectedChip;
+//                     return GestureDetector(
+//                       onTap: () {
+//                         setState(() {
+//                           _selectedChip = label;
+//                           _selectedGroup = label == 'All'
+//                               ? null
+//                               : groups.firstWhere(
+//                                   (g) => g.name == label,
+//                                   orElse: () => groups.first,
+//                                 );
+//                         });
+//                       },
+//                       child: Container(
+//                         padding: const EdgeInsets.symmetric(
+//                             horizontal: 12, vertical: 6),
+//                         decoration: BoxDecoration(
+//                           color: sel
+//                               ? const Color(0xFF5C2E91)
+//                               : Colors.white,
+//                           borderRadius: BorderRadius.circular(999),
+//                           border: sel
+//                               ? null
+//                               : Border.all(
+//                                   color: const Color(0xFF5C2E91)
+//                                       .withOpacity(.3),
+//                                 ),
+//                         ),
+//                         child: Text(
+//                           label,
+//                           style: TextStyle(
+//                             fontFamily: 'Poppins',
+//                             color: sel
+//                                 ? Colors.white
+//                                 : const Color(0xFF5C2E91),
+//                             fontWeight: FontWeight.w600,
+//                             fontSize: 12.5,
+//                           ),
+//                         ),
+//                       ),
+//                     );
+//                   },
+//                 ),
+//         ),
+
+//         // ⬇️ when "All" is selected, show ALL services from ALL groups
+//         if (_selectedGroup == null && groups.isNotEmpty) ...[
+//           const SizedBox(height: 12),
+//           const Text(
+//             'All services',
+//             style: TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 13,
+//               color: Color(0xFF75748A),
+//               fontWeight: FontWeight.w500,
+//             ),
+//           ),
+//           const SizedBox(height: 8),
+//           Wrap(
+//             spacing: 8,
+//             runSpacing: 8,
+//             children: [
+//               for (final g in groups)
+//                 for (final svc in g.services)
+//                   GestureDetector(
+//                     onTap: () {
+//                       Navigator.push(
+//                         context,
+//                         MaterialPageRoute(
+//                           builder: (_) => ServiceBookingFormScreen(
+//                             group: g,
+//                             initialService: svc,
+//                             subCategoryId: g.id.toString(),
+//                           ),
+//                         ),
+//                       );
+//                     },
+//                     child: Container(
+//                       padding: const EdgeInsets.symmetric(
+//                           horizontal: 12, vertical: 6),
+//                       decoration: BoxDecoration(
+//                         color: const Color(0xFF5C2E91).withOpacity(.06),
+//                         borderRadius: BorderRadius.circular(12),
+//                         border: Border.all(
+//                           color: const Color(0xFF5C2E91).withOpacity(.25),
+//                         ),
+//                       ),
+//                       child: Text(
+//                         svc.name, // uses each service name
+//                         style: const TextStyle(
+//                           fontFamily: 'Poppins',
+//                           fontSize: 12,
+//                           color: Color(0xFF3E1E69),
+//                           fontWeight: FontWeight.w500,
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//             ],
+//           ),
+//         ],
+
+//         // ⬇️ when a specific group is selected, show only that group's services
+//         if (_selectedGroup != null && _selectedGroup!.services.isNotEmpty) ...[
+//           const SizedBox(height: 12),
+//           Text(
+//             'Services in "${_selectedGroup!.name}"',
+//             style: const TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 13,
+//               color: Color(0xFF75748A),
+//               fontWeight: FontWeight.w500,
+//             ),
+//           ),
+//           const SizedBox(height: 8),
+//           Wrap(
+//             spacing: 8,
+//             runSpacing: 8,
+//             children: _selectedGroup!.services.map((svc) {
+//               return GestureDetector(
+//                 onTap: () {
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (_) => ServiceBookingFormScreen(
+//                         group: _selectedGroup!,
+//                         initialService: svc,
+//                         subCategoryId: svc.id.toString(),
+//                       ),
+//                     ),
+//                   );
+//                 },
+//                 child: Container(
+//                   padding: const EdgeInsets.symmetric(
+//                       horizontal: 12, vertical: 6),
+//                   decoration: BoxDecoration(
+//                     color: const Color(0xFF5C2E91).withOpacity(.06),
+//                     borderRadius: BorderRadius.circular(12),
+//                     border: Border.all(
+//                       color: const Color(0xFF5C2E91).withOpacity(.25),
+//                     ),
+//                   ),
+//                   child: Text(
+//                     svc.name,
+//                     style: const TextStyle(
+//                       fontFamily: 'Poppins',
+//                       fontSize: 12,
+//                       color: Color(0xFF3E1E69),
+//                       fontWeight: FontWeight.w500,
+//                     ),
+//                   ),
+//                 ),
+//               );
+//             }).toList(),
+//           ),
+//         ],
+//       ],
+//     );
+//   },
+// ),
+
+
+//               // ⬇️ chips + below selected certificate services
+//             /*  BlocBuilder<AuthenticationBloc, AuthenticationState>(
+//                 buildWhen: (p, c) =>
+//                     p.serviceGroups != c.serviceGroups ||
+//                     p.servicesStatus != c.servicesStatus,
+//                 builder: (context, state) {
+//                   final groups = state.serviceGroups;
+//                   final List<String> chipLabels = ['All'];
+//                   if (groups.isNotEmpty) {
+//                     chipLabels.addAll(groups.map((e) => e.name));
+//                   }
+
+//                   return Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       SizedBox(
+//                         height: 34,
+//                         child: (state.servicesStatus == ServicesStatus.loading &&
+//                                 groups.isEmpty)
+//                             ? _buildLoadingChips()
+//                             : ListView.separated(
+//                                 scrollDirection: Axis.horizontal,
+//                                 itemCount: chipLabels.length,
+//                                 separatorBuilder: (_, __) =>
+//                                     const SizedBox(width: 8),
+//                                 itemBuilder: (_, i) {
+//                                   final label = chipLabels[i];
+//                                   final sel = label == _selectedChip;
+//                                   return GestureDetector(
+//                                     onTap: () {
+//                                       setState(() {
+//                                         _selectedChip = label;
+//                                         _selectedGroup = label == 'All'
+//                                             ? null
+//                                             : groups.firstWhere(
+//                                                 (g) => g.name == label,
+//                                                 orElse: () => groups.first,
+//                                               );
+//                                       });
+//                                     },
+//                                     child: Container(
+//                                       padding: const EdgeInsets.symmetric(
+//                                           horizontal: 12, vertical: 6),
+//                                       decoration: BoxDecoration(
+//                                         color: sel
+//                                             ? const Color(0xFF5C2E91)
+//                                             : Colors.white,
+//                                         borderRadius:
+//                                             BorderRadius.circular(999),
+//                                         border: sel
+//                                             ? null
+//                                             : Border.all(
+//                                                 color: const Color(0xFF5C2E91)
+//                                                     .withOpacity(.3),
+//                                               ),
+//                                       ),
+//                                       child: Text(
+//                                         label,
+//                                         style: TextStyle(
+//                                           fontFamily: 'Poppins',
+//                                           color: sel
+//                                               ? Colors.white
+//                                               : const Color(0xFF5C2E91),
+//                                           fontWeight: FontWeight.w600,
+//                                           fontSize: 12.5,
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   );
+//                                 },
+//                               ),
+//                       ),
+
+//                       // ⬇️ show services of selected certificate
+//                       if (_selectedGroup != null &&
+//                           _selectedGroup!.services.isNotEmpty) ...[
+//                         const SizedBox(height: 12),
+//                         Text(
+//                           'Services in "${_selectedGroup!.name}"',
+//                           style: const TextStyle(
+//                             fontFamily: 'Poppins',
+//                             fontSize: 13,
+//                             color: Color(0xFF75748A),
+//                             fontWeight: FontWeight.w500,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Wrap(
+//                           spacing: 8,
+//                           runSpacing: 8,
+//                           children: _selectedGroup!.services.map((svc) {
+//                             return GestureDetector(
+//                               onTap: () {
+//                                 Navigator.push(
+//                                   context,
+//                                   MaterialPageRoute(
+//                                     builder: (_) => ServiceBookingFormScreen(
+//                                       group: _selectedGroup!,
+//                                       initialService: svc,
+//                                     ),
+//                                   ),
+//                                 );
+//                               },
+//                               child: Container(
+//                                 padding: const EdgeInsets.symmetric(
+//                                     horizontal: 12, vertical: 6),
+//                                 decoration: BoxDecoration(
+//                                   color: const Color(0xFF5C2E91)
+//                                       .withOpacity(.06),
+//                                   borderRadius: BorderRadius.circular(12),
+//                                   border: Border.all(
+//                                     color: const Color(0xFF5C2E91)
+//                                         .withOpacity(.25),
+//                                   ),
+//                                 ),
+//                                 child: Text(
+//                                   svc.name,
+//                                   style: const TextStyle(
+//                                     fontFamily: 'Poppins',
+//                                     fontSize: 12,
+//                                     color: Color(0xFF3E1E69),
+//                                     fontWeight: FontWeight.w500,
+//                                   ),
+//                                 ),
+//                               ),
+//                             );
+//                           }).toList(),
+//                         ),
+//                       ],
+//                     ],
+//                   );
+//                 },
+//               ),*/
+
+//               const SizedBox(height: 16),
+//               _buildActionRow(context),
+//               const SizedBox(height: 20),
+//               _buildPopular(context),
+//               const SizedBox(height: 20),
+//               _buildRecent(),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   AppBar _buildAppBar() {
+//     return AppBar(
+//       backgroundColor: Colors.white,
+//       surfaceTintColor: Colors.transparent,
+//       elevation: 0,
+//       centerTitle: false,
+//       titleSpacing: 16,
+//       title: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: const [
+//           Text(
+//             'Good morning 👋',
+//             style: TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 16,
+//               color: Color(0xFF5C2E91),
+//               fontWeight: FontWeight.w600,
+//             ),
+//           ),
+//           SizedBox(height: 3),
+//           Row(
+//             children: [
+//               Icon(Icons.location_on_rounded,
+//                   size: 15, color: Color(0xFF5C2E91)),
+//               SizedBox(width: 4),
+//               Text(
+//                 'Melbourne, AU',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 12.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//       actions: [
+//         IconButton(
+//           onPressed: () {},
+//           icon: const Icon(Icons.notifications_none_rounded,
+//               color: Color(0xFF5C2E91)),
+//         ),
+//         const Padding(
+//           padding: EdgeInsets.only(right: 16),
+//           child: CircleAvatar(
+//             radius: 18,
+//             backgroundImage: AssetImage('assets/avatar.png'),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildSearch() {
+//     return Material(
+//       elevation: 0,
+//       color: Colors.white,
+//       borderRadius: BorderRadius.circular(14),
+//       child: TextField(
+//         style: const TextStyle(fontFamily: 'Poppins'),
+//         decoration: InputDecoration(
+//           hintText: 'Search for services...',
+//           hintStyle: TextStyle(
+//             fontFamily: 'Poppins',
+//             color: Colors.grey.shade500,
+//             fontSize: 13.5,
+//           ),
+//           border: InputBorder.none,
+//           prefixIcon: const Icon(Icons.search_rounded),
+//           contentPadding:
+//               const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildInfoCard() {
+//     return Container(
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(16),
+//         border: Border.all(color: const Color(0xFF5C2E91).withOpacity(.07)),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.03),
+//             blurRadius: 14,
+//             offset: const Offset(0, 6),
+//           )
+//         ],
+//       ),
+//       padding: const EdgeInsets.all(14),
+//       child: Row(
+//         children: [
+//           Container(
+//             height: 40,
+//             width: 40,
+//             decoration: BoxDecoration(
+//               color: const Color(0xFF5C2E91).withOpacity(.12),
+//               borderRadius: BorderRadius.circular(12),
+//             ),
+//             child: const Icon(Icons.flash_on_rounded,
+//                 color: Color(0xFF5C2E91)),
+//           ),
+//           const SizedBox(width: 12),
+//           const Expanded(
+//             child: Text(
+//               '1 active booking today. Tap to view or reschedule.',
+//               style: TextStyle(
+//                 fontFamily: 'Poppins',
+//                 fontSize: 12.5,
+//                 color: Color(0xFF5C2E91),
+//               ),
+//             ),
+//           ),
+//           const Icon(Icons.chevron_right_rounded, color: Color(0xFF5C2E91)),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildLoadingChips() {
+//     return ListView.separated(
+//       scrollDirection: Axis.horizontal,
+//       itemBuilder: (_, __) => Container(
+//         width: 80,
+//         height: 28,
+//         decoration: BoxDecoration(
+//           color: Colors.grey.shade200,
+//           borderRadius: BorderRadius.circular(999),
+//         ),
+//       ),
+//       separatorBuilder: (_, __) => const SizedBox(width: 8),
+//       itemCount: 4,
+//     );
+//   }
+
+//   Widget _buildActionRow(BuildContext context) {
+//     return Row(
+//       children: [
+//         Expanded(
+//           child: _ActionCard(
+//             title: 'Book a service',
+//             subtitle: 'Schedule instantly',
+//             icon: Icons.event_available_rounded,
+//             onTap: () {
+//               Navigator.push(
+//                 context,
+//                 MaterialPageRoute(
+//                   builder: (_) => const ServiceCertificatesGridScreen(),
+//                 ),
+//               );
+//             },
+//           ),
+//         ),
+//         const SizedBox(width: 12),
+//         Expanded(
+//           child: _ActionCard(
+//             title: 'Track booking',
+//             subtitle: 'See status',
+//             icon: Icons.schedule_rounded,
+//             color: const Color(0xFF3DB38D),
+//             onTap: () {},
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildPopular(BuildContext context) {
+//     return Column(
+//       children: [
+//         Row(
+//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//           children: [
+//             const Text(
+//               'Popular near you',
+//               style: TextStyle(
+//                 fontFamily: 'Poppins',
+//                 fontSize: 15.5,
+//                 fontWeight: FontWeight.w700,
+//                 color: Color(0xFF3E1E69),
+//               ),
+//             ),
+//             TextButton(
+//               onPressed: () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(
+//                     builder: (_) => const ServiceCertificatesGridScreen(),
+//                   ),
+//                 );
+//               },
+//               child: const Text(
+//                 'View all',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   color: Color(0xFF5C2E91),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: 10),
+//         SizedBox(
+//           height: 150,
+//           child: ListView(
+//             scrollDirection: Axis.horizontal,
+//             children: const [
+//               _ServiceHorizontalCard(
+//                 title: 'House cleaning',
+//                 price: 'From \$45',
+//                 icon: Icons.cleaning_services_rounded,
+//               ),
+//               _ServiceHorizontalCard(
+//                 title: 'AC repair',
+//                 price: 'From \$60',
+//                 icon: Icons.ac_unit_rounded,
+//                 color: Color(0xFF3DB38D),
+//               ),
+//               _ServiceHorizontalCard(
+//                 title: 'Furniture assemble',
+//                 price: 'From \$35',
+//                 icon: Icons.chair_alt_rounded,
+//                 color: Color(0xFFEE8A41),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _buildRecent() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         const Text(
+//           'Recent activity',
+//           style: TextStyle(
+//             fontFamily: 'Poppins',
+//             fontSize: 15.5,
+//             fontWeight: FontWeight.w700,
+//             color: Color(0xFF3E1E69),
+//           ),
+//         ),
+//         const SizedBox(height: 12),
+//         Container(
+//           width: double.infinity,
+//           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+//           decoration: BoxDecoration(
+//             color: Colors.white,
+//             borderRadius: BorderRadius.circular(18),
+//             boxShadow: [
+//               BoxShadow(
+//                 color: Colors.black.withOpacity(.02),
+//                 blurRadius: 18,
+//                 offset: const Offset(0, 12),
+//               )
+//             ],
+//           ),
+//           child:const Column(
+//             children: const [
+//               Icon(Icons.inbox_rounded, size: 40, color: Color(0xFF75748A)),
+//               SizedBox(height: 8),
+//               Text(
+//                 'No bookings yet',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//               SizedBox(height: 4),
+//               Text(
+//                 'Book a task to see it here.',
+//                 style: TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 12.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//                 textAlign: TextAlign.center,
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+
+
+
+
+// class _ActionCard extends StatelessWidget {
+//   const _ActionCard({
+//     required this.title,
+//     required this.subtitle,
+//     required this.icon,
+//     required this.onTap,
+//     this.color,
+//   });
+
+//   final String title;
+//   final String subtitle;
+//   final IconData icon;
+//   final VoidCallback onTap;
+//   final Color? color;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Material(
+//       color: Colors.white,
+//       borderRadius: BorderRadius.circular(16),
+//       child: InkWell(
+//         borderRadius: BorderRadius.circular(16),
+//         onTap: onTap,
+//         child: Container(
+//           height: 110,
+//           padding: const EdgeInsets.all(14),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Container(
+//                 height: 34,
+//                 width: 34,
+//                 decoration: BoxDecoration(
+//                   color: (color ?? const Color(0xFF5C2E91)).withOpacity(.12),
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: Icon(icon, color: color ?? const Color(0xFF5C2E91)),
+//               ),
+//               const Spacer(),
+//               Text(
+//                 title,
+//                 style: const TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 13.5,
+//                   fontWeight: FontWeight.w700,
+//                   color: Color(0xFF3E1E69),
+//                 ),
+//               ),
+//               const SizedBox(height: 2),
+//               Text(
+//                 subtitle,
+//                 style: const TextStyle(
+//                   fontFamily: 'Poppins',
+//                   fontSize: 11.5,
+//                   color: Color(0xFF75748A),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _ServiceHorizontalCard extends StatelessWidget {
+//   const _ServiceHorizontalCard({
+//     required this.title,
+//     required this.price,
+//     required this.icon,
+//     this.color,
+//   });
+
+//   final String title;
+//   final String price;
+//   final IconData icon;
+//   final Color? color;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       width: 150,
+//       margin: const EdgeInsets.only(right: 12),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.03),
+//             blurRadius: 16,
+//             offset: const Offset(0, 10),
+//           ),
+//         ],
+//       ),
+//       padding: const EdgeInsets.all(12),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             height: 34,
+//             width: 34,
+//             decoration: BoxDecoration(
+//               color: (color ?? const Color(0xFF5C2E91)).withOpacity(.12),
+//               borderRadius: BorderRadius.circular(12),
+//             ),
+//             child: Icon(icon, color: color ?? const Color(0xFF5C2E91), size: 18),
+//           ),
+//           const SizedBox(height: 10),
+//           Text(
+//             title,
+//             maxLines: 2,
+//             overflow: TextOverflow.ellipsis,
+//             style: const TextStyle(
+//               fontFamily: 'Poppins',
+//               fontWeight: FontWeight.w600,
+//             ),
+//           ),
+//           const SizedBox(height: 4),
+//           Text(
+//             price,
+//             style: const TextStyle(
+//               fontFamily: 'Poppins',
+//               fontSize: 11.5,
+//               color: Color(0xFF75748A),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
