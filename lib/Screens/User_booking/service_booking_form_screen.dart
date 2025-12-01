@@ -137,7 +137,7 @@ context.read<UserBookingBloc>().add(
   CreateUserBookingRequested(
     userId: '8e6f4229-5041-4f77-9732-7d50736f6fb0',
     subCategoryId:int.parse(widget.subCategoryId),
-    bookingDate: _selectedDate!,
+    bookingDate: _selectedDate!, 
     startTime: _startTime!.hour.toString(),
     endTime:  _endTime!.hour.toString(),
     address:  _manualLocationCtrl.text.trim(),
