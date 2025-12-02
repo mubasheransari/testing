@@ -3,6 +3,7 @@ import 'package:taskoon/Models/auth_model.dart';
 
 
 import 'package:equatable/equatable.dart';
+import 'package:taskoon/Models/booking_create_response.dart';
 
 // For booking create
 enum UserBookingCreateStatus { initial, submitting, success, failure }
@@ -10,7 +11,9 @@ enum UserBookingCreateStatus { initial, submitting, success, failure }
 // For address / location update
 enum UserLocationUpdateStatus { initial, updating, success, failure }
 
+// ignore: must_be_immutable
 class UserBookingState extends Equatable {
+  BookingCreateResponse? bookingCreateResponse;
   // ----- booking create -----
   final UserBookingCreateStatus createStatus;
   final RegistrationResponse? createResponse;
@@ -22,7 +25,8 @@ class UserBookingState extends Equatable {
   final double? lastLongitude;
   final String? locationError;
 
-  const UserBookingState({
+   UserBookingState({
+    this.bookingCreateResponse,
     this.createStatus = UserBookingCreateStatus.initial,
     this.createResponse,
     this.createError,
@@ -33,6 +37,7 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+     BookingCreateResponse? bookingCreateResponse,
     // booking create
     UserBookingCreateStatus? createStatus,
     RegistrationResponse? createResponse,
@@ -48,6 +53,7 @@ class UserBookingState extends Equatable {
     bool clearLocationError = false,
   }) {
     return UserBookingState(
+      bookingCreateResponse:  bookingCreateResponse ?? this.bookingCreateResponse,
       // booking create
       createStatus: createStatus ?? this.createStatus,
       createResponse:
@@ -66,6 +72,7 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+   bookingCreateResponse,
         // booking create
         createStatus,
         createResponse,

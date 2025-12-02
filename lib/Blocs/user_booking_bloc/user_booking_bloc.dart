@@ -7,16 +7,16 @@ import 'package:taskoon/Repository/auth_repository.dart';
 class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
 
-  UserBookingBloc(this.repo) : super(const UserBookingState()) {
+  UserBookingBloc(this.repo) : super( UserBookingState()) {
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
   }
 
-  Future<void> _onCreateUserBookingRequested(
+
+Future<void> _onCreateUserBookingRequested(
   CreateUserBookingRequested e,
   Emitter<UserBookingState> emit,
 ) async {
-  // 🔍 Debug log
   print('📥 [Bloc] CreateUserBookingRequested: '
       'userId=${e.userId}, subCategoryId=${e.subCategoryId}, '
       'bookingDate=${e.bookingDate.toIso8601String()}, '
@@ -31,6 +31,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     clearCreateResponse: true,
   ));
 
+  // ⬇️ Now returns Result<BookingCreateResponse>
   final r = await repo.createBooking(
     userId: e.userId,
     subCategoryId: e.subCategoryId,
@@ -48,13 +49,15 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   if (r.isSuccess) {
     print('✅ [Bloc] createBooking SUCCESS');
 
+    // r.data is BookingCreateResponse?
+    final bookingResp = r.data; // BookingCreateResponse?
+
     emit(state.copyWith(
       createStatus: UserBookingCreateStatus.success,
-      createResponse: r.data,
+   bookingCreateResponse: bookingResp, // change field type to BookingCreateResponse?
       clearCreateError: true,
     ));
   } else {
-    print('❌ [Bloc] createBooking FAILURE: ${r.failure?.message}');
 
     emit(state.copyWith(
       createStatus: UserBookingCreateStatus.failure,
@@ -63,6 +66,58 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     ));
   }
 }
+
+//   Future<void> _onCreateUserBookingRequested(
+//   CreateUserBookingRequested e,
+//   Emitter<UserBookingState> emit,
+// ) async {
+//   // 🔍 Debug log
+//   print('📥 [Bloc] CreateUserBookingRequested: '
+//       'userId=${e.userId}, subCategoryId=${e.subCategoryId}, '
+//       'bookingDate=${e.bookingDate.toIso8601String()}, '
+//       'start=${e.startTime}, end=${e.endTime}, '
+//       'address=${e.address}, taskerLevelId=${e.taskerLevelId}, '
+//       'currency=${e.currency}, paymentType=${e.paymentType}, '
+//       'serviceType=${e.serviceType}, paymentMethod=${e.paymentMethod}');
+
+//   emit(state.copyWith(
+//     createStatus: UserBookingCreateStatus.submitting,
+//     clearCreateError: true,
+//     clearCreateResponse: true,
+//   ));
+
+//   final r = await repo.createBooking(
+//     userId: e.userId,
+//     subCategoryId: e.subCategoryId,
+//     bookingDate: e.bookingDate,
+//     startTime: e.startTime,
+//     endTime: e.endTime,
+//     address: e.address,
+//     taskerLevelId: e.taskerLevelId,
+//     // currency: e.currency,
+//     // paymentType: e.paymentType,
+//     // serviceType: e.serviceType,
+//     // paymentMethod: e.paymentMethod,
+//   );
+
+//   if (r.isSuccess) {
+//     print('✅ [Bloc] createBooking SUCCESS');
+
+//     emit(state.copyWith(
+//       createStatus: UserBookingCreateStatus.success,
+//       createResponse: r.data,
+//       clearCreateError: true,
+//     ));
+//   } else {
+//     print('❌ [Bloc] createBooking FAILURE: ${r.failure?.message}');
+
+//     emit(state.copyWith(
+//       createStatus: UserBookingCreateStatus.failure,
+//       createError: r.failure?.message ?? 'Failed to create booking',
+//       clearCreateResponse: true,
+//     ));
+//   }
+// }
 
 
   // ---------- /api/Booking/Create ----------

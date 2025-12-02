@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
@@ -511,31 +512,115 @@ context.read<UserBookingBloc>().add(
               ),
 
               const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.search_rounded,
-                      size: 20, color: Colors.white),
-                  label: const Text(
-                    'FIND TASKER',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      letterSpacing: .3,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPurple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: _onSubmit,
+              BlocConsumer<UserBookingBloc, UserBookingState>(
+  listenWhen: (previous, current) =>
+      previous.createStatus != current.createStatus,
+  listener: (context, state) {
+    if (state.createStatus == UserBookingCreateStatus.success) {
+      // ✅ success → show toast / navigate
+      final booking = state.bookingCreateResponse?.result;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Booking created successfully'
+            '${booking != null ? ' (ID: ${booking.id})' : ''}',
+          ),
+        ),
+      );
+
+      // Example: navigate to booking detail screen
+      // if (booking != null) {
+      //   Navigator.push(
+      //     context,
+      //     MaterialPageRoute(
+      //       builder: (_) => BookingDetailScreen(booking: booking),
+      //     ),
+      //   );
+      // }
+
+    } else if (state.createStatus == UserBookingCreateStatus.failure) {
+    print("ELSE CONDITION ${state.createError}");
+    print("ELSE CONDITION ${state.createError}");
+    print("ELSE CONDITION ${state.createError}");
+      // ❌ show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(state.createError ?? 'Failed to create booking'),
+        ),
+      );
+    }
+  },
+  builder: (context, state) {
+    final isSubmitting =
+        state.createStatus == UserBookingCreateStatus.submitting;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        icon: isSubmitting
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
+              )
+            : const Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: Colors.white,
               ),
+        label: Text(
+          isSubmitting ? 'PROCESSING...' : 'FIND TASKER ',
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            letterSpacing: .3,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kPurple,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 0,
+        ),
+        // 🔒 Disable button while submitting
+        onPressed: isSubmitting ? null : _onSubmit,
+      ),
+    );
+  },
+),
+
+              // SizedBox(
+              //   width: double.infinity,
+              //   height: 56,
+              //   child: ElevatedButton.icon(
+              //     icon: const Icon(Icons.search_rounded,
+              //         size: 20, color: Colors.white),
+              //     label: const Text(
+              //       'FIND TASKER',
+              //       style: TextStyle(
+              //         fontFamily: 'Poppins',
+              //         letterSpacing: .3,
+              //         fontWeight: FontWeight.w700,
+              //         color: Colors.white,
+              //       ),
+              //     ),
+              //     style: ElevatedButton.styleFrom(
+              //       backgroundColor: kPurple,
+              //       shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(16),
+              //       ),
+              //       elevation: 0,
+              //     ),
+              //     onPressed: _onSubmit,
+              //   ),
+              // ),
             ],
           ),
         ),
