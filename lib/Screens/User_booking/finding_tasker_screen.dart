@@ -20,11 +20,12 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
     super.initState();
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const TaskerConfirmationScreen(), // <- your real screen
-        ),
-      );
+      
+      // Navigator.of(context).pushReplacement(
+      //   MaterialPageRoute(
+      //     builder: (_) => const TaskerConfirmationScreen(), // <- your real screen
+      //   ),
+      // );
     });
   }
   @override

@@ -529,15 +529,16 @@ context.read<UserBookingBloc>().add(
         ),
       );
 
+
       // Example: navigate to booking detail screen
-      // if (booking != null) {
-      //   Navigator.push(
-      //     context,
-      //     MaterialPageRoute(
-      //       builder: (_) => BookingDetailScreen(booking: booking),
-      //     ),
-      //   );
-      // }
+      if (booking != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FindingYourTaskerScreen()//BookingDetailScreen(booking: booking),
+          ),
+        );
+      }
 
     } else if (state.createStatus == UserBookingCreateStatus.failure) {
     print("ELSE CONDITION ${state.createError}");
