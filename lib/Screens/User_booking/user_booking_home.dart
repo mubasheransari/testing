@@ -116,7 +116,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
 
   // 👉 Demo values – replace with actual from auth + GPS
   static const String _demoUserId =
-      '8e6f4229-5041-4f77-9732-7d50736f6fb0'; // resident/user
+      '54748461-018e-4a05-95b5-d490d07c5ab2'; // resident/user
   static const double _demoLat = 24.8607; // Karachi demo
   static const double _demoLng = 67.0011;
 
