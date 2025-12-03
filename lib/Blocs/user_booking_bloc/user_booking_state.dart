@@ -11,11 +11,15 @@ enum UserBookingCreateStatus { initial, submitting, success, failure }
 // For address / location update
 enum UserLocationUpdateStatus { initial, updating, success, failure }
 
+enum FindingTaskerStatus { initial, updating, success, failure }
+
+
 // ignore: must_be_immutable
 class UserBookingState extends Equatable {
   BookingCreateResponse? bookingCreateResponse;
   // ----- booking create -----
   final UserBookingCreateStatus createStatus;
+  final FindingTaskerStatus findingTaskerStatus;
   final RegistrationResponse? createResponse;
   final String? createError;
 
@@ -28,6 +32,7 @@ class UserBookingState extends Equatable {
    UserBookingState({
     this.bookingCreateResponse,
     this.createStatus = UserBookingCreateStatus.initial,
+    this.findingTaskerStatus = FindingTaskerStatus.initial,
     this.createResponse,
     this.createError,
     this.locationStatus = UserLocationUpdateStatus.initial,
@@ -37,6 +42,7 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+    FindingTaskerStatus ?findingTaskerStatus,
      BookingCreateResponse? bookingCreateResponse,
     // booking create
     UserBookingCreateStatus? createStatus,
@@ -53,6 +59,7 @@ class UserBookingState extends Equatable {
     bool clearLocationError = false,
   }) {
     return UserBookingState(
+      findingTaskerStatus:  findingTaskerStatus ?? this.findingTaskerStatus,
       bookingCreateResponse:  bookingCreateResponse ?? this.bookingCreateResponse,
       // booking create
       createStatus: createStatus ?? this.createStatus,
@@ -72,6 +79,7 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+    findingTaskerStatus,
    bookingCreateResponse,
         // booking create
         createStatus,

@@ -535,7 +535,7 @@ context.read<UserBookingBloc>().add(
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FindingYourTaskerScreen()//BookingDetailScreen(booking: booking),
+            builder: (_) => FindingYourTaskerScreen(bookingid: booking.id,)//BookingDetailScreen(booking: booking),
           ),
         );
       }

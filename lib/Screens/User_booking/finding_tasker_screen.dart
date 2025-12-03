@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
+import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Repository/auth_repository.dart';
 import 'package:taskoon/Screens/User_booking/tasker_confirmation_screen.dart';
 
 class FindingYourTaskerScreen extends StatefulWidget {
-  const FindingYourTaskerScreen({super.key});
+  String bookingid;
+   FindingYourTaskerScreen({super.key,required this.bookingid});
 
   // colors picked from screenshot
   static const Color bgPurple = Color(0xFF43106F);
@@ -15,19 +21,32 @@ class FindingYourTaskerScreen extends StatefulWidget {
 
 class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
 
+ @override
+  void initState() {
+    super.initState();
+context.read<UserBookingBloc>().add(FindingTaskerRequested(bookingId: widget.bookingid, userLatitude: 24.435, userLongitude: 67.435));
+  }
+
+/*late AuthRepository authRepository;
+findingTasker()async{
+ await authRepository.findBooking(bookingDetailId: widget.bookingid, userLatitude: 24.435, userLongitude: 67.435
+);
+}
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+findingTasker();
+
+  /*  Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
-      
+
       // Navigator.of(context).pushReplacement(
       //   MaterialPageRoute(
       //     builder: (_) => const TaskerConfirmationScreen(), // <- your real screen
       //   ),
       // );
-    });
-  }
+    });*/
+  }*/
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;

@@ -10,8 +10,24 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   UserBookingBloc(this.repo) : super( UserBookingState()) {
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
+    on<FindingTaskerRequested>(findingTaskerRequested);
   }
 
+
+Future<void> findingTaskerRequested(
+  FindingTaskerRequested e,
+  Emitter<UserBookingState> emit,
+)async{
+
+emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.initial));
+ final r = await repo.findBooking(bookingDetailId: e.bookingId, userLatitude: e.userLatitude, userLongitude: e.userLongitude);
+   if (r.isSuccess) {
+    emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.success));
+   }
+   else{
+    emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.failure));
+   }
+}
 
 Future<void> _onCreateUserBookingRequested(
   CreateUserBookingRequested e,
