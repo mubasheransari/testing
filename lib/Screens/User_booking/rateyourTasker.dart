@@ -87,8 +87,8 @@ class _RateTaskerScreenState extends State<RateTaskerScreen> {
         child: Column(
           children: [
             // ===== Top header bar (no close icon) =====
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          const  Padding(
+              padding:  EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: Row(
                 children: [
                   // Back arrow (optional). Remove if you push as root.
@@ -97,8 +97,8 @@ class _RateTaskerScreenState extends State<RateTaskerScreen> {
                   //   icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                   //   onPressed: () => Navigator.of(context).maybePop(),
                   // ),
-                  const SizedBox(width: 6),
-                  const Text(
+                   SizedBox(width: 6),
+                   Text(
                     'Rate your tasker',
                     style: TextStyle(
                       fontFamily: 'Poppins',

@@ -152,7 +152,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         color: kBg,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Column(
+                      child:const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Text(

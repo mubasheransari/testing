@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// ===================== THEMED MY BOOKINGS =====================
-/// Matches the visual language from `UserBookingHome`:
-/// - Poppins font
-/// - Primary purple #5C2E91, headings #3E1E69, muted #75748A
-/// - Soft cards, subtle borders/shadows
-/// - Tabs: History / Ongoing / Scheduled
 class MyBookings extends StatefulWidget {
   const MyBookings({super.key});
   @override
@@ -16,7 +10,6 @@ class _MyBookingsState extends State<MyBookings>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
 
-  // ===== Brand tokens (aligned with your other screen) =====
   static const kPurple = Color(0xFF5C2E91);
   static const kPurpleText = Color(0xFF3E1E69);
   static const kMuted = Color(0xFF75748A);
@@ -83,10 +76,7 @@ class _MyBookingsState extends State<MyBookings>
       centerTitle: false,
       titleSpacing: 8,
       leadingWidth: 52,
-      // leading: IconButton(
-      //   onPressed: () => Navigator.maybePop(context),
-      //   icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kPurple),
-      // ),
+
       title: const Text(
         'My Bookings',
         style: TextStyle(
@@ -247,10 +237,7 @@ class _SegmentTabs extends StatelessWidget {
         fontSize: 18,
         fontWeight: FontWeight.w600,
       ),
-      // indicator: const UnderlineTabIndicator(
-      //   borderSide: BorderSide(color: kPurple, width: 3),
-      //   insets: EdgeInsets.only(right: 220), // short underline (left-aligned)
-      // ),
+
       tabs: const [
         Tab(text: 'History'),
         Tab(text: 'Ongoing'),

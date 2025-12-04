@@ -8,10 +8,7 @@ import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
 
 
-// === MODELS YOU ALREADY HAVE ===
-// class CertificationGroup { final String name; final List<ServiceOption> services; ... }
-// class ServiceOption { final String name; ... }
-// class FindingYourTaskerScreen extends StatelessWidget { ... }
+
 
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
