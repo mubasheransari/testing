@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
-import 'package:taskoon/Models/booking_find_response.dart';
-import 'package:taskoon/Repository/auth_repository.dart';
-import 'package:taskoon/Screens/User_booking/tasker_confirmation_screen.dart';
+
 
 class FindingYourTaskerScreen extends StatefulWidget {
   String bookingid;

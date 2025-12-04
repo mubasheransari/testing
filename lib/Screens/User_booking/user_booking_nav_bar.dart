@@ -1,8 +1,6 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
 import 'package:taskoon/Screens/User_booking/feedback_screen.dart';
 import 'package:taskoon/Screens/User_booking/guidelines_screen.dart';

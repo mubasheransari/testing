@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/User_booking/checkout_screen.dart';
 
 
-import 'package:flutter/material.dart';
-// import 'checkout_screen.dart'; // your existing screen
 
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
