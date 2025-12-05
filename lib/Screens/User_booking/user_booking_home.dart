@@ -94,6 +94,42 @@ class _UserBookingHomeState extends State<UserBookingHome> {
   static const double _demoLng = 67.0011;
 
   @override
+void initState() {
+  super.initState();
+
+  // 1️⃣ Init hub service (customer / user hub URL)
+  _hubService = LocationHubService(
+    hubUrl: 'http://192.3.3.187:85/hubs/dispatch?userId=$_demoUserId',
+  );
+
+  // 2️⃣ After first frame: check if services are already loaded; if not, load them
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final authBloc = context.read<AuthenticationBloc>();
+    final s = authBloc.state;
+
+    // 🔍 Already have data loaded successfully?
+    final bool alreadyLoaded =
+        s.servicesStatus == ServicesStatus.success &&
+        s.serviceGroups.isNotEmpty;
+
+    // ❗ Should we trigger loading from this screen?
+    // - Not already loaded
+    // - Not currently loading
+    if (!alreadyLoaded && s.servicesStatus != ServicesStatus.loading) {
+      authBloc.add(LoadServicesRequested());
+      debugPrint('📦 UserBookingHome: LoadServicesRequested fired from screen');
+    } else {
+      debugPrint(
+          '📦 UserBookingHome: services already loaded (status=${s.servicesStatus}, groups=${s.serviceGroups.length})');
+    }
+
+    // 🔁 Hub + location stuff
+    _connectHubAndSendLocationOnce();
+  });
+}
+
+
+ /* @override
   void initState() {
     super.initState();
 
@@ -117,7 +153,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
       // ---- NEW: connect hub and send location + fire Bloc event ----
       _connectHubAndSendLocationOnce();
     });
-  }
+  }*/
 
   /// 👉 Dispatch REST API update to Bloc (UserBookingBloc)
   void _dispatchLocationUpdateToApi() {
@@ -127,7 +163,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
         '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$_demoUserId, lat=$_demoLat, lng=$_demoLng)');
 
     context.read<UserBookingBloc>().add(
-          UpdateUserLocationRequested(
+        const  UpdateUserLocationRequested(
             userId: _demoUserId,
             latitude: _demoLat,
             longitude: _demoLng,
