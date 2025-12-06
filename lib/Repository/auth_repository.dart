@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
@@ -75,8 +76,7 @@ abstract class AuthRepository {
 
   
 Future<Result<BookingFindResponse>> findBooking({
-  required String bookingDetailId,
-
+  required String bookingDetailId
 });
 
 
@@ -571,8 +571,288 @@ Future<Result<BookingFindResponse>> findBooking({
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
+@override
+Future<Result<BookingCreateResponse>> createBooking({
+  required String userId,
+  required int subCategoryId,
+  required DateTime bookingDate,
+  required String startTime,   // "21:00:00" from UI
+  required String endTime,     // "22:00:00" from UI
+  required String address,
+  required int taskerLevelId,
+  int bookingTypeId = 1,
+  double latitude = 0.0,
+  double longitude = 0.0,
+  String currency = 'AUD',
+  int paymentType = 1,
+  int serviceType = 1,
+  int paymentMethod = 1,
+  String request = 'N/A',
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
+  );
+
+  // 🔹 Helper: combine date + "HH:mm[:ss]" string into a local DateTime
+  DateTime _combineDateAndTime(DateTime date, String time) {
+    int h = 0;
+    int m = 0;
+
+    if (time.contains(':')) {
+      final parts = time.split(':'); // "21:00:00" -> ["21","00","00"]
+      h = int.tryParse(parts[0]) ?? 0;
+      if (parts.length > 1) {
+        m = int.tryParse(parts[1]) ?? 0;
+      }
+    } else {
+      h = int.tryParse(time) ?? 0;
+    }
+
+    return DateTime(date.year, date.month, date.day, h, m);
+  }
+
+  // 🔹 Date-only at midnight (LOCAL, no UTC)
+  final bookingDateOnly = DateTime(
+    bookingDate.year,
+    bookingDate.month,
+    bookingDate.day,
+  );
+
+  // 🔹 Local DateTimes for start & end
+  final startDateTime = _combineDateAndTime(bookingDate, startTime);
+  final endDateTime = _combineDateAndTime(bookingDate, endTime);
+
+  final body = <String, dynamic>{
+    'UserId': userId,
+    'SubCategoryId': subCategoryId,
+    'BookingTypeId': bookingTypeId,
+    // 👇 send full ISO, but LOCAL (no .toUtc(), no "Z")
+    'BookingDate': bookingDateOnly.toIso8601String(),
+    'StartTime': startDateTime.toIso8601String(),
+    'EndTime': endDateTime.toIso8601String(),
+    'Address': address,
+    'TaskerLevelId': taskerLevelId,
+    'latitude': latitude,
+    'longitude': longitude,
+    'currency': currency,
+    'paymentType': paymentType.toString(),
+    'serviceType': serviceType.toString(),
+    'paymentMethod': paymentMethod.toString(),
+    'request': request,
+  };
+
+  try {
+    print('>>> BOOKING CREATE POST $uri');
+    print('>>> REQUEST: ${jsonEncode(body)}');
+
+    final res = await http
+        .post(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
+
+    print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+    print('<<< BOOKING CREATE BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(
+          BookingCreateResponse(
+            isSuccess: true,
+            message: 'Booking created',
+            result: null,
+            errors: null,
+          ),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      final resp = BookingCreateResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: resp.message,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['errors'] is List) {
+          final errors = (err['errors'] as List)
+              .map((e) => '${e['field']}: ${e['error']}')
+              .join(' • ');
+          if (errors.isNotEmpty) message = errors;
+        } else if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
 
 
+// @override
+// Future<Result<BookingCreateResponse>> createBooking({
+//   required String userId,
+//   required int subCategoryId,
+//   required DateTime bookingDate,
+//   required String startTime,   // 👈 still string from UI (e.g. "20:00:00")
+//   required String endTime,     // 👈 still string from UI (e.g. "21:00:00")
+//   required String address,
+//   required int taskerLevelId,
+//   int bookingTypeId = 1,
+//   double latitude = 0.0,
+//   double longitude = 0.0,
+//   String currency = 'AUD',
+//   int paymentType = 1,
+//   int serviceType = 1,
+//   int paymentMethod = 1,
+//   String request = 'N/A',
+// }) async {
+//   final uri = Uri.parse(
+//     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
+//   );
+
+//   // 🔹 Format bookingDate as pure date string (no time, no UTC)
+//   final bookingDateStr = DateFormat('yyyy-MM-dd').format(bookingDate);
+//   // 🔹 startTime / endTime are already formatted in UI (e.g. "20:00:00")
+//   final startTimeStr = startTime;
+//   final endTimeStr = endTime;
+
+//   final body = <String, dynamic>{
+//     'UserId': userId,
+//     'SubCategoryId': subCategoryId,
+//     'BookingTypeId': bookingTypeId,   // required
+//     'BookingDate': bookingDateStr,    // 👈 "2025-12-06" (no T...Z)
+//     'StartTime': startTimeStr,        // 👈 "20:00:00"
+//     'EndTime': endTimeStr,            // 👈 "21:00:00"
+//     'Address': address,
+//     'TaskerLevelId': taskerLevelId,
+//     'latitude': latitude,
+//     'longitude': longitude,
+//     'currency': currency,
+//     'paymentType': paymentType.toString(),
+//     'serviceType': serviceType.toString(),
+//     'paymentMethod': paymentMethod.toString(),
+//     'request': request,
+//   };
+
+//   try {
+//     print('>>> BOOKING CREATE POST $uri');
+//     print('>>> REQUEST: ${jsonEncode(body)}');
+
+//     final res = await http
+//         .post(uri, headers: _headers(), body: jsonEncode(body))
+//         .timeout(timeout);
+
+//     print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+//     print('<<< BOOKING CREATE BODY: ${res.body}');
+
+//     if (res.statusCode >= 200 && res.statusCode < 300) {
+//       final raw = res.body.trim();
+//       if (raw.isEmpty) {
+//         return Result.ok(
+//           BookingCreateResponse(
+//             isSuccess: true,
+//             message: 'Booking created',
+//             result: null,
+//             errors: null,
+//           ),
+//         );
+//       }
+
+//       final parsed = jsonDecode(raw);
+//       if (parsed is! Map<String, dynamic>) {
+//         return Result.fail(
+//           Failure(
+//             code: 'parse',
+//             message: 'Invalid response format',
+//             statusCode: res.statusCode,
+//           ),
+//         );
+//       }
+
+//       final resp = BookingCreateResponse.fromJson(parsed);
+
+//       if (!resp.isSuccess) {
+//         return Result.fail(
+//           Failure(
+//             code: 'validation',
+//             message: resp.message,
+//             statusCode: res.statusCode,
+//           ),
+//         );
+//       }
+
+//       return Result.ok(resp);
+//     }
+
+//     String message = 'Server error (${res.statusCode})';
+//     final raw = res.body.trim();
+//     if (raw.isNotEmpty) {
+//       try {
+//         final err = jsonDecode(raw);
+//         if (err is Map && err['errors'] is List) {
+//           final errors = (err['errors'] as List)
+//               .map((e) => '${e['field']}: ${e['error']}')
+//               .join(' • ');
+//           if (errors.isNotEmpty) message = errors;
+//         } else if (err is Map && err['message'] != null) {
+//           message = err['message'].toString();
+//         }
+//       } catch (_) {}
+//     }
+
+//     return Result.fail(
+//       Failure(code: 'server', message: message, statusCode: res.statusCode),
+//     );
+//   } on SocketException {
+//     return Result.fail(
+//       Failure(code: 'network', message: 'No internet connection'),
+//     );
+//   } on TimeoutException {
+//     return Result.fail(
+//       Failure(code: 'timeout', message: 'Request timed out'),
+//     );
+//   } catch (e) {
+//     return Result.fail(Failure(code: 'unknown', message: e.toString()));
+//   }
+// }
+
+/*
 @override
 Future<Result<BookingCreateResponse>> createBooking({
   required String userId,
@@ -616,14 +896,14 @@ Future<Result<BookingCreateResponse>> createBooking({
   final endDateTime = _combineDateAndTime(bookingDate, endTime);
 
   final body = <String, dynamic>{
-    'userId': userId,
-    'subCategoryId': subCategoryId,
-    'bookingTypeId': bookingTypeId,         // ✅ required
-    'bookingDate': bookingDate.toUtc().toIso8601String(),
-    'startTime': startDateTime.toUtc().toIso8601String(),
-    'endTime': endDateTime.toUtc().toIso8601String(),
-    'address': address,
-    'taskerLevelId': taskerLevelId,
+    'UserId': userId,
+    'SubCategoryId': subCategoryId,
+    'BookingTypeId': bookingTypeId,         // ✅ required
+    'BookingDate': bookingDate.toUtc().toIso8601String(),
+    'StartTime': startDateTime.toUtc().toIso8601String(),
+    'EndTime': endDateTime.toUtc().toIso8601String(),
+    'Address': address,
+    'TaskerLevelId': taskerLevelId,
     'latitude': latitude,                   // ✅ required
     'longitude': longitude,                 // ✅ required
     'currency': currency,
@@ -713,7 +993,7 @@ Future<Result<BookingCreateResponse>> createBooking({
   } catch (e) {
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
-}
+}*/
 
   @override
   Future<Result<List<TrainingVideo>>> fetchTrainingVideos() async {
