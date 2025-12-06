@@ -100,15 +100,12 @@ class UpdateUserLocationRequested extends UserBookingEvent {
 
 class FindingTaskerRequested extends UserBookingEvent {
   final String bookingId;
-  final double userLatitude;
-  final double userLongitude;
+
 
   const FindingTaskerRequested({
     required this.bookingId,
-    required this.userLatitude,
-    required this.userLongitude,
   });
 
   @override
-  List<Object?> get props => [bookingId, userLatitude, userLongitude];
+  List<Object?> get props => [bookingId];
 }

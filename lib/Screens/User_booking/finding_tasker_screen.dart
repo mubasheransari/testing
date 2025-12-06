@@ -22,7 +22,7 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
  @override
   void initState() {
     super.initState();
-context.read<UserBookingBloc>().add(FindingTaskerRequested(bookingId: widget.bookingid, userLatitude: 24.435, userLongitude: 67.435));
+context.read<UserBookingBloc>().add(FindingTaskerRequested(bookingId: widget.bookingid));
   }
 
 /*late AuthRepository authRepository;

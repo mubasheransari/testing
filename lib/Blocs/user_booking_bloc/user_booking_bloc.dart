@@ -20,7 +20,7 @@ Future<void> findingTaskerRequested(
 )async{
 
 emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.initial));
- final r = await repo.findBooking(bookingDetailId: e.bookingId, userLatitude: e.userLatitude, userLongitude: e.userLongitude);
+ final r = await repo.findBooking(bookingDetailId: e.bookingId);
    if (r.isSuccess) {
     emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.success));
    }

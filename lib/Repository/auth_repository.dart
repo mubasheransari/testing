@@ -76,9 +76,7 @@ abstract class AuthRepository {
   
 Future<Result<BookingFindResponse>> findBooking({
   required String bookingDetailId,
-  required double userLatitude,
-  required double userLongitude,
-  String request = 'N/A',
+
 });
 
 
@@ -491,9 +489,7 @@ class AuthRepositoryHttp implements AuthRepository {
  @override
 Future<Result<BookingFindResponse>> findBooking({
   required String bookingDetailId,
-  required double userLatitude,
-  required double userLongitude,
-  String request = 'N/A',
+
 }) async {
   final uri = Uri.parse(
     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingFindEndpoint}',
@@ -501,9 +497,6 @@ Future<Result<BookingFindResponse>> findBooking({
 
   final body = <String, dynamic>{
     'bookingDetailId': bookingDetailId,
-    'userLatitude': userLatitude,
-    'userLongitude': userLongitude,
-    'request': request, // 🔴 required, don't send empty string
   };
 
   try {
