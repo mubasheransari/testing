@@ -1,9 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/selection_summary_model.dart';
-import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/training_videos_model.dart';
-
 import '../../Models/auth_model.dart';
 import '../../Models/services_ui_model.dart';
 import '../../Repository/auth_repository.dart';
@@ -12,6 +12,7 @@ import 'auth_event.dart';
 class AuthenticationBloc
     extends Bloc<AuthenticationEvent, AuthenticationState> {
   final AuthRepository repo;
+  var storage = GetStorage();
 
   AuthenticationBloc(this.repo) : super(const AuthenticationState()) {
     on<GetUserStatusRequested>(_onGetUserStatusRequested);
@@ -29,92 +30,98 @@ class AuthenticationBloc
     on<ToggleCertification>(_onToggleCertification);
     on<ToggleSingleService>(_onToggleSingleService);
     on<ClearServicesError>(
-        (e, emit) => emit(state.copyWith(servicesError: null)));
+      (e, emit) => emit(state.copyWith(servicesError: null)),
+    );
 
-         on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
-  on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
-  on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
-      on<LoadUserDetailsRequested>(_onLoadUserDetails);
-      on<OnboardUserRequested>(_onOnboardUserRequested);
-      on<LoadTrainingVideosRequested>(_onLoadTrainingVideosRequested);
+    on<LoadServiceDocumentsRequested>(_onLoadServiceDocuments);
+    on<CreatePaymentSessionRequested>(_onCreatePaymentSession);
+    on<SubmitCertificateBytesRequested>(_onSubmitCertificateBytes);
+    on<LoadUserDetailsRequested>(_onLoadUserDetails);
+    on<OnboardUserRequested>(_onOnboardUserRequested);
+    on<LoadTrainingVideosRequested>(_onLoadTrainingVideosRequested);
 
-      on<UpdateChooseServicesSummaryRequested>((event, emit) {
-  // Prefer the number provided by the event; otherwise fall back to what we already have in state.
-  final certs = event.certificationsSelected ?? state.certificationsSelectedCount;
+    on<UpdateChooseServicesSummaryRequested>((event, emit) {
+      final certs =
+          event.certificationsSelected ?? state.certificationsSelectedCount;
 
-  final summary = SelectionSummary(
-    certificationsSelected: certs,
-    servicesSelected: event.servicesSelected,
-    totalEligibleServices: event.totalEligibleServices,
-  );
+      final summary = SelectionSummary(
+        certificationsSelected: certs,
+        servicesSelected: event.servicesSelected,
+        totalEligibleServices: event.totalEligibleServices,
+      );
 
-  emit(state.copyWith(chooseServicesSummary: summary));
-});
-
+      emit(state.copyWith(chooseServicesSummary: summary));
+    });
   }
 
+  Future<void> _onLoadTrainingVideosRequested(
+    LoadTrainingVideosRequested event,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        trainingVideosStatus: TrainingVideosStatus.loading,
+        clearTrainingVideosError: true,
+      ),
+    );
 
-  
+    final res = await repo.fetchTrainingVideos();
 
-Future<void> _onLoadTrainingVideosRequested(
-  LoadTrainingVideosRequested event,
-  Emitter<AuthenticationState> emit,
-) async {
-  emit(state.copyWith(
-    trainingVideosStatus: TrainingVideosStatus.loading,
-    clearTrainingVideosError: true,
-  ));
-
-  final res = await repo.fetchTrainingVideos();
-
-  if (res.isSuccess) {
-    final list = res.data ?? const <TrainingVideo>[]; // <-- use .data
-    emit(state.copyWith(
-      trainingVideosStatus: TrainingVideosStatus.success,
-      trainingVideos: list,
-    ));
-  } else {
-    emit(state.copyWith(
-      trainingVideosStatus: TrainingVideosStatus.failure,
-      trainingVideosError: res.failure?.message ?? 'Failed to load training videos',
-    ));
+    if (res.isSuccess) {
+      final list = res.data ?? const <TrainingVideo>[]; // <-- use .data
+      emit(
+        state.copyWith(
+          trainingVideosStatus: TrainingVideosStatus.success,
+          trainingVideos: list,
+        ),
+      );
+    } else {
+      emit(
+        state.copyWith(
+          trainingVideosStatus: TrainingVideosStatus.failure,
+          trainingVideosError:
+              res.failure?.message ?? 'Failed to load training videos',
+        ),
+      );
+    }
   }
-}
-
-
 
   Future<void> _onOnboardUserRequested(
-  OnboardUserRequested e,
-  Emitter<AuthenticationState> emit,
-) async {
-  emit(state.copyWith(
-    onboardingStatus: OnboardingStatus.submitting,
-    clearOnboardingError: true,
-  ));
+    OnboardUserRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        onboardingStatus: OnboardingStatus.submitting,
+        clearOnboardingError: true,
+      ),
+    );
 
-  final res = await repo.onboardUser(
-    userId: e.userId,
-    servicesId: e.servicesId,              // will be []
-    profilePicture: e.profilePicture,
-    docCertification: e.docCertification,  // will be null => omitted
-    docInsurance: e.docInsurance,
-    docAddressProof: e.docAddressProof,
-    docIdVerification: e.docIdVerification,
-  );
+    final res = await repo.onboardUser(
+      userId: e.userId,
+      servicesId: e.servicesId, // will be []
+      profilePicture: e.profilePicture,
+      docCertification: e.docCertification, // will be null => omitted
+      docInsurance: e.docInsurance,
+      docAddressProof: e.docAddressProof,
+      docIdVerification: e.docIdVerification,
+    );
 
-  // Unwrap your Result<T> (pick the branch that matches your Result)
-  if ((res as dynamic).isSuccess == true) {
-    emit(state.copyWith(onboardingStatus: OnboardingStatus.success));
-  } else {
-    final failure = (res as dynamic).failure;
-    emit(state.copyWith(
-      onboardingStatus: OnboardingStatus.failure,
-      onboardingError: failure?.message ?? 'Onboarding failed',
-    ));
-  }
+    // Unwrap your Result<T> (pick the branch that matches your Result)
+    if ((res as dynamic).isSuccess == true) {
+      emit(state.copyWith(onboardingStatus: OnboardingStatus.success));
+    } else {
+      final failure = (res as dynamic).failure;
+      emit(
+        state.copyWith(
+          onboardingStatus: OnboardingStatus.failure,
+          onboardingError: failure?.message ?? 'Onboarding failed',
+        ),
+      );
+    }
 
-  // If your Result has when()/fold(), use this instead:
-  /*
+    // If your Result has when()/fold(), use this instead:
+    /*
   res.when(
     ok: (_) => emit(state.copyWith(onboardingStatus: OnboardingStatus.success)),
     err: (f) => emit(state.copyWith(
@@ -123,17 +130,19 @@ Future<void> _onLoadTrainingVideosRequested(
     )),
   );
   */
-}
+  }
 
   Future<void> _onLoadUserDetails(
     LoadUserDetailsRequested e,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      userDetailsStatus: UserDetailsStatus.loading,
-      userDetailsError: null,
-      clearUserDetails: true,
-    ));
+    emit(
+      state.copyWith(
+        userDetailsStatus: UserDetailsStatus.loading,
+        userDetailsError: null,
+        clearUserDetails: true,
+      ),
+    );
 
     final r = await repo.fetchUserDetails(userId: e.userId);
     print('USER DETAILS $r');
@@ -141,16 +150,20 @@ Future<void> _onLoadTrainingVideosRequested(
     print('USER DETAILS $r');
 
     if (r.isSuccess) {
-      emit(state.copyWith(
-        userDetailsStatus: UserDetailsStatus.success,
-        userDetails: r.data!,
-        userDetailsError: null,
-      ));
+      emit(
+        state.copyWith(
+          userDetailsStatus: UserDetailsStatus.success,
+          userDetails: r.data!,
+          userDetailsError: null,
+        ),
+      );
     } else {
-      emit(state.copyWith(
-        userDetailsStatus: UserDetailsStatus.failure,
-        userDetailsError: r.failure!.message,
-      ));
+      emit(
+        state.copyWith(
+          userDetailsStatus: UserDetailsStatus.failure,
+          userDetailsError: r.failure!.message,
+        ),
+      );
     }
   }
 
@@ -158,10 +171,12 @@ Future<void> _onLoadTrainingVideosRequested(
     SubmitCertificateBytesRequested e,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      certificateSubmitStatus: CertificateSubmitStatus.uploading,
-      certificateSubmitError: null,
-    ));
+    emit(
+      state.copyWith(
+        certificateSubmitStatus: CertificateSubmitStatus.uploading,
+        certificateSubmitError: null,
+      ),
+    );
 
     final r = await repo.submitCertificate(
       userId: e.userId,
@@ -173,138 +188,158 @@ Future<void> _onLoadTrainingVideosRequested(
     );
 
     if (r.isSuccess) {
-      emit(state.copyWith(
-        certificateSubmitStatus: CertificateSubmitStatus.success,
-        certificateSubmitError: null,
-      ));
+      emit(
+        state.copyWith(
+          certificateSubmitStatus: CertificateSubmitStatus.success,
+          certificateSubmitError: null,
+        ),
+      );
     } else {
-      emit(state.copyWith(
-        certificateSubmitStatus: CertificateSubmitStatus.failure,
-        certificateSubmitError: r.failure?.message ?? 'Certificate submit failed',
-      ));
+      emit(
+        state.copyWith(
+          certificateSubmitStatus: CertificateSubmitStatus.failure,
+          certificateSubmitError:
+              r.failure?.message ?? 'Certificate submit failed',
+        ),
+      );
     }
   }
 
-
   Future<void> _onCreatePaymentSession(
-  CreatePaymentSessionRequested e,
-  Emitter<AuthenticationState> emit,
-) async {
-  emit(state.copyWith(
-    paymentStatus: PaymentStatus.loading,
-    paymentError: null,
-    paymentSessionUrl: null,
-  ));
+    CreatePaymentSessionRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        paymentStatus: PaymentStatus.loading,
+        paymentError: null,
+        paymentSessionUrl: null,
+      ),
+    );
 
-  final r = await repo.createPaymentSession(
-    userId: e.userId,
-    amount: e.amount,
-    paymentMethod: e.paymentMethod,
-  );
+    final r = await repo.createPaymentSession(
+      userId: e.userId,
+      amount: e.amount,
+      paymentMethod: e.paymentMethod,
+    );
 
-  if (r.isSuccess) {
-    emit(state.copyWith(
-      paymentStatus: PaymentStatus.urlReady,
-      paymentSessionUrl: r.data,
-      paymentError: null,
-    ));
-  } else {
-    emit(state.copyWith(
-      paymentStatus: PaymentStatus.failure,
-      paymentError: r.failure?.message ?? 'Failed to create checkout session',
-      paymentSessionUrl: null,
-    ));
+    if (r.isSuccess) {
+      emit(
+        state.copyWith(
+          paymentStatus: PaymentStatus.urlReady,
+          paymentSessionUrl: r.data,
+          paymentError: null,
+        ),
+      );
+    } else {
+      emit(
+        state.copyWith(
+          paymentStatus: PaymentStatus.failure,
+          paymentError:
+              r.failure?.message ?? 'Failed to create checkout session',
+          paymentSessionUrl: null,
+        ),
+      );
+    }
   }
-}
-
 
   Future<void> _onLoadServiceDocuments(
-  LoadServiceDocumentsRequested e,
-  Emitter<AuthenticationState> emit,
-) async {
-  // 1) set loading
-  emit(state.copyWith(
-    documentsStatus: DocumentsStatus.loading,
-    documentsError: null,
-  ));
+    LoadServiceDocumentsRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    // 1) set loading
+    emit(
+      state.copyWith(
+        documentsStatus: DocumentsStatus.loading,
+        documentsError: null,
+      ),
+    );
 
-  // 2) call repo
-  final r = await repo.fetchServiceDocuments();
+    // 2) call repo
+    final r = await repo.fetchServiceDocuments();
 
-  // 3) handle failure
-  if (!r.isSuccess) {
-    emit(state.copyWith(
-      documentsStatus: DocumentsStatus.failure,
-      documentsError: r.failure?.message ?? 'Failed to load documents',
-    ));
-    return;
+    // 3) handle failure
+    if (!r.isSuccess) {
+      emit(
+        state.copyWith(
+          documentsStatus: DocumentsStatus.failure,
+          documentsError: r.failure?.message ?? 'Failed to load documents',
+        ),
+      );
+      return;
+    }
+
+    // 4) success (API returns a flat List<ServiceDocument>)
+    final docs = r.data!;
+
+    // Optional: dedupe exact duplicates (by serviceId+documentId)
+    // final seen = <String>{};
+    // final unique = <ServiceDocument>[];
+    // for (final d in docs) {
+    //   final k = '${d.serviceId}:${d.documentId}';
+    //   if (seen.add(k)) unique.add(d);
+    // }
+
+    emit(
+      state.copyWith(
+        documentsStatus: DocumentsStatus.success,
+        documents: docs, // or: unique
+        documentsError: null,
+      ),
+    );
   }
 
-  // 4) success (API returns a flat List<ServiceDocument>)
-  final docs = r.data!;
+  //   Future<void> _onLoadServiceDocuments(
+  //   LoadServiceDocumentsRequested e,
+  //   Emitter<AuthenticationState> emit,
+  // ) async {
+  //   emit(state.copyWith(
+  //     documentsStatus: DocumentsStatus.loading,
+  //     documentsError: null,
+  //   ));
 
-  // Optional: dedupe exact duplicates (by serviceId+documentId)
-  // final seen = <String>{};
-  // final unique = <ServiceDocument>[];
-  // for (final d in docs) {
-  //   final k = '${d.serviceId}:${d.documentId}';
-  //   if (seen.add(k)) unique.add(d);
+  //   final r = await repo.fetchServiceDocuments(); // your GET
+  //   if (!r.isSuccess) {
+  //     emit(state.copyWith(
+  //       documentsStatus: DocumentsStatus.failure,
+  //       documentsError: r.failure?.message ?? 'Failed to load documents',
+  //     ));
+  //     return;
+  //   }
+
+  //   // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
+  //   final out = <ServiceDocument>[];
+  //   for (final resp in r.data!) {
+  //     out.addAll(resp.result);
+  //   }
+
+  //   emit(state.copyWith(
+  //     documentsStatus: DocumentsStatus.success,
+  //     documents: out,
+  //     documentsError: null,
+  //   ));
   // }
-
-  emit(state.copyWith(
-    documentsStatus: DocumentsStatus.success,
-    documents: docs,        // or: unique
-    documentsError: null,
-  ));
-}
-
-
-//   Future<void> _onLoadServiceDocuments(
-//   LoadServiceDocumentsRequested e,
-//   Emitter<AuthenticationState> emit,
-// ) async {
-//   emit(state.copyWith(
-//     documentsStatus: DocumentsStatus.loading,
-//     documentsError: null,
-//   ));
-
-//   final r = await repo.fetchServiceDocuments(); // your GET
-//   if (!r.isSuccess) {
-//     emit(state.copyWith(
-//       documentsStatus: DocumentsStatus.failure,
-//       documentsError: r.failure?.message ?? 'Failed to load documents',
-//     ));
-//     return;
-//   }
-
-//   // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
-//   final out = <ServiceDocument>[];
-//   for (final resp in r.data!) {
-//     out.addAll(resp.result);
-//   }
-
-//   emit(state.copyWith(
-//     documentsStatus: DocumentsStatus.success,
-//     documents: out,
-//     documentsError: null,
-//   ));
-// }
-
 
   // handlers
   Future<void> _onLoadServices(
     LoadServicesRequested e,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-        servicesStatus: ServicesStatus.loading, servicesError: null));
+    emit(
+      state.copyWith(
+        servicesStatus: ServicesStatus.loading,
+        servicesError: null,
+      ),
+    );
 
     final r = await repo.fetchServices(); // <— from AuthRepository
     if (!r.isSuccess) {
-      emit(state.copyWith(
-        servicesStatus: ServicesStatus.failure,
-        servicesError: r.failure?.message ?? 'Failed to load services',
-      ));
+      emit(
+        state.copyWith(
+          servicesStatus: ServicesStatus.failure,
+          servicesError: r.failure?.message ?? 'Failed to load services',
+        ),
+      );
       return;
     }
 
@@ -315,9 +350,10 @@ Future<void> _onLoadTrainingVideosRequested(
       final g = map[dto.certificationId];
       if (g == null) {
         map[dto.certificationId] = CertificationGroup(
-            id: dto.certificationId,
-            name: dto.certificationName,
-            services: [opt]);
+          id: dto.certificationId,
+          name: dto.certificationName,
+          services: [opt],
+        );
       } else {
         map[dto.certificationId] = g.copyWith(services: [...g.services, opt]);
       }
@@ -327,18 +363,23 @@ Future<void> _onLoadTrainingVideosRequested(
     final groups = map.values.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     final sorted = groups
-        .map((g) => g.copyWith(
-              services: (List<ServiceOption>.from(g.services)
-                ..sort((a, b) =>
-                    a.name.toLowerCase().compareTo(b.name.toLowerCase()))),
-            ))
+        .map(
+          (g) => g.copyWith(
+            services: (List<ServiceOption>.from(g.services)
+              ..sort(
+                (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+              )),
+          ),
+        )
         .toList();
 
-    emit(state.copyWith(
-      servicesStatus: ServicesStatus.success,
-      serviceGroups: sorted,
-      servicesError: null,
-    ));
+    emit(
+      state.copyWith(
+        servicesStatus: ServicesStatus.success,
+        serviceGroups: sorted,
+        servicesError: null,
+      ),
+    );
   }
 
   void _onToggleCertification(
@@ -347,8 +388,9 @@ Future<void> _onLoadTrainingVideosRequested(
   ) {
     final updated = state.serviceGroups.map((g) {
       if (g.id != e.certificationId) return g;
-      final svc =
-          g.services.map((s) => s.copyWith(isSelected: e.selectAll)).toList();
+      final svc = g.services
+          .map((s) => s.copyWith(isSelected: e.selectAll))
+          .toList();
       return g.copyWith(services: svc);
     }).toList();
     emit(state.copyWith(serviceGroups: updated));
@@ -373,25 +415,33 @@ Future<void> _onLoadTrainingVideosRequested(
     ChangePassword event,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      changePasswordStatus: ChangePasswordStatus.loading,
-      error: null,
-    ));
+    emit(
+      state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.loading,
+        error: null,
+      ),
+    );
 
     final result = await repo.changePassword(
-        password: event.password, userId: event.userId);
+      password: event.password,
+      userId: event.userId,
+    );
 
     if (result.isSuccess) {
-      emit(state.copyWith(
-        changePasswordStatus: ChangePasswordStatus.success,
-        response: result.data,
-        error: null,
-      ));
+      emit(
+        state.copyWith(
+          changePasswordStatus: ChangePasswordStatus.success,
+          response: result.data,
+          error: null,
+        ),
+      );
     } else {
-      emit(state.copyWith(
-        changePasswordStatus: ChangePasswordStatus.failure,
-        error: result.failure?.message ?? 'User not found!',
-      ));
+      emit(
+        state.copyWith(
+          changePasswordStatus: ChangePasswordStatus.failure,
+          error: result.failure?.message ?? 'User not found!',
+        ),
+      );
     }
   }
 
@@ -399,24 +449,30 @@ Future<void> _onLoadTrainingVideosRequested(
     ForgotPasswordRequest event,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      forgotPasswordStatus: ForgotPasswordStatus.loading,
-      error: null,
-    ));
+    emit(
+      state.copyWith(
+        forgotPasswordStatus: ForgotPasswordStatus.loading,
+        error: null,
+      ),
+    );
 
     final result = await repo.forgotPassword(email: event.email);
 
     if (result.isSuccess) {
-      emit(state.copyWith(
-        forgotPasswordStatus: ForgotPasswordStatus.success,
-        response: result.data,
-        error: null,
-      ));
+      emit(
+        state.copyWith(
+          forgotPasswordStatus: ForgotPasswordStatus.success,
+          response: result.data,
+          error: null,
+        ),
+      );
     } else {
-      emit(state.copyWith(
-        forgotPasswordStatus: ForgotPasswordStatus.failure,
-        error: result.failure?.message ?? 'User not found!',
-      ));
+      emit(
+        state.copyWith(
+          forgotPasswordStatus: ForgotPasswordStatus.failure,
+          error: result.failure?.message ?? 'User not found!',
+        ),
+      );
     }
   }
 
@@ -424,10 +480,7 @@ Future<void> _onLoadTrainingVideosRequested(
     VerifyOtpRequestedPhone event,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      status: AuthStatus.loading,
-      error: null,
-    ));
+    emit(state.copyWith(status: AuthStatus.loading, error: null));
 
     final result = await repo.verifyOtpThroughPhone(
       userId: event.userId,
@@ -436,16 +489,20 @@ Future<void> _onLoadTrainingVideosRequested(
     );
 
     if (result.isSuccess) {
-      emit(state.copyWith(
-        status: AuthStatus.success,
-        response: result.data,
-        error: null,
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.success,
+          response: result.data,
+          error: null,
+        ),
+      );
     } else {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        error: result.failure?.message ?? 'OTP verification failed',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          error: result.failure?.message ?? 'OTP verification failed',
+        ),
+      );
     }
   }
 
@@ -453,10 +510,7 @@ Future<void> _onLoadTrainingVideosRequested(
     VerifyOtpRequested event,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(state.copyWith(
-      status: AuthStatus.loading,
-      error: null,
-    ));
+    emit(state.copyWith(status: AuthStatus.loading, error: null));
 
     final result = await repo.verifyOtpThroughEmail(
       userId: event.userId,
@@ -469,29 +523,28 @@ Future<void> _onLoadTrainingVideosRequested(
       final RegistrationResponse? res = result.data;
 
       if (res?.isSuccess == true) {
-        emit(state.copyWith(
-          status: AuthStatus.success,
-          response: res,
-          error: null,
-        ));
+        emit(
+          state.copyWith(
+            status: AuthStatus.success,
+            response: res,
+            error: null,
+          ),
+        );
       } else {
         // Prefer message from body; fall back to first error item; then default text.
         final msg = (res?.message?.trim().isNotEmpty ?? false)
             ? res!.message!.trim()
             : ((res?.errors.isNotEmpty ?? false)
-                ? (res!.errors.first.error?.trim().isNotEmpty == true
-                    ? res.errors.first.error!.trim()
-                    : 'OTP verification failed')
-                : 'OTP verification failed');
+                  ? (res!.errors.first.error?.trim().isNotEmpty == true
+                        ? res.errors.first.error!.trim()
+                        : 'OTP verification failed')
+                  : 'OTP verification failed');
 
         // print to console
         // ignore: avoid_print
         print('OTP verification failed: $msg');
 
-        emit(state.copyWith(
-          status: AuthStatus.failure,
-          error: msg,
-        ));
+        emit(state.copyWith(status: AuthStatus.failure, error: msg));
       }
     } else {
       // Transport / exception layer.
@@ -501,16 +554,15 @@ Future<void> _onLoadTrainingVideosRequested(
       // ignore: avoid_print
       print('OTP verification error: $msg');
 
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        error: msg,
-      ));
+      emit(state.copyWith(status: AuthStatus.failure, error: msg));
     }
   }
 
   // Helper (optional, place inside your bloc file)
-  String _extractApiMessage(RegistrationResponse? res,
-      {String fallback = 'OTP failed'}) {
+  String _extractApiMessage(
+    RegistrationResponse? res, {
+    String fallback = 'OTP failed',
+  }) {
     if (res == null) return fallback;
     final msg = res.message?.trim();
     if (msg != null && msg.isNotEmpty) return msg;
@@ -526,10 +578,12 @@ Future<void> _onLoadTrainingVideosRequested(
   }
 
   sendotpThroughEmail(
-      SendOtpThroughEmail event, Emitter<AuthenticationState> emit) async {
+    SendOtpThroughEmail event,
+    Emitter<AuthenticationState> emit,
+  ) async {
     final result = await repo.sendOtpThroughEmail(
       userId: event.userId,
-      email: event.email,//Testing@1234
+      email: event.email, //Testing@1234
     );
 
     if (result.isSuccess) {
@@ -539,24 +593,17 @@ Future<void> _onLoadTrainingVideosRequested(
       print("RESPONSE ${result.data}");
 
       if (res?.isSuccess == true) {
-        emit(state.copyWith(
-          response: res,
-          error: null,
-        ));
+        emit(state.copyWith(response: res, error: null));
       } else {
         final msg = _extractApiMessage(res, fallback: 'OTP failed');
-        emit(state.copyWith(
-          error: msg,
-        ));
+        emit(state.copyWith(error: msg));
       }
     } else {
       final msg = (result.failure?.message?.trim().isNotEmpty ?? false)
           ? result.failure!.message!.trim()
           : 'Unable to send OTP. Please try again.';
       print('Send OTP error: $msg');
-      emit(state.copyWith(
-        error: msg,
-      ));
+      emit(state.copyWith(error: msg));
     }
   }
 
@@ -585,25 +632,22 @@ Future<void> _onLoadTrainingVideosRequested(
 
   sendotpThroughPhone(SendOtpThroughPhone event, emit) {
     repo
-        .sendOtpThroughPhone(
-      userId: event.userId,
-      phoneNumber: event.phone,
-    )
+        .sendOtpThroughPhone(userId: event.userId, phoneNumber: event.phone)
         .then((result) {
-      if (result.isSuccess) {
-        emit(state.copyWith(
-          response: result.data,
-        ));
-      } else {
-        emit(state.copyWith(
-          error: result.failure?.message ?? 'OTP failed',
-        ));
-      }
-    });
+          if (result.isSuccess) {
+            emit(state.copyWith(response: result.data));
+          } else {
+            emit(
+              state.copyWith(error: result.failure?.message ?? 'OTP failed'),
+            );
+          }
+        });
   }
 
   Future<void> _onRegisterUser(
-      RegisterUserRequested e, Emitter<AuthenticationState> emit) async {
+    RegisterUserRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.loading));
     final r = await repo.registerUser(
       fullName: e.fullName,
@@ -618,13 +662,17 @@ Future<void> _onLoadTrainingVideosRequested(
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(
-          status: AuthStatus.failure, error: r.failure!.message));
+      emit(
+        state.copyWith(status: AuthStatus.failure, error: r.failure!.message),
+      );
     }
   }
 
-  Future<void> _onRegisterCompany(//Testing@123
-      RegisterCompanyRequested e, Emitter<AuthenticationState> emit) async {
+  Future<void> _onRegisterCompany(
+    //Testing@123
+    RegisterCompanyRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.loading));
     final r = await repo.registerCompany(
       fullName: e.fullName,
@@ -641,13 +689,16 @@ Future<void> _onLoadTrainingVideosRequested(
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(
-          status: AuthStatus.failure, error: r.failure!.message));
+      emit(
+        state.copyWith(status: AuthStatus.failure, error: r.failure!.message),
+      );
     }
   }
 
   Future<void> _onRegisterTasker(
-      RegisterTaskerRequested e, Emitter<AuthenticationState> emit) async {
+    RegisterTaskerRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.loading));
     final r = await repo.registerTasker(
       fullName: e.fullName,
@@ -655,14 +706,15 @@ Future<void> _onLoadTrainingVideosRequested(
       emailAddress: e.email,
       password: e.password,
       address: e.address,
-          abn: e.abn,   
-          taskerLevelId: 1//new Testing@123
+      abn: e.abn,
+      taskerLevelId: 1, //new Testing@123
     );
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
     } else {
-      emit(state.copyWith(
-          status: AuthStatus.failure, error: r.failure!.message));
+      emit(
+        state.copyWith(status: AuthStatus.failure, error: r.failure!.message),
+      );
     }
   }
 
@@ -671,44 +723,77 @@ Future<void> _onLoadTrainingVideosRequested(
 
     final res = await repo.signIn(email: event.email, password: event.password);
 
-    if (res.isSuccess) {
-      emit(state.copyWith(
-        status: AuthStatus.success,
-        loginResponse: res.data,
-      ));
+    if (res.isSuccess && res.data != null) {
+      debugPrint('LOGIN OK => ${res.data!.result?.user?.email}');
+      emit(
+        state.copyWith(
+          status: AuthStatus.success,
+          loginResponse: res.data, // 🔥 stored in state
+          error: null,
+        ),
+      );
+
+      storage.write("isActive", res.data!.result!.user!.isActive.toString());
+      storage.write(
+        "isOnboardingRequired",
+        res.data!.result!.user!.requiresOnboarding.toString(),
+      );
     } else {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        error: res.failure?.message ?? 'Login failed',
-      ));
+      debugPrint('LOGIN FAIL => ${res.failure}');
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          error: res.failure?.message ?? 'Login failed',
+        ),
+      );
     }
+    // emit(state.copyWith(status: AuthStatus.loading, error: null));
+
+    // final res = await repo.signIn(email: event.email, password: event.password);
+
+    // if (res.isSuccess) {
+    //   emit(state.copyWith(
+    //     status: AuthStatus.success,
+    //     loginResponse: res.data,
+    //   ));
+    // } else {
+    //   emit(state.copyWith(
+    //     status: AuthStatus.failure,
+    //     error: res.failure?.message ?? 'Login failed',
+    //   ));
+    // }
   }
 
   Future<void> _onGetUserStatusRequested(
-  GetUserStatusRequested e,
-  Emitter<AuthenticationState> emit,
-) async {
-  emit(state.copyWith(getUserStatusEnum: GetUserStatusEnum.loading, error: null));
+    GetUserStatusRequested e,
+    Emitter<AuthenticationState> emit,
+  ) async {
+    emit(
+      state.copyWith(getUserStatusEnum: GetUserStatusEnum.loading, error: null),
+    );
 
-  final r = await repo.getUserStatus(
-    userId: e.userId,
-    email: e.email,
-    phone: e.phone,
-    isActive: e.isActive,
-  );
+    final r = await repo.getUserStatus(
+      userId: e.userId,
+      email: e.email,
+      phone: e.phone,
+      isActive: true,
+    );
 
-  if (r.isSuccess) {
-    emit(state.copyWith(
-      getUserStatusEnum: GetUserStatusEnum.success,
-      response: r.data, // RegistrationResponse
-      error: null,
-    ));
-  } else {
-    emit(state.copyWith(
-      getUserStatusEnum: GetUserStatusEnum.failure,
-      error: r.failure?.message ?? 'Failed to get user status',
-    ));
+    if (r.isSuccess) {
+      emit(
+        state.copyWith(
+          getUserStatusEnum: GetUserStatusEnum.success,
+          response: r.data, // RegistrationResponse
+          error: null,
+        ),
+      );
+    } else {
+      emit(
+        state.copyWith(
+          getUserStatusEnum: GetUserStatusEnum.failure,
+          error: r.failure?.message ?? 'Failed to get user status',
+        ),
+      );
+    }
   }
-}
-
 }

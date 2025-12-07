@@ -67,16 +67,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             toastWidget(
                 'OTP Send to ${emailController.text.trim()}', Colors.green);
 
-            Navigator.pushAndRemoveUntil(//Testing@112233
-              context,
-              MaterialPageRoute(
-                  builder: (_) => OtpVerificationScreen(
-                      isForgetFunctionality: true,
-                      email: emailController.text.trim(),
-                      userId: state.response!.result!.userId.toString(),
-                      phone: '')),
-              (Route<dynamic> route) => false,
-            );
+                Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => BlocProvider.value(
+      value: context.read<AuthenticationBloc>(), // SAME INSTANCE ✅
+      child: OtpVerificationScreen(
+         isForgetFunctionality: true,
+          email: emailController.text.trim(),
+        userId:  state.response!.result!.userId.toString(),
+        phone: '',
+      ),
+    ),
+  ),
+);
+
+
+            // Navigator.pushAndRemoveUntil(//Testing@112233
+            //   context,
+            //   MaterialPageRoute(
+            //       builder: (_) => OtpVerificationScreen(
+            //           isForgetFunctionality: true,
+            //           email: emailController.text.trim(),
+            //           userId: state.response!.result!.userId.toString(),
+            //           phone: '')),
+            //   (Route<dynamic> route) => false,
+            // );
           } else if (state.forgotPasswordStatus ==
               ForgotPasswordStatus.failure) {}
         },

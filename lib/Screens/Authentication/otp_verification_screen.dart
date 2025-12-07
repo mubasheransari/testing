@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 import 'package:taskoon/Screens/Authentication/change_password_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Tasker_Onboarding/personal_info.dart';
+import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 import 'package:taskoon/widgets/toast_widget.dart';
 
 import '../../Blocs/auth_bloc/auth_bloc.dart';
@@ -43,6 +46,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   String? _otpCode; // 4 chars
   bool get _isComplete => (_otpCode?.length ?? 0) == 6;
+
+  var storage = GetStorage();
+
 
   @override
   void initState() {
@@ -101,6 +107,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
+    var isActive=   storage.read("isActive");
+    var isOnboardingRequired = storage.read("isOnboardingRequired");
+
     return BlocConsumer<AuthenticationBloc, AuthenticationState>(
       listener: (context, state) {
         if (state.status == AuthStatus.loading) {
@@ -115,16 +124,52 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       builder: (context) => ChangePasswordScreen(
                           email: widget.email, userId: widget.userId)));
             } else {
-              print("IS ACTIVE ${state.userDetails!.isActive}");
-                            print("IS ACTIVE ${state.userDetails!.isActive}");
-                                          print("IS ACTIVE ${state.userDetails!.isActive}");
-                                                        print("IS ACTIVE ${state.userDetails!.isActive}");
+
+if(isActive == false){
+
+  context.read<AuthenticationBloc>().add(GetUserStatusRequested(
+    userId: state.userDetails!.userId.toString(),
+    email: state.userDetails!.email.toString(),
+    phone: state.userDetails!.phone.toString(),
+  ));
 
 
-              Navigator.pushReplacement(
+
+
+              // Navigator.pushReplacement(//new 
+              //   context,
+              //   MaterialPageRoute(builder: (_) => const PersonalInfo()),
+              // );
+}
+else if(isActive == true){
+ if(state.userDetails!.userRole == "Customer"){
+   Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const UserBookingHome()),
+              );
+
+ }
+ else  if(state.userDetails!.userRole == "Tasker"){
+ if(isOnboardingRequired == true){
+   Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const PersonalInfo()),
               );
+ }
+ else{
+     Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const TaskoonApp()),
+              );
+ }
+ }
+}
+
+
+              // Navigator.pushReplacement(
+              //   context,
+              //   MaterialPageRoute(builder: (_) => const PersonalInfo()),
+              // );
             }
 
             // Navigator.pushReplacement( Testing@1122
