@@ -99,7 +99,7 @@ void initState() {
 
   // 1️⃣ Init hub service (customer / user hub URL)
   _hubService = LocationHubService(
-    hubUrl: 'http://192.3.3.187:85/hubs/dispatch?userId=$_demoUserId',
+    hubUrl: 'http://192.3.3.187:85/hubs/dispatch?userId=${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}',
   );
 
   // 2️⃣ After first frame: check if services are already loaded; if not, load them
@@ -130,7 +130,7 @@ void initState() {
 
 
  /* @override
-  void initState() {
+  void initState() { Testing@123
     super.initState();
 
     // 1️⃣ Init hub service (customer / user hub URL)

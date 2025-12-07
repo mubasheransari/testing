@@ -1,8 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:taskoon/Screens/Authentication/login_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/slider_screen.dart';
 import 'dart:math' as math;
+
+import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,6 +33,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _logoOpacity;
   late final Animation<double> _taglineOpacity;
   late final Animation<Offset> _taglineOffset;
+  var storage = GetStorage();
 
   @override
   void initState() {
@@ -72,7 +78,11 @@ class _SplashScreenState extends State<SplashScreen>
   void _goHome() {
     if (!mounted) return;
     _pillCtrl.stop();
-    Navigator.of(context).pushReplacement(_fadeRoute(const OnboardingScreen()));
+
+         var role=       storage.read("role");
+
+
+    Navigator.of(context).pushReplacement(_fadeRoute(role == "Tasker" ? TaskoonApp():role == "Customer" ?UserBookingHome():LoginScreen() ));
   }
 
   @override

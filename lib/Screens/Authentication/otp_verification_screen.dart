@@ -123,26 +123,33 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                   MaterialPageRoute(
                       builder: (context) => ChangePasswordScreen(
                           email: widget.email, userId: widget.userId)));
-            } else {
+            } 
+            
+            else {
+            print("ELSE CONDITION");
+            print("ELSE CONDITION");
+            print("ELSE CONDITION");
+            storage.write("role", state.userDetails!.userRole);
 
-if(isActive == false){
+/*if(isActive == false){
 
   context.read<AuthenticationBloc>().add(GetUserStatusRequested(
     userId: state.userDetails!.userId.toString(),
     email: state.userDetails!.email.toString(),
     phone: state.userDetails!.phone.toString(),
   ));
-
-
-
-
-              // Navigator.pushReplacement(//new 
-              //   context,
-              //   MaterialPageRoute(builder: (_) => const PersonalInfo()),
-              // );
 }
 else if(isActive == true){
+  */
  if(state.userDetails!.userRole == "Customer"){
+         print("Customer");
+            print("Customer");
+            print("Customer");
+  //   context.read<AuthenticationBloc>().add(GetUserStatusRequested(
+  //   userId: state.userDetails!.userId.toString(),
+  //   email: state.userDetails!.email.toString(),
+  //   phone: state.userDetails!.phone.toString(),
+  // ));
    Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const UserBookingHome()),
@@ -150,32 +157,31 @@ else if(isActive == true){
 
  }
  else  if(state.userDetails!.userRole == "Tasker"){
- if(isOnboardingRequired == true){
+     print("Tasker");
+            print("Tasker");
+            print("Tasker");
+  //   context.read<AuthenticationBloc>().add(GetUserStatusRequested(
+  //   userId: state.userDetails!.userId.toString(),
+  //   email: state.userDetails!.email.toString(),
+  //   phone: state.userDetails!.phone.toString(),
+  // ));
+ //if(isOnboardingRequired == true){
    Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const PersonalInfo()),
-              );
- }
- else{
-     Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const TaskoonApp()),
               );
- }
+ //}
+//  else{
+//      Navigator.pushReplacement(
+//                 context,
+//                 MaterialPageRoute(builder: (_) => const TaskoonApp()),
+//               );
+//  }
  }
 }
 
+          //  }
 
-              // Navigator.pushReplacement(
-              //   context,
-              //   MaterialPageRoute(builder: (_) => const PersonalInfo()),
-              // );
-            }
-
-            // Navigator.pushReplacement( Testing@1122
-            //   context,
-            //   MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
-            // );
           } else {}
         }
         if (state.status == AuthStatus.failure &&
