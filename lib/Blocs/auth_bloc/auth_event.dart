@@ -271,6 +271,22 @@ class UpdateChooseServicesSummaryRequested extends AuthenticationEvent {
   @override
   List<Object?> get props => [servicesSelected, totalEligibleServices, certificationsSelected];
 }
+class GetUserStatusRequested extends AuthenticationEvent {
+  final String? userId;
+  final String? email;
+  final String? phone;
+  final bool? isActive;
+
+   GetUserStatusRequested({
+    this.userId,
+    this.email,
+    this.phone,
+    this.isActive,
+  });
+
+  @override
+  List<Object?> get props => [userId, email, phone, isActive];
+}
 
 // class LoadUserDetailsRequested extends AuthenticationEvent {
 //   final String userId;

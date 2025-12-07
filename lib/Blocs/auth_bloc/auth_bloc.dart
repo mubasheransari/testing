@@ -14,6 +14,7 @@ class AuthenticationBloc
   final AuthRepository repo;
 
   AuthenticationBloc(this.repo) : super(const AuthenticationState()) {
+    on<GetUserStatusRequested>(_onGetUserStatusRequested);
     on<RegisterUserRequested>(_onRegisterUser);
     on<RegisterCompanyRequested>(_onRegisterCompany);
     on<RegisterTaskerRequested>(_onRegisterTasker);
@@ -682,4 +683,32 @@ Future<void> _onLoadTrainingVideosRequested(
       ));
     }
   }
+
+  Future<void> _onGetUserStatusRequested(
+  GetUserStatusRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(state.copyWith(getUserStatusEnum: GetUserStatusEnum.loading, error: null));
+
+  final r = await repo.getUserStatus(
+    userId: e.userId,
+    email: e.email,
+    phone: e.phone,
+    isActive: e.isActive,
+  );
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      getUserStatusEnum: GetUserStatusEnum.success,
+      response: r.data, // RegistrationResponse
+      error: null,
+    ));
+  } else {
+    emit(state.copyWith(
+      getUserStatusEnum: GetUserStatusEnum.failure,
+      error: r.failure?.message ?? 'Failed to get user status',
+    ));
+  }
+}
+
 }

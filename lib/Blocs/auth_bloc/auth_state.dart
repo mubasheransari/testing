@@ -7,6 +7,8 @@ import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
 
+enum GetUserStatusEnum { initial, loading, success, failure }
+
 enum TrainingVideosStatus { initial, loading, success, failure }
 
 enum OnboardingStatus { initial, submitting, success, failure }
@@ -28,95 +30,98 @@ enum PaymentStatus { initial, loading, urlReady, failure }
 enum CertificateSubmitStatus { initial, uploading, success, failure }
 
 class AuthenticationState extends Equatable {
-    final int certificationsSelectedCount;
+  final int certificationsSelectedCount;
+
   /// Summary for "Choose Services" screen
   final SelectionSummary? chooseServicesSummary;
   final TrainingVideosStatus trainingVideosStatus;
-final List<TrainingVideo> trainingVideos;
-final String? trainingVideosError;
-    final OnboardingStatus onboardingStatus;
+  final List<TrainingVideo> trainingVideos;
+  final String? trainingVideosError;
+  final OnboardingStatus onboardingStatus;
   final String? onboardingError;
   final UserDetailsStatus userDetailsStatus;
   final UserDetails? userDetails;
   final String? userDetailsError;
   final CertificateSubmitStatus certificateSubmitStatus;
   final String? certificateSubmitError;
-  final PaymentStatus paymentStatus;     // +ADD
-  final String? paymentSessionUrl;       // +ADD
-  final String? paymentError;            // +ADD
+  final PaymentStatus paymentStatus; // +ADD
+  final String? paymentSessionUrl; // +ADD
+  final String? paymentError; // +ADD
   final AuthStatus status;
   final ForgotPasswordStatus forgotPasswordStatus;
   final ChangePasswordStatus changePasswordStatus;
   final RegistrationResponse? response;
   final String? error;
   final LoginResponse? loginResponse;
+  final GetUserStatusEnum getUserStatusEnum;
   final ServicesStatus servicesStatus;
   final List<CertificationGroup> serviceGroups;
   final String? servicesError;
 
-    final DocumentsStatus documentsStatus;
+  final DocumentsStatus documentsStatus;
   final List<ServiceDocument> documents;
   final String? documentsError;
-
 
   int get totalSelectedServices =>
       serviceGroups.fold(0, (sum, g) => sum + g.selectedCount);
 
-  const AuthenticationState(
-      {
-            this.certificationsSelectedCount = 0,
+  const AuthenticationState({
+    this.certificationsSelectedCount = 0,
+    this.getUserStatusEnum = GetUserStatusEnum.initial,
     this.chooseServicesSummary,
-          this.trainingVideosStatus = TrainingVideosStatus.initial,
-  this.trainingVideos = const <TrainingVideo>[],
-  this.trainingVideosError,
-            this.onboardingStatus = OnboardingStatus.initial,
+    this.trainingVideosStatus = TrainingVideosStatus.initial,
+    this.trainingVideos = const <TrainingVideo>[],
+    this.trainingVideosError,
+    this.onboardingStatus = OnboardingStatus.initial,
     this.onboardingError,
-       this.userDetailsStatus = UserDetailsStatus.initial,
+    this.userDetailsStatus = UserDetailsStatus.initial,
     this.userDetails,
     this.userDetailsError,
-          this.certificateSubmitStatus = CertificateSubmitStatus.initial,
+    this.certificateSubmitStatus = CertificateSubmitStatus.initial,
     this.certificateSubmitError,
-          this.paymentStatus = PaymentStatus.initial, // +ADD
-    this.paymentSessionUrl,                     // +ADD
-    this.paymentError,                          // +ADD
+    this.paymentStatus = PaymentStatus.initial, // +ADD
+    this.paymentSessionUrl, // +ADD
+    this.paymentError, // +ADD
 
-            this.documentsStatus = DocumentsStatus.initial,
+    this.documentsStatus = DocumentsStatus.initial,
     this.documents = const [],
     this.documentsError,
-           this.servicesStatus = ServicesStatus.initial,
+    this.servicesStatus = ServicesStatus.initial,
     this.serviceGroups = const [],
     this.servicesError,
-        this.status = AuthStatus.initial,
-      this.changePasswordStatus = ChangePasswordStatus.initial,
-      this.forgotPasswordStatus = ForgotPasswordStatus.initial,
-      this.response,
-      this.error,
-      this.loginResponse});
+    this.status = AuthStatus.initial,
+    this.changePasswordStatus = ChangePasswordStatus.initial,
+    this.forgotPasswordStatus = ForgotPasswordStatus.initial,
+    this.response,
+    this.error,
+    this.loginResponse,
+  });
 
   AuthenticationState copyWith({
-        int? certificationsSelectedCount,
+    GetUserStatusEnum? getUserStatusEnum,
+    int? certificationsSelectedCount,
     SelectionSummary? chooseServicesSummary,
-     TrainingVideosStatus? trainingVideosStatus,
-  List<TrainingVideo>? trainingVideos,
-  String? trainingVideosError,
-  bool clearTrainingVideosError = false,
-      OnboardingStatus? onboardingStatus,
+    TrainingVideosStatus? trainingVideosStatus,
+    List<TrainingVideo>? trainingVideos,
+    String? trainingVideosError,
+    bool clearTrainingVideosError = false,
+    OnboardingStatus? onboardingStatus,
     String? onboardingError,
     bool clearOnboardingError = false,
-     UserDetailsStatus? userDetailsStatus,
+    UserDetailsStatus? userDetailsStatus,
     UserDetails? userDetails,
     bool clearUserDetailsError = false,
     bool clearUserDetails = false,
     String? userDetailsError,
-        CertificateSubmitStatus? certificateSubmitStatus,
+    CertificateSubmitStatus? certificateSubmitStatus,
     String? certificateSubmitError,
-      PaymentStatus? paymentStatus,     // +ADD
-    String? paymentSessionUrl,        // +ADD
-    String? paymentError,             // +ADD
-        DocumentsStatus? documentsStatus,
+    PaymentStatus? paymentStatus, // +ADD
+    String? paymentSessionUrl, // +ADD
+    String? paymentError, // +ADD
+    DocumentsStatus? documentsStatus,
     List<ServiceDocument>? documents,
     String? documentsError,
-      ServicesStatus? servicesStatus,
+    ServicesStatus? servicesStatus,
     List<CertificationGroup>? serviceGroups,
     String? servicesError,
     AuthStatus? status,
@@ -125,58 +130,75 @@ final String? trainingVideosError;
     RegistrationResponse? response,
     String? error,
     LoginResponse? loginResponse,
-  }) =>
-      AuthenticationState(
-              certificationsSelectedCount: certificationsSelectedCount ?? this.certificationsSelectedCount,
-      chooseServicesSummary: chooseServicesSummary ?? this.chooseServicesSummary,
-            trainingVideosStatus: trainingVideosStatus ?? this.trainingVideosStatus,
+  }) => AuthenticationState(
+    getUserStatusEnum: getUserStatusEnum ?? this.getUserStatusEnum,
+    certificationsSelectedCount:
+        certificationsSelectedCount ?? this.certificationsSelectedCount,
+    chooseServicesSummary: chooseServicesSummary ?? this.chooseServicesSummary,
+    trainingVideosStatus: trainingVideosStatus ?? this.trainingVideosStatus,
     trainingVideos: trainingVideos ?? this.trainingVideos,
-    trainingVideosError:
-        clearTrainingVideosError ? null : (trainingVideosError ?? this.trainingVideosError),
-              onboardingStatus: onboardingStatus ?? this.onboardingStatus,
-      onboardingError: clearOnboardingError ? null : (onboardingError ?? this.onboardingError),
-      userDetailsStatus: userDetailsStatus ?? this.userDetailsStatus,
-      userDetails: userDetails ?? this.userDetails,
-      userDetailsError: clearUserDetailsError ? null : (userDetailsError ?? this.userDetailsError),
-            certificateSubmitStatus: certificateSubmitStatus ?? this.certificateSubmitStatus,
-        certificateSubmitError: certificateSubmitError,
-           paymentStatus: paymentStatus ?? this.paymentStatus,
-        paymentSessionUrl: paymentSessionUrl ?? this.paymentSessionUrl,
-        paymentError: paymentError,
-                documentsStatus: documentsStatus ?? this.documentsStatus,
-        documents: documents ?? this.documents,
-        documentsError: documentsError,
-         servicesStatus: servicesStatus ?? this.servicesStatus,
-        serviceGroups: serviceGroups ?? this.serviceGroups,
-        servicesError: servicesError,
-          status: status ?? this.status,
-          changePasswordStatus: changePasswordStatus ?? this.changePasswordStatus,
-          forgotPasswordStatus:
-              forgotPasswordStatus ?? this.forgotPasswordStatus,
-          response: response ?? this.response,
-          error: error,
-          loginResponse: loginResponse ?? this.loginResponse);
+    trainingVideosError: clearTrainingVideosError
+        ? null
+        : (trainingVideosError ?? this.trainingVideosError),
+    onboardingStatus: onboardingStatus ?? this.onboardingStatus,
+    onboardingError: clearOnboardingError
+        ? null
+        : (onboardingError ?? this.onboardingError),
+    userDetailsStatus: userDetailsStatus ?? this.userDetailsStatus,
+    userDetails: userDetails ?? this.userDetails,
+    userDetailsError: clearUserDetailsError
+        ? null
+        : (userDetailsError ?? this.userDetailsError),
+    certificateSubmitStatus:
+        certificateSubmitStatus ?? this.certificateSubmitStatus,
+    certificateSubmitError: certificateSubmitError,
+    paymentStatus: paymentStatus ?? this.paymentStatus,
+    paymentSessionUrl: paymentSessionUrl ?? this.paymentSessionUrl,
+    paymentError: paymentError,
+    documentsStatus: documentsStatus ?? this.documentsStatus,
+    documents: documents ?? this.documents,
+    documentsError: documentsError,
+    servicesStatus: servicesStatus ?? this.servicesStatus,
+    serviceGroups: serviceGroups ?? this.serviceGroups,
+    servicesError: servicesError,
+    status: status ?? this.status,
+    changePasswordStatus: changePasswordStatus ?? this.changePasswordStatus,
+    forgotPasswordStatus: forgotPasswordStatus ?? this.forgotPasswordStatus,
+    response: response ?? this.response,
+    error: error,
+    loginResponse: loginResponse ?? this.loginResponse,
+  );
 
   @override
-  List<Object?> get props =>
-      [  
-            certificationsSelectedCount,
+  List<Object?> get props => [
+    getUserStatusEnum,
+    certificationsSelectedCount,
     chooseServicesSummary,
-          trainingVideosStatus,
-  trainingVideos,
-  trainingVideosError,
-             onboardingStatus,
-        onboardingError,  
-            userDetailsStatus,
-        userDetails,
-        userDetailsError,
-            certificateSubmitStatus,
+    trainingVideosStatus,
+    trainingVideos,
+    trainingVideosError,
+    onboardingStatus,
+    onboardingError,
+    userDetailsStatus,
+    userDetails,
+    userDetailsError,
+    certificateSubmitStatus,
     certificateSubmitError,
-        paymentStatus, paymentSessionUrl, paymentError,
-            documentsStatus,
+    paymentStatus,
+    paymentSessionUrl,
+    paymentError,
+    documentsStatus,
     documents,
-    documentsError,servicesStatus,
-        serviceGroups,
-        servicesError,
-        totalSelectedServices,status,changePasswordStatus, forgotPasswordStatus, response, error, loginResponse];
+    documentsError,
+    servicesStatus,
+    serviceGroups,
+    servicesError,
+    totalSelectedServices,
+    status,
+    changePasswordStatus,
+    forgotPasswordStatus,
+    response,
+    error,
+    loginResponse,
+  ];
 }

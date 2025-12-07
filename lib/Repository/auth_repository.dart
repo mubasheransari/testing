@@ -13,12 +13,11 @@ import '../Models/auth_model.dart';
 import '../Models/login_responnse.dart';
 import '../Models/services_model.dart';
 import 'package:http_parser/http_parser.dart' show MediaType;
-import 'package:mime/mime.dart';
 
-// ---------- ApiConfig ----------
 class ApiConfig {
   static const String baseUrl = 'http://192.3.3.187:85';
   static const String baseUrlLocation = 'http://192.3.3.187:85';
+  static const String userStatusEndpoint = '/api/User/status';
   static const String signupEndpoint = '/api/auth/signup';
   static const String signInEndpoint = '/api/Auth/SignIn';
   static const String sendOTPThroughEmailEndpoint = '/api/otp/send/email';
@@ -98,29 +97,12 @@ Future<Result<BookingCreateResponse>> createBooking({
   String request = 'N/A',
 });
 
-  // Future<Result<RegistrationResponse>> createBooking({
-  //   required String userId,
-  //   required int subCategoryId,
-  //   required DateTime bookingDate,
-  //   required String startTime,
-  //   required String endTime,
-  //   required String address,
-  //   required int taskerLevelId,
-  //   String currency = 'AUD',
-  //   int paymentType = 1,
-  //   int serviceType = 1,
-  //   int paymentMethod = 1,
-  // });
-
-  //   Future<Result<RegistrationResponse>> createBooking({
-  //   required String userId,
-  //   required int subCategoryId,
-  //   required DateTime bookingDate,
-  //   required String startTime,
-  //   required String endTime,
-  //   required String address,
-  //   required int taskerLevelId,
-  // });
+  Future<Result<RegistrationResponse>> getUserStatus({
+    String? userId,
+    String? email,
+    String? phone,
+    bool? isActive,
+  });
 
   Future<Result<RegistrationResponse>> onboardUser({
     required String userId,
@@ -258,6 +240,114 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+
+    @override
+  Future<Result<RegistrationResponse>> getUserStatus({
+    String? userId,
+    String? email,
+    String? phone,
+    bool? isActive,
+  }) async {
+    // Base URI: http://.../api/User/status
+    final base =
+        '${ApiConfig.baseUrlLocation}${ApiConfig.userStatusEndpoint}';
+
+    // Build query parameters only for non-empty values
+    final query = <String, String>{};
+
+    if (userId != null && userId.trim().isNotEmpty) {
+      query['UserId'] = userId;
+    }
+    if (email != null && email.trim().isNotEmpty) {
+      query['Email'] = email;
+    }
+    if (phone != null && phone.trim().isNotEmpty) {
+      query['Phone'] = phone;
+    }
+    if (isActive != null) {
+      // Swagger shows IsActive boolean – backend usually expects "true"/"false"
+      query['IsActive'] = isActive.toString();
+    }
+
+    final uri = Uri.parse(base).replace(queryParameters: query.isEmpty ? null : query);
+
+    try {
+      print('>>> USER STATUS GET $uri');
+
+      final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+      print('<<< USER STATUS STATUS: ${res.statusCode}');
+      print('<<< USER STATUS BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final raw = res.body.trim();
+        if (raw.isEmpty) {
+          return Result.fail(
+            Failure(
+              code: 'empty',
+              message: 'Empty response from server',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final parsed = jsonDecode(raw);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'Failed to get user status',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      // non-2xx
+      String message = 'Server error (${res.statusCode})';
+      final raw = res.body.trim();
+      if (raw.isNotEmpty) {
+        try {
+          final err = jsonDecode(raw);
+          if (err is Map && err['message'] != null) {
+            message = err['message'].toString();
+          }
+        } catch (_) {}
+      }
+
+      return Result.fail(
+        Failure(code: 'server', message: message, statusCode: res.statusCode),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(
+        Failure(code: 'unknown', message: e.toString()),
+      );
+    }
+  }
+
 
   @override
   Future<Result<RegistrationResponse>> updateUserLocation({
@@ -721,278 +811,6 @@ Future<Result<BookingCreateResponse>> createBooking({
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
-
-
-// @override
-// Future<Result<BookingCreateResponse>> createBooking({
-//   required String userId,
-//   required int subCategoryId,
-//   required DateTime bookingDate,
-//   required String startTime,   // 👈 still string from UI (e.g. "20:00:00")
-//   required String endTime,     // 👈 still string from UI (e.g. "21:00:00")
-//   required String address,
-//   required int taskerLevelId,
-//   int bookingTypeId = 1,
-//   double latitude = 0.0,
-//   double longitude = 0.0,
-//   String currency = 'AUD',
-//   int paymentType = 1,
-//   int serviceType = 1,
-//   int paymentMethod = 1,
-//   String request = 'N/A',
-// }) async {
-//   final uri = Uri.parse(
-//     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
-//   );
-
-//   // 🔹 Format bookingDate as pure date string (no time, no UTC)
-//   final bookingDateStr = DateFormat('yyyy-MM-dd').format(bookingDate);
-//   // 🔹 startTime / endTime are already formatted in UI (e.g. "20:00:00")
-//   final startTimeStr = startTime;
-//   final endTimeStr = endTime;
-
-//   final body = <String, dynamic>{
-//     'UserId': userId,
-//     'SubCategoryId': subCategoryId,
-//     'BookingTypeId': bookingTypeId,   // required
-//     'BookingDate': bookingDateStr,    // 👈 "2025-12-06" (no T...Z)
-//     'StartTime': startTimeStr,        // 👈 "20:00:00"
-//     'EndTime': endTimeStr,            // 👈 "21:00:00"
-//     'Address': address,
-//     'TaskerLevelId': taskerLevelId,
-//     'latitude': latitude,
-//     'longitude': longitude,
-//     'currency': currency,
-//     'paymentType': paymentType.toString(),
-//     'serviceType': serviceType.toString(),
-//     'paymentMethod': paymentMethod.toString(),
-//     'request': request,
-//   };
-
-//   try {
-//     print('>>> BOOKING CREATE POST $uri');
-//     print('>>> REQUEST: ${jsonEncode(body)}');
-
-//     final res = await http
-//         .post(uri, headers: _headers(), body: jsonEncode(body))
-//         .timeout(timeout);
-
-//     print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
-//     print('<<< BOOKING CREATE BODY: ${res.body}');
-
-//     if (res.statusCode >= 200 && res.statusCode < 300) {
-//       final raw = res.body.trim();
-//       if (raw.isEmpty) {
-//         return Result.ok(
-//           BookingCreateResponse(
-//             isSuccess: true,
-//             message: 'Booking created',
-//             result: null,
-//             errors: null,
-//           ),
-//         );
-//       }
-
-//       final parsed = jsonDecode(raw);
-//       if (parsed is! Map<String, dynamic>) {
-//         return Result.fail(
-//           Failure(
-//             code: 'parse',
-//             message: 'Invalid response format',
-//             statusCode: res.statusCode,
-//           ),
-//         );
-//       }
-
-//       final resp = BookingCreateResponse.fromJson(parsed);
-
-//       if (!resp.isSuccess) {
-//         return Result.fail(
-//           Failure(
-//             code: 'validation',
-//             message: resp.message,
-//             statusCode: res.statusCode,
-//           ),
-//         );
-//       }
-
-//       return Result.ok(resp);
-//     }
-
-//     String message = 'Server error (${res.statusCode})';
-//     final raw = res.body.trim();
-//     if (raw.isNotEmpty) {
-//       try {
-//         final err = jsonDecode(raw);
-//         if (err is Map && err['errors'] is List) {
-//           final errors = (err['errors'] as List)
-//               .map((e) => '${e['field']}: ${e['error']}')
-//               .join(' • ');
-//           if (errors.isNotEmpty) message = errors;
-//         } else if (err is Map && err['message'] != null) {
-//           message = err['message'].toString();
-//         }
-//       } catch (_) {}
-//     }
-
-//     return Result.fail(
-//       Failure(code: 'server', message: message, statusCode: res.statusCode),
-//     );
-//   } on SocketException {
-//     return Result.fail(
-//       Failure(code: 'network', message: 'No internet connection'),
-//     );
-//   } on TimeoutException {
-//     return Result.fail(
-//       Failure(code: 'timeout', message: 'Request timed out'),
-//     );
-//   } catch (e) {
-//     return Result.fail(Failure(code: 'unknown', message: e.toString()));
-//   }
-// }
-
-/*
-@override
-Future<Result<BookingCreateResponse>> createBooking({
-  required String userId,
-  required int subCategoryId,
-  required DateTime bookingDate,
-  required String startTime,
-  required String endTime,
-  required String address,
-  required int taskerLevelId,
-  int bookingTypeId = 1,
-  double latitude = 0.0,
-  double longitude = 0.0,
-  String currency = 'AUD',
-  int paymentType = 1,
-  int serviceType = 1,
-  int paymentMethod = 1,
-  String request = 'N/A',
-}) async {
-  final uri = Uri.parse(
-    '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
-  );
-
-  DateTime _combineDateAndTime(DateTime date, String time) {
-    int h = 0;
-    int m = 0;
-
-    if (time.contains(':')) {
-      final parts = time.split(':');
-      h = int.tryParse(parts[0]) ?? 0;
-      if (parts.length > 1) {
-        m = int.tryParse(parts[1]) ?? 0;
-      }
-    } else {
-      h = int.tryParse(time) ?? 0;
-    }
-
-    return DateTime(date.year, date.month, date.day, h, m);
-  }
-
-  final startDateTime = _combineDateAndTime(bookingDate, startTime);
-  final endDateTime = _combineDateAndTime(bookingDate, endTime);
-
-  final body = <String, dynamic>{
-    'UserId': userId,
-    'SubCategoryId': subCategoryId,
-    'BookingTypeId': bookingTypeId,         // ✅ required
-    'BookingDate': bookingDate.toUtc().toIso8601String(),
-    'StartTime': startDateTime.toUtc().toIso8601String(),
-    'EndTime': endDateTime.toUtc().toIso8601String(),
-    'Address': address,
-    'TaskerLevelId': taskerLevelId,
-    'latitude': latitude,                   // ✅ required
-    'longitude': longitude,                 // ✅ required
-    'currency': currency,
-    'paymentType': paymentType.toString(),
-    'serviceType': serviceType.toString(),
-    'paymentMethod': paymentMethod.toString(),
-    'request': request,                     // ✅ non-empty
-  };
-
-  try {
-    print('>>> BOOKING CREATE POST $uri');
-    print('>>> REQUEST: ${jsonEncode(body)}');
-
-    final res = await http
-        .post(uri, headers: _headers(), body: jsonEncode(body))
-        .timeout(timeout);
-
-    print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
-    print('<<< BOOKING CREATE BODY: ${res.body}');
-
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final raw = res.body.trim();
-      if (raw.isEmpty) {
-        return Result.ok(
-          BookingCreateResponse(
-            isSuccess: true,
-            message: 'Booking created',
-            result: null,
-            errors: null,
-          ),
-        );
-      }
-
-      final parsed = jsonDecode(raw);
-      if (parsed is! Map<String, dynamic>) {
-        return Result.fail(
-          Failure(
-            code: 'parse',
-            message: 'Invalid response format',
-            statusCode: res.statusCode,
-          ),
-        );
-      }
-
-      final resp = BookingCreateResponse.fromJson(parsed);
-
-      if (!resp.isSuccess) {
-        return Result.fail(
-          Failure(
-            code: 'validation',
-            message: resp.message,
-            statusCode: res.statusCode,
-          ),
-        );
-      }
-
-      return Result.ok(resp);
-    }
-
-    String message = 'Server error (${res.statusCode})';
-    final raw = res.body.trim();
-    if (raw.isNotEmpty) {
-      try {
-        final err = jsonDecode(raw);
-        if (err is Map && err['errors'] is List) {
-          final errors = (err['errors'] as List)
-              .map((e) => '${e['field']}: ${e['error']}')
-              .join(' • ');
-          if (errors.isNotEmpty) message = errors;
-        } else if (err is Map && err['message'] != null) {
-          message = err['message'].toString();
-        }
-      } catch (_) {}
-    }
-
-    return Result.fail(
-      Failure(code: 'server', message: message, statusCode: res.statusCode),
-    );
-  } on SocketException {
-    return Result.fail(
-      Failure(code: 'network', message: 'No internet connection'),
-    );
-  } on TimeoutException {
-    return Result.fail(
-      Failure(code: 'timeout', message: 'Request timed out'),
-    );
-  } catch (e) {
-    return Result.fail(Failure(code: 'unknown', message: e.toString()));
-  }
-}*/
 
   @override
   Future<Result<List<TrainingVideo>>> fetchTrainingVideos() async {
@@ -2134,84 +1952,6 @@ Future<Result<BookingCreateResponse>> createBooking({
     return register(req);
   }
 
-/*//Testing@123
-  @override
-  Future<Result<RegistrationResponse>> registerUser({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-  }) {
-    final req = RegistrationRequest.user(
-      fullName: fullName,
-      phoneNumber: phoneNumber,
-      emailAddress: emailAddress,
-      password: password,
-      desiredService: desiredService ?? const [],
-      companyCategory: companyCategory ?? const [],
-      companySubCategory: companySubCategory ?? const [],
-      abn: abn,
-    );
-    return register(req);
-  }
-
-  @override
-  Future<Result<RegistrationResponse>> registerCompany({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    List<SelectableItem>? desiredService,
-    List<SelectableItem>? companyCategory,
-    List<SelectableItem>? companySubCategory,
-    String? abn,
-    String? representativeName,
-    String? representativeNumber,
-  }) {
-    final req = RegistrationRequest.company(
-      fullName: fullName,
-      phoneNumber: phoneNumber,
-      emailAddress: emailAddress,
-      password: password,
-      desiredService: desiredService ?? const [],
-      companyCategory: companyCategory ?? const [],
-      companySubCategory: companySubCategory ?? const [],
-      abn: abn,
-      representativeName: representativeName,
-      representativeNumber: representativeNumber,
-    );
-    return register(req);
-  }
-
-  @override
-  Future<Result<RegistrationResponse>> registerTasker({
-    required String fullName,
-    required String phoneNumber,
-    required String emailAddress,
-    required String password,
-    String? address,
-    List<SelectableItem>? desiredService,
-    String? abn,
-        int? taskerLevelId,
-  }) {
-    final req = RegistrationRequest.tasker(
-      fullName: fullName,
-      phoneNumber: phoneNumber,
-      emailAddress: emailAddress,
-      password: password,
-      address: address,
-      abn: abn,
-      taskerLevelId: taskerLevelId
-      // desiredService: desiredService ?? const [],
-    ); //
-    return register(req);
-  }*/
-
-  // ---------------- Login ----------------
   @override
   Future<Result<LoginResponse>> signIn({
     required String email,
