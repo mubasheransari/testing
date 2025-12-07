@@ -1,8 +1,5 @@
 import 'package:equatable/equatable.dart';
 import 'package:taskoon/Models/auth_model.dart';
-
-
-import 'package:equatable/equatable.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 
 // For booking create
@@ -12,7 +9,6 @@ enum UserBookingCreateStatus { initial, submitting, success, failure }
 enum UserLocationUpdateStatus { initial, updating, success, failure }
 
 enum FindingTaskerStatus { initial, updating, success, failure }
-
 
 // ignore: must_be_immutable
 class UserBookingState extends Equatable {
@@ -29,7 +25,7 @@ class UserBookingState extends Equatable {
   final double? lastLongitude;
   final String? locationError;
 
-   UserBookingState({
+  UserBookingState({
     this.bookingCreateResponse,
     this.createStatus = UserBookingCreateStatus.initial,
     this.findingTaskerStatus = FindingTaskerStatus.initial,
@@ -42,8 +38,8 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
-    FindingTaskerStatus ?findingTaskerStatus,
-     BookingCreateResponse? bookingCreateResponse,
+    FindingTaskerStatus? findingTaskerStatus,
+    BookingCreateResponse? bookingCreateResponse,
     // booking create
     UserBookingCreateStatus? createStatus,
     RegistrationResponse? createResponse,
@@ -59,40 +55,41 @@ class UserBookingState extends Equatable {
     bool clearLocationError = false,
   }) {
     return UserBookingState(
-      findingTaskerStatus:  findingTaskerStatus ?? this.findingTaskerStatus,
-      bookingCreateResponse:  bookingCreateResponse ?? this.bookingCreateResponse,
+      findingTaskerStatus: findingTaskerStatus ?? this.findingTaskerStatus,
+      bookingCreateResponse:
+          bookingCreateResponse ?? this.bookingCreateResponse,
       // booking create
       createStatus: createStatus ?? this.createStatus,
-      createResponse:
-          clearCreateResponse ? null : (createResponse ?? this.createResponse),
-      createError:
-          clearCreateError ? null : (createError ?? this.createError),
+      createResponse: clearCreateResponse
+          ? null
+          : (createResponse ?? this.createResponse),
+      createError: clearCreateError ? null : (createError ?? this.createError),
 
       // location update
       locationStatus: locationStatus ?? this.locationStatus,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
-      locationError:
-          clearLocationError ? null : (locationError ?? this.locationError),
+      locationError: clearLocationError
+          ? null
+          : (locationError ?? this.locationError),
     );
   }
 
   @override
   List<Object?> get props => [
     findingTaskerStatus,
-   bookingCreateResponse,
-        // booking create
-        createStatus,
-        createResponse,
-        createError,
-        // location update
-        locationStatus,
-        lastLatitude,
-        lastLongitude,
-        locationError,
-      ];
+    bookingCreateResponse,
+    // booking create
+    createStatus,
+    createResponse,
+    createError,
+    // location update
+    locationStatus,
+    lastLatitude,
+    lastLongitude,
+    locationError,
+  ];
 }
-
 
 // // Booking create status
 // enum UserBookingCreateStatus { initial, submitting, success, failure }

@@ -562,13 +562,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                 listener: (context, state) {
                   if (state.createStatus ==
                       UserBookingCreateStatus.success) {
-                    final booking = state.bookingCreateResponse?.result;
+                    final booking = state.bookingCreateResponse!.result!.first.bookingDetailId;
+
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
                           'Booking created successfully'
-                          '${booking != null ? ' (ID: ${booking.id})' : ''}',
+                          '${booking != null ? ' (ID: ${booking})' : ''}',
                         ),
                       ),
                     );
@@ -578,12 +579,18 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
-                              FindingYourTaskerScreen(bookingid: booking.id),
+                              FindingYourTaskerScreen(bookingid: booking),
                         ),
                       );
                     }
                   } else if (state.createStatus ==
                       UserBookingCreateStatus.failure) {
+                                            print("ERROR PRINT ${state.createError}");
+                     print("ERROR PRINT ${state.createError}");
+                      print("ERROR PRINT ${state.createError}");
+ print("ERROR PRINT ${state.createError}");
+                       print("ERROR PRINT ${state.createError}");
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(

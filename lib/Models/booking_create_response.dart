@@ -1,38 +1,215 @@
-// booking_create_response.dart
+import 'package:flutter/foundation.dart';
 
 class BookingCreateResponse {
   final bool isSuccess;
   final String message;
-  final BookingCreateResult? result;
-  final dynamic errors;
+  final List<BookingCreateItem>? result;
+  final List<ApiError>? errors;
 
   BookingCreateResponse({
     required this.isSuccess,
     required this.message,
-    this.result,
-    this.errors,
+    required this.result,
+    required this.errors,
   });
 
   factory BookingCreateResponse.fromJson(Map<String, dynamic> json) {
+    final isSuccess = json['isSuccess'] as bool? ?? false;
+    final message = json['message'] as String? ?? '';
+
+    // ----- result: LIST of BookingCreateItem -----
+    List<BookingCreateItem>? result;
+    final rawResult = json['result'];
+
+    if (rawResult is List) {
+      result = rawResult
+          .whereType<Map<String, dynamic>>()
+          .map(BookingCreateItem.fromJson)
+          .toList();
+    } else if (rawResult == null) {
+      result = null;
+    } else {
+      debugPrint(
+        '⚠️ BookingCreateResponse.result is not a List: '
+        '${rawResult.runtimeType} -> $rawResult',
+      );
+      result = null;
+    }
+
+    // ----- errors: LIST of ApiError -----
+    List<ApiError>? errors;
+    final rawErrors = json['errors'];
+
+    if (rawErrors is List) {
+      errors = rawErrors
+          .whereType<Map<String, dynamic>>()
+          .map(ApiError.fromJson)
+          .toList();
+    } else if (rawErrors == null) {
+      errors = null;
+    } else {
+      debugPrint(
+        '⚠️ BookingCreateResponse.errors is not a List: '
+        '${rawErrors.runtimeType} -> $rawErrors',
+      );
+      errors = null;
+    }
+
     return BookingCreateResponse(
-      isSuccess: json['isSuccess'] as bool,
-      message: json['message'] as String,
-      result: json['result'] != null
-          ? BookingCreateResult.fromJson(json['result'] as Map<String, dynamic>)
-          : null,
-      errors: json['errors'],
+      isSuccess: isSuccess,
+      message: message,
+      result: result,
+      errors: errors,
+    );
+  }
+}
+
+/// 🔹 One item inside "result" array
+class BookingCreateItem {
+  final String bookingId;
+  final String bookigNumber;       // note: backend typo "bookigNumber"
+  final String bookingDetailId;
+  final String bookingDetailNumber;
+  final double estimatedCost;
+
+  BookingCreateItem({
+    required this.bookingId,
+    required this.bookigNumber,
+    required this.bookingDetailId,
+    required this.bookingDetailNumber,
+    required this.estimatedCost,
+  });
+
+  factory BookingCreateItem.fromJson(Map<String, dynamic> json) {
+    return BookingCreateItem(
+      bookingId: json['bookingId']?.toString() ?? '',
+      bookigNumber: json['bookigNumber']?.toString() ?? '',
+      bookingDetailId: json['bookingDetailId']?.toString() ?? '',
+      bookingDetailNumber: json['bookingDetailNumber']?.toString() ?? '',
+      estimatedCost: _parseDouble(json['estimatedCost']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'isSuccess': isSuccess,
-      'message': message,
-      'result': result?.toJson(),
-      'errors': errors,
-    };
+  static double _parseDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
   }
 }
+
+class ApiError {
+  final String? field;
+  final String? error;
+
+  ApiError({this.field, this.error});
+
+  factory ApiError.fromJson(Map<String, dynamic> json) {
+    return ApiError(
+      field: json['field'] as String?,
+      error: json['error'] as String?,
+    );
+  }
+}
+
+
+
+
+// booking_create_response.dart
+/*class BookingCreateResponse {
+  final bool isSuccess;
+  final String message;
+  final BookingCreateResult? result;
+  final List<ApiError>? errors;
+
+  BookingCreateResponse({
+    required this.isSuccess,
+    required this.message,
+    required this.result,
+    required this.errors,
+  });
+
+  factory BookingCreateResponse.fromJson(Map<String, dynamic> json) {
+    // isSuccess + message are simple
+    final isSuccess = json['isSuccess'] as bool? ?? false;
+    final message = json['message'] as String? ?? '';
+
+    // ✅ result may be null or not a map
+    BookingCreateResult? result;
+    final rawResult = json['result'];
+    if (rawResult is Map<String, dynamic>) {
+      result = BookingCreateResult.fromJson(rawResult);
+    } else {
+      result = null; // or handle other shapes if needed
+    }
+
+    // ✅ errors is a list of maps
+    List<ApiError>? errors;
+    final rawErrors = json['errors'];
+    if (rawErrors is List) {
+      errors = rawErrors
+          .whereType<Map<String, dynamic>>()
+          .map(ApiError.fromJson)
+          .toList();
+    } else {
+      errors = null;
+    }
+
+    return BookingCreateResponse(
+      isSuccess: isSuccess,
+      message: message,
+      result: result,
+      errors: errors,
+    );
+  }
+}
+
+class ApiError {
+  final String? field;
+  final String? error;
+
+  ApiError({this.field, this.error});
+
+  factory ApiError.fromJson(Map<String, dynamic> json) {
+    return ApiError(
+      field: json['field'] as String?,
+      error: json['error'] as String?,
+    );
+  }
+}
+
+// class BookingCreateResponse {
+//   final bool isSuccess;
+//   final String message;
+//   final BookingCreateResult? result;
+//   final dynamic errors;
+
+//   BookingCreateResponse({
+//     required this.isSuccess,
+//     required this.message,
+//     this.result,
+//     this.errors,
+//   });
+
+//   factory BookingCreateResponse.fromJson(Map<String, dynamic> json) {
+//     return BookingCreateResponse(
+//       isSuccess: json['isSuccess'] as bool,
+//       message: json['message'] as String,
+//       result: json['result'] != null
+//           ? BookingCreateResult.fromJson(json['result'] as Map<String, dynamic>)
+//           : null,
+//       errors: json['errors'],
+//     );
+//   }
+
+//   Map<String, dynamic> toJson() {
+//     return {
+//       'isSuccess': isSuccess,
+//       'message': message,
+//       'result': result?.toJson(),
+//       'errors': errors,
+//     };
+//   }
+// }
 
 class BookingCreateResult {
   final String id;
@@ -216,3 +393,4 @@ class BookingDetail {
     };
   }
 }
+*/
