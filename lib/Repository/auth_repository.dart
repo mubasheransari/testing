@@ -36,7 +36,7 @@ class ApiConfig {
   static const String trainingVideosEndpoint = '/api/Services/trainingvideos';
   //user booking
   static const String bookingEndpoint = '/api/booking/create';
-  static const String bookingFindEndpoint = '/api/Booking/Find';
+  static const String bookingFindEndpoint = '/api/tasker/find';
   static const String bookingAcceptEndpoint = '/api/Booking/accept';
   static const String bookingCancelEndpoint = '/api/Booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';

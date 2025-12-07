@@ -8,6 +8,7 @@ import 'package:taskoon/Screens/Splash_Slider/slider_screen.dart';
 import 'dart:math' as math;
 
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
+import 'package:taskoon/Screens/User_booking/user_booking_nav_bar.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,20 +53,23 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 700),
     );
 
-    _logoScale = Tween(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutBack),
-    );
-    _logoOpacity = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOut),
-    );
+    _logoScale = Tween(
+      begin: 0.85,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutBack));
+    _logoOpacity = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOut));
 
-    _taglineOpacity = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut),
-    );
-    _taglineOffset =
-        Tween(begin: const Offset(0, .15), end: Offset.zero).animate(
-      CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic),
-    );
+    _taglineOpacity = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
+    _taglineOffset = Tween(
+      begin: const Offset(0, .15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic));
 
     // Sequence: start logo, then pills, then tagline, then navigate.
     _logoCtrl.forward().whenComplete(() {
@@ -79,10 +83,17 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     _pillCtrl.stop();
 
-         var role=       storage.read("role");
+    var role = storage.read("role");
 
-
-    Navigator.of(context).pushReplacement(_fadeRoute(role == "Tasker" ? TaskoonApp():role == "Customer" ?UserBookingHome():LoginScreen() ));
+    Navigator.of(context).pushReplacement(
+      _fadeRoute(
+        role == "Tasker"
+            ? TaskoonApp()
+            : role == "Customer"
+            ? UserBottomNavBar()
+            : LoginScreen(),
+      ),
+    );
   }
 
   @override
@@ -107,9 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
               animation: _pillCtrl,
               builder: (_, __) {
                 final a = _pillCtrl.value * 2 * math.pi;
-                return CustomPaint(
-                  painter: _SoftSweepPainter(angle: a),
-                );
+                return CustomPaint(painter: _SoftSweepPainter(angle: a));
               },
             ),
           ),
@@ -184,7 +193,6 @@ class _SplashScreenState extends State<SplashScreen>
                   //     ),
                   //   ),
                   // ),
-
                   const SizedBox(height: 6),
 
                   // Tagline slide+fade
@@ -339,7 +347,6 @@ PageRouteBuilder _fadeRoute(Widget child) {
     },
   );
 }
-
 
 // class SplashScreen extends StatefulWidget {
 //   const SplashScreen({super.key});
