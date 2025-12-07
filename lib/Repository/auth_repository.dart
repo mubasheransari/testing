@@ -206,6 +206,7 @@ Future<Result<BookingCreateResponse>> createBooking({
     required String password,
     String? address,
     String? abn,
+        int? taskerLevelId,
   });
 
   Future<Result<LoginResponse>> signIn({
@@ -2013,23 +2014,129 @@ Future<Result<BookingCreateResponse>> createBooking({
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
   }
+@override
+ Future<Result<RegistrationResponse>> register(//Testing@123
+      RegistrationRequest request) async {
+    try {
+      final body = jsonEncode(request.toJson());
+      debugPrint('>>> SIGNUP BODY: $body');
 
-  @override
-  Future<Result<RegistrationResponse>> register(
-    RegistrationRequest request,
-  ) async {
-    final e1 = _validateRequired('Phone number', request.phoneNumber);
-    if (e1 != null) return Result.fail(e1);
-    final e2 = _validateRequired('Password', request.password);
-    if (e2 != null) return Result.fail(e2);
-    final e3 =
-        _validateRequired('Email', request.emailAddress) ??
-        _validateEmail(request.emailAddress);
-    if (e3 != null) return Result.fail(e3);
+      final res = await http.post(
+        Uri.parse('${ApiConfig.baseUrlLocation}/api/auth/signup'),
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
 
-    return _postRegistration(request.toJson());
+      debugPrint('<<< SIGNUP STATUS: ${res.statusCode}');
+      debugPrint('<<< SIGNUP BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        return Result.ok(RegistrationResponse.fromJson(json));
+      }
+
+      // parse error message if any
+      try {
+        if (res.body.isNotEmpty) {
+          final json = jsonDecode(res.body) as Map<String, dynamic>;
+          final msg = json['message']?.toString() ?? 'Server error';
+          return Result.fail(Failure(
+            code: 'server',
+            message: msg,
+            statusCode: res.statusCode,
+          ));
+        }
+      } catch (_) {}
+
+      return Result.fail(Failure(
+        code: 'server',
+        message: 'Server error (${res.statusCode}) while signing up',
+        statusCode: res.statusCode,
+      ));
+    } catch (e) {
+      return Result.fail(Failure(code: 'network', message: e.toString()));
+    }
+  }
+@override
+  Future<Result<RegistrationResponse>> registerUser({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+  }) {
+    final req = RegistrationRequest.user(
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      password: password,
+      desiredService: desiredService,
+      companyCategory: companyCategory,
+      companySubCategory: companySubCategory,
+      abn: abn,
+    );
+    return register(req);
+  }
+@override //Testing@123
+  Future<Result<RegistrationResponse>> registerCompany({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    List<SelectableItem>? desiredService,
+    List<SelectableItem>? companyCategory,
+    List<SelectableItem>? companySubCategory,
+    String? abn,
+    String? representativeName,
+    String? representativeNumber,
+  }) {
+    final req = RegistrationRequest.company(
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      emailAddress: emailAddress,
+      password: password,
+      desiredService: desiredService,
+      companyCategory: companyCategory,
+      companySubCategory: companySubCategory,
+      abn: abn,
+      representativeName: representativeName,
+      representativeNumber: representativeNumber,
+    );
+    return register(req);
+  }
+@override
+  Future<Result<RegistrationResponse>> registerTasker({
+    required String fullName,
+    required String phoneNumber,
+    required String emailAddress,
+    required String password,
+    String? address,
+    String? abn,
+    int? taskerLevelId,
+  }) {
+
+
+    final req = RegistrationRequest.tasker(
+      fullName: fullName,
+      phoneNumber: phoneNumber,//Testing@123
+      emailAddress: emailAddress,
+      password: password,
+      address: address,
+      abn: abn,
+      taskerLevelId: taskerLevelId ?? 0, // try 0 if 1 breaks
+      desiredService: [],
+      companyCategory: [],
+      companySubCategory: [],
+      representativeName: '',
+      representativeNumber: '',
+    );
+    return register(req);
   }
 
+/*//Testing@123
   @override
   Future<Result<RegistrationResponse>> registerUser({
     required String fullName,
@@ -2091,6 +2198,7 @@ Future<Result<BookingCreateResponse>> createBooking({
     String? address,
     List<SelectableItem>? desiredService,
     String? abn,
+        int? taskerLevelId,
   }) {
     final req = RegistrationRequest.tasker(
       fullName: fullName,
@@ -2099,10 +2207,11 @@ Future<Result<BookingCreateResponse>> createBooking({
       password: password,
       address: address,
       abn: abn,
+      taskerLevelId: taskerLevelId
       // desiredService: desiredService ?? const [],
     ); //
     return register(req);
-  }
+  }*/
 
   // ---------------- Login ----------------
   @override

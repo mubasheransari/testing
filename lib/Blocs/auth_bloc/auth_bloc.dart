@@ -622,7 +622,7 @@ Future<void> _onLoadTrainingVideosRequested(
     }
   }
 
-  Future<void> _onRegisterCompany(
+  Future<void> _onRegisterCompany(//Testing@123
       RegisterCompanyRequested e, Emitter<AuthenticationState> emit) async {
     emit(state.copyWith(status: AuthStatus.loading));
     final r = await repo.registerCompany(
@@ -655,6 +655,7 @@ Future<void> _onLoadTrainingVideosRequested(
       password: e.password,
       address: e.address,
           abn: e.abn,   
+          taskerLevelId: 1//new Testing@123
     );
     if (r.isSuccess) {
       emit(state.copyWith(status: AuthStatus.success, response: r.data));
