@@ -115,6 +115,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       builder: (context) => ChangePasswordScreen(
                           email: widget.email, userId: widget.userId)));
             } else {
+              print("IS ACTIVE ${state.userDetails!.isActive}");
+                            print("IS ACTIVE ${state.userDetails!.isActive}");
+                                          print("IS ACTIVE ${state.userDetails!.isActive}");
+                                                        print("IS ACTIVE ${state.userDetails!.isActive}");
+
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const PersonalInfo()),

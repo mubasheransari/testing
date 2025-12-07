@@ -88,6 +88,10 @@ BlocListener<AuthenticationBloc, AuthenticationState>(
           ..add(LoadTrainingVideosRequested());
       }
 
+      // print("USER ROLE ${state.userDetails!.userRole}");
+      //  print("USER ROLE ${state.userDetails!.userRole}");
+      //   print("USER ROLE ${state.userDetails!.userRole}");
+
       // your existing OTP + navigation (unchanged)
       context.read<AuthenticationBloc>().add(
         SendOtpThroughEmail(
