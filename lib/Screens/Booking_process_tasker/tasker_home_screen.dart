@@ -279,6 +279,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     const double lat = 24.435;
     const double lng = 67.435;
 
+ 
+
     if (!_hubService.isConnected) {
       print('⚠️ Hub not connected, skipping SignalR location send');
       return;

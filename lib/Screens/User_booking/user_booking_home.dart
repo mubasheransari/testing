@@ -90,9 +90,9 @@ class _UserBookingHomeState extends State<UserBookingHome> {
 
   static const String _demoUserId =
       '54748461-018e-4a05-95b5-d490d07c5ab2'; // resident/user
-  static const double _demoLat = 24.8607; // Karachi demo
-  static const double _demoLng = 67.0011;
-
+  static const double _demoLat = 24.435; // Karachi demo
+  static const double _demoLng = 67.435;
+  
   @override
 void initState() {
   super.initState();
