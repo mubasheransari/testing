@@ -5,6 +5,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Screens/Authentication/login_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/slider_screen.dart';
+import 'package:taskoon/Screens/Tasker_Onboarding/personal_info.dart';
 import 'dart:math' as math;
 
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
@@ -88,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       _fadeRoute(
         role == "Tasker"
-            ? TaskoonApp()
+            ?PersonalInfo() //TaskoonApp()
             : role == "Customer"
             ? UserBottomNavBar()
             : LoginScreen(),

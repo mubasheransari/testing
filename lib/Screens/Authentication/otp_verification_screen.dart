@@ -164,11 +164,12 @@ else if(isActive == true){
   //   userId: state.userDetails!.userId.toString(),
   //   email: state.userDetails!.email.toString(),
   //   phone: state.userDetails!.phone.toString(),
-  // ));
+  // ));//Testing@123
  //if(isOnboardingRequired == true){
    Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const TaskoonApp()),
+                MaterialPageRoute(builder: (_) => const PersonalInfo() //TaskoonApp()
+                ),
               );
  //}
 //  else{

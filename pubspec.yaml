@@ -67,4 +67,4 @@ flutter:
 
 # ✅ Force a version that declares an Android namespace (fixes the build)
 dependency_overrides:
-  google_api_headers: ^2.0.0
+  google_api_headers: ^4.0.3
