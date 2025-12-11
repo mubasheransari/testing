@@ -243,8 +243,7 @@ Future<void> _changeAvailabilityStatus(
   ));
 
   final r = await repo.changeAvailbilityStatusTasker(
-    userId: e.userId,
-   
+    userId: e.userId
   );
 
   if (r.isSuccess) {

@@ -355,79 +355,77 @@ class AuthRepositoryHttp implements AuthRepository {
 
 
 
-    @override
-  Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
-    required String userId
-  }) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrlLocation}${ApiConfig.changeAvailabilityStatusEndpoint}',
-    );
+  @override
+Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
+  required String userId,
+}) async {
+  final baseUri =
+      '${ApiConfig.baseUrlLocation}${ApiConfig.changeAvailabilityStatusEndpoint}';
 
-    final body = <String, dynamic>{
-      "UserId": userId,
-      "IsOnline": true 
-    };
+  // Pass userId and isOnline in query params
+  final uri = Uri.parse(baseUri).replace(queryParameters: {
+    'userId': userId,
+    'isOnline': 'true',
+  });
 
-    try {
-      print('>>> CHANGE AVAILABILITY STATUS $uri');
-      print('>>> REQUEST: ${jsonEncode(body)}');
+  try {
+    print('>>> CHANGE AVAILABILITY STATUS [GET] $uri');
 
-      final res = await http
-          .post(uri, headers: _headers(), body: jsonEncode(body))
-          .timeout(timeout);
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
 
-      print('<<< CHANGE AVAILABILITY STATUS: ${res.statusCode}');
-      print('<<< CHANGE AVAILABILITY BODY: ${res.body}');
+    print('<<< CHANGE AVAILABILITY STATUS: ${res.statusCode}');
+    print('<<< CHANGE AVAILABILITY BODY: ${res.body}');
 
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final parsed = jsonDecode(res.body);
-        if (parsed is! Map<String, dynamic>) {
-          return Result.fail(
-            Failure(
-              code: 'parse',
-              message: 'Invalid response format',
-              statusCode: res.statusCode,
-            ),
-          );
-        }
-
-        final resp = RegistrationResponse.fromJson(parsed);
-        if (!resp.isSuccess) {
-          return Result.fail(
-            Failure(
-              code: 'validation',
-              message: resp.message ?? 'Location update failed',
-              statusCode: res.statusCode,
-            ),
-          );
-        }
-
-        return Result.ok(resp);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final parsed = jsonDecode(res.body);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ),
+        );
       }
 
-      String message = 'Server error (${res.statusCode})';
-      try {
-        final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null) {
-          message = err['message'].toString();
-        }
-      } catch (_) {}
+      final resp = RegistrationResponse.fromJson(parsed);
+      if (!resp.isSuccess) {
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: resp.message ?? 'Availability update failed',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
 
-      return Result.fail(
-        Failure(code: 'server', message: message, statusCode: res.statusCode),
-      );
-    } on SocketException {
-      return Result.fail(
-        Failure(code: 'network', message: 'No internet connection'),
-      );
-    } on TimeoutException {
-      return Result.fail(
-        Failure(code: 'timeout', message: 'Request timed out'),
-      );
-    } catch (e) {
-      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+      return Result.ok(resp);
     }
+
+    String message = 'Server error (${res.statusCode})';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err['message'] != null) {
+        message = err['message'].toString();
+      }
+    } catch (_) {}
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
+}
+
 
 
   @override
