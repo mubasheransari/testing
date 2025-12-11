@@ -1,26 +1,7 @@
 import 'package:flutter/material.dart';
-
-
-
-
-
-
 import 'dart:async';
-
-
-
 import 'package:signalr_core/signalr_core.dart';
-
-
-
-import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// 🔁 UPDATE THESE TO YOUR REAL PATHS
-
-
-import 'package:signalr_core/signalr_core.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
@@ -75,8 +56,8 @@ class LocationHubService {
     print('📡 Sending location via SignalR: $payload');
 
     // "update/location" must match the method name/route in your C# hub
-    await _connection.invoke(
-      'update/location',
+   await _connection.invoke(  //new updation signalR
+      'ReceiveNotification',
       args: [payload],
     );
 
@@ -206,12 +187,18 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
     print(
         '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$userId, lat=$lat, lng=$lng)');
-
-    context.read<UserBookingBloc>().add(
+       context.read<UserBookingBloc>().add(
           UpdateUserLocationRequested(
             userId: userId,
             latitude: lat,
             longitude: lng,
+          ),
+        );
+
+
+    context.read<UserBookingBloc>().add(
+          ChangeAvailabilityStatus(
+            userId: userId
           ),
         );
   }

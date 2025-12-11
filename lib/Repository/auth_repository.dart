@@ -41,6 +41,7 @@ class ApiConfig {
   static const String bookingCancelEndpoint = '/api/Booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
   static const String updateLocationEndpoint = '/api/Address/update/location';
+    static const String changeAvailabilityStatusEndpoint = '/api/user/available/status';
 }
 
 extension on String {
@@ -59,6 +60,10 @@ abstract class AuthRepository {
     required String userId,
     required double latitude,
     required double longitude,
+  });
+
+    Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
+    required String userId
   });
 
   Future<Result<RegistrationResponse>> cancelBooking({
@@ -345,6 +350,82 @@ class AuthRepositoryHttp implements AuthRepository {
       return Result.fail(
         Failure(code: 'unknown', message: e.toString()),
       );
+    }
+  }
+
+
+
+    @override
+  Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
+    required String userId
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrlLocation}${ApiConfig.changeAvailabilityStatusEndpoint}',
+    );
+
+    final body = <String, dynamic>{
+      "UserId": userId,
+      "IsOnline": true 
+    };
+
+    try {
+      print('>>> CHANGE AVAILABILITY STATUS $uri');
+      print('>>> REQUEST: ${jsonEncode(body)}');
+
+      final res = await http
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(timeout);
+
+      print('<<< CHANGE AVAILABILITY STATUS: ${res.statusCode}');
+      print('<<< CHANGE AVAILABILITY BODY: ${res.body}');
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(
+            Failure(
+              code: 'parse',
+              message: 'Invalid response format',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        final resp = RegistrationResponse.fromJson(parsed);
+        if (!resp.isSuccess) {
+          return Result.fail(
+            Failure(
+              code: 'validation',
+              message: resp.message ?? 'Location update failed',
+              statusCode: res.statusCode,
+            ),
+          );
+        }
+
+        return Result.ok(resp);
+      }
+
+      String message = 'Server error (${res.statusCode})';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+
+      return Result.fail(
+        Failure(code: 'server', message: message, statusCode: res.statusCode),
+      );
+    } on SocketException {
+      return Result.fail(
+        Failure(code: 'network', message: 'No internet connection'),
+      );
+    } on TimeoutException {
+      return Result.fail(
+        Failure(code: 'timeout', message: 'Request timed out'),
+      );
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
   }
 

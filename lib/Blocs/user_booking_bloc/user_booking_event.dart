@@ -109,3 +109,14 @@ class FindingTaskerRequested extends UserBookingEvent {
   @override
   List<Object?> get props => [bookingId];
 }
+
+class ChangeAvailabilityStatus extends UserBookingEvent {
+  final String userId;
+
+  const ChangeAvailabilityStatus({
+    required this.userId
+  });
+
+  @override
+  List<Object?> get props => [userId];
+}

@@ -89,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       _fadeRoute(
         role == "Tasker"
-            ?PersonalInfo() //TaskoonApp()
+            ? TaskoonApp()//PersonalInfo() //TaskoonApp()
             : role == "Customer"
             ? UserBottomNavBar()
             : LoginScreen(),

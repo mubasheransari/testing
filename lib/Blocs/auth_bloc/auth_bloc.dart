@@ -106,6 +106,14 @@ class AuthenticationBloc
       docAddressProof: e.docAddressProof,
       docIdVerification: e.docIdVerification,
     );
+    print("USER ID ${e.userId}");
+    print("SERVICES ID ${e.servicesId}");
+    print("PROFILE PICTURE ${e.profilePicture}");
+        print("DOCUMENT CERTIFICATON ${e.docCertification}");
+        print("DOCUMENT INSURANCE ${e.docInsurance}");
+
+  print("DOCUMENT ADDRESS PROOF ${e.docAddressProof}");
+    print("DOCUMENT ID VERIFICATION ${e.docIdVerification}");
 
     // Unwrap your Result<T> (pick the branch that matches your Result)
     if ((res as dynamic).isSuccess == true) {

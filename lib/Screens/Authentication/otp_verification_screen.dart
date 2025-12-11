@@ -168,7 +168,7 @@ else if(isActive == true){
  //if(isOnboardingRequired == true){
    Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const PersonalInfo() //TaskoonApp()
+                MaterialPageRoute(builder: (_) => const TaskoonApp() //PersonalInfo() //TaskoonApp()
                 ),
               );
  //}

@@ -11,6 +11,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
     on<FindingTaskerRequested>(findingTaskerRequested);
+    on<ChangeAvailabilityStatus>(_changeAvailabilityStatus);
   }
 
 
@@ -226,6 +227,46 @@ Future<void> _onUpdateUserLocationRequested(
     emit(state.copyWith(
       locationStatus: UserLocationUpdateStatus.failure,
       locationError: r.failure?.message ?? 'Failed to update user location',
+    ));
+  }
+}
+
+Future<void> _changeAvailabilityStatus(
+  ChangeAvailabilityStatus e,
+  Emitter<UserBookingState> emit,
+) async {
+
+
+  emit(state.copyWith(
+    changeAvailabilityStatusEnum: ChangeAvailabilityStatusEnum.initial,
+   // clearLocationError: true,
+  ));
+
+  final r = await repo.changeAvailbilityStatusTasker(
+    userId: e.userId,
+   
+  );
+
+  if (r.isSuccess) {
+    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+      print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+
+    emit(state.copyWith(
+      changeAvailabilityStatusEnum: ChangeAvailabilityStatusEnum.success,
+     // clearLocationError: true,
+    ));
+  } else {
+    print('❌ [Bloc] _changeAvailabilityStatus FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] _changeAvailabilityStatus FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] _changeAvailabilityStatus FAILURE: ${r.failure?.message}');
+        print('❌ [Bloc] _changeAvailabilityStatus FAILURE: ${r.failure?.message}');
+
+    
+    emit(state.copyWith(
+    changeAvailabilityStatusEnum: ChangeAvailabilityStatusEnum.failure,
+      changeAvailabilityError: r.failure?.message ?? 'Failed to update user location',
     ));
   }
 }

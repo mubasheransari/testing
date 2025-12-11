@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       create: (_) => AuthenticationBloc(
         AuthRepositoryHttp(
           timeout: Duration(seconds: 20),
-          baseUrl: 'http://192.3.3.187:83',
+          baseUrl: 'http://192.3.3.187:85',
           endpoint: '/api/auth/signup',
         ),
       ),

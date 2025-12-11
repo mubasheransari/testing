@@ -10,11 +10,14 @@ enum UserLocationUpdateStatus { initial, updating, success, failure }
 
 enum FindingTaskerStatus { initial, updating, success, failure }
 
+enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
+
 // ignore: must_be_immutable
 class UserBookingState extends Equatable {
   BookingCreateResponse? bookingCreateResponse;
   // ----- booking create -----
   final UserBookingCreateStatus createStatus;
+  final ChangeAvailabilityStatusEnum changeAvailabilityStatusEnum;
   final FindingTaskerStatus findingTaskerStatus;
   final RegistrationResponse? createResponse;
   final String? createError;
@@ -24,9 +27,11 @@ class UserBookingState extends Equatable {
   final double? lastLatitude;
   final double? lastLongitude;
   final String? locationError;
+  final String? changeAvailabilityError;
 
   UserBookingState({
     this.bookingCreateResponse,
+    this.changeAvailabilityStatusEnum = ChangeAvailabilityStatusEnum.initial,
     this.createStatus = UserBookingCreateStatus.initial,
     this.findingTaskerStatus = FindingTaskerStatus.initial,
     this.createResponse,
@@ -35,9 +40,11 @@ class UserBookingState extends Equatable {
     this.lastLatitude,
     this.lastLongitude,
     this.locationError,
+    this.changeAvailabilityError
   });
 
   UserBookingState copyWith({
+    ChangeAvailabilityStatusEnum? changeAvailabilityStatusEnum,
     FindingTaskerStatus? findingTaskerStatus,
     BookingCreateResponse? bookingCreateResponse,
     // booking create
@@ -53,8 +60,11 @@ class UserBookingState extends Equatable {
     double? lastLongitude,
     String? locationError,
     bool clearLocationError = false,
+    String ? changeAvailabilityError
   }) {
     return UserBookingState(
+      changeAvailabilityError: changeAvailabilityError ?? this.changeAvailabilityError,
+      changeAvailabilityStatusEnum: changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
       findingTaskerStatus: findingTaskerStatus ?? this.findingTaskerStatus,
       bookingCreateResponse:
           bookingCreateResponse ?? this.bookingCreateResponse,
@@ -77,6 +87,8 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+    changeAvailabilityError,
+    changeAvailabilityStatusEnum,
     findingTaskerStatus,
     bookingCreateResponse,
     // booking create
