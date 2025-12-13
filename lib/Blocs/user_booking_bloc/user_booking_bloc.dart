@@ -51,12 +51,12 @@ Future<void> _onCreateUserBookingRequested(
   // ⬇️ Now returns Result<BookingCreateResponse>
   final r = await repo.createBooking(
     userId: e.userId,
-    subCategoryId: e.subCategoryId,
+    subCategoryId:1032, //e.subCategoryId, 123
     bookingDate: e.bookingDate,
     startTime: e.startTime,
     endTime: e.endTime,
     address: e.address,
-    taskerLevelId: e.taskerLevelId,
+    taskerLevelId:1 //e.taskerLevelId,
     // currency: e.currency,
     // paymentType: e.paymentType,
     // serviceType: e.serviceType,

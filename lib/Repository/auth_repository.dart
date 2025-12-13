@@ -36,7 +36,7 @@ class ApiConfig {
   static const String trainingVideosEndpoint = '/api/Services/trainingvideos';
   //user booking
   static const String bookingEndpoint = '/api/booking/create';
-  static const String bookingFindEndpoint = '/api/tasker/find';
+  static const String bookingFindEndpoint = '/api/Tasker/Find';
   static const String bookingAcceptEndpoint = '/api/Booking/accept';
   static const String bookingCancelEndpoint = '/api/Booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
@@ -93,13 +93,14 @@ Future<Result<BookingCreateResponse>> createBooking({
   required int taskerLevelId,
   // 🔽 new fields with defaults for now
   int bookingTypeId = 1,
-  double latitude = 0.0,
-  double longitude = 0.0,
-  String currency = 'AUD',
-  int paymentType = 1,
-  int serviceType = 1,
-  int paymentMethod = 1,
-  String request = 'N/A',
+  double latitude = 67.0,
+  double longitude = 70.00
+ 
+  // String currency = 'AUD',
+  // int paymentType = 1,
+  // int serviceType = 1,
+  // int paymentMethod = 1,
+  // String request = 'N/A',
 });
 
   Future<Result<RegistrationResponse>> getUserStatus({
@@ -751,11 +752,11 @@ Future<Result<BookingCreateResponse>> createBooking({
   int bookingTypeId = 1,
   double latitude = 0.0,
   double longitude = 0.0,
-  String currency = 'AUD',
-  int paymentType = 1,
-  int serviceType = 1,
-  int paymentMethod = 1,
-  String request = 'N/A',
+ // String currency = 'AUD',
+ // int paymentType = 1,
+  //int serviceType = 1,
+//  int paymentMethod = 1,
+  //String request = 'N/A',
 }) async {
   final uri = Uri.parse(
     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
@@ -800,13 +801,15 @@ Future<Result<BookingCreateResponse>> createBooking({
     'EndTime': endDateTime.toIso8601String(),
     'Address': address,
     'TaskerLevelId': taskerLevelId,
-    'latitude': latitude,
-    'longitude': longitude,
-    'currency': currency,
-    'paymentType': paymentType.toString(),
-    'serviceType': serviceType.toString(),
-    'paymentMethod': paymentMethod.toString(),
-    'request': request,
+    'latitude': 67.00,
+    'longitude': 70.00,
+      "recurrencePatternId": 0,
+  "customDays": ""
+    // 'currency': currency,
+    // 'paymentType': paymentType.toString(),
+    // 'serviceType': serviceType.toString(),
+    // 'paymentMethod': paymentMethod.toString(),
+    // 'request': request,
   };
 
   try {
