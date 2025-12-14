@@ -63,8 +63,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
       case Routes.takerHomeBottomNavBarRoot:
         return MaterialPageRoute(builder: (_) => const TaskoonApp());
-      case Routes.locationSignalR:
-        return MaterialPageRoute(builder: (_) => const LocationSignalRScreen());
+      // case Routes.locationSignalR:
+      //   return MaterialPageRoute(builder: (_) => const LocationSignalRScreen());
 
       case Routes.userHomeBottomNavBarRoot:
         return MaterialPageRoute(

@@ -1,71 +1,201 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:signalr_core/signalr_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
+import 'package:signalr_netcore/signalr_client.dart';
 
 
-class LocationHubService {
-  final String hubUrl;
-  late final HubConnection _connection;
 
-  LocationHubService({required this.hubUrl}) {
-    _connection = HubConnectionBuilder()
-        .withUrl(hubUrl)
-        .withAutomaticReconnect()
+
+class DispatchHubService {
+  DispatchHubService({
+    required this.baseUrl,
+    required this.userId,
+    this.onNotification,
+    this.onLog,
+  });
+
+  final String baseUrl; // e.g. http://192.3.3.187:85
+  final String userId;  // GUID
+  final void Function(dynamic payload)? onNotification;
+  final void Function(String msg)? onLog;
+
+  HubConnection? _conn;
+
+  bool _isStarting = false;
+  bool _isStopping = false;
+  bool _isReconnecting = false;
+
+  Timer? _reconnectTimer;
+
+  String get hubUrl {
+    final clean =
+        baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    return "$clean/hubs/dispatch?userId=$userId";
+  }
+
+  HubConnectionState get state =>
+      _conn?.state ?? HubConnectionState.Disconnected;
+
+  bool get isConnected => state == HubConnectionState.Connected;
+
+  void _log(String s) {
+    onLog?.call(s);
+    // ignore: avoid_print
+    print(s);
+  }
+
+  HubConnection _buildConnection() {
+    // ✅ FORCE LongPolling (avoids WS 1002 handshake close)
+    return HubConnectionBuilder()
+        .withUrl(
+          hubUrl,
+          options: HttpConnectionOptions(
+            skipNegotiation: false,
+            transport: HttpTransportType.LongPolling,
+          ),
+        )
         .build();
   }
 
-  bool get isConnected => _connection.state == HubConnectionState.connected;
+  void _wireHandlers(HubConnection c) {
+    // ✅ server -> client event
+    c.on("receivenotification", (args) {
+      final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+      onNotification?.call(payload);
+      _log("📩 receivenotification → $payload");
+    });
 
+    // ✅ ClosedCallback in your version uses named parameter
+    c.onclose(({Exception? error}) {
+      _log("🔌 onclose: ${error?.toString() ?? 'none'}");
+
+      // same guard logic as DispatchToggleScreen
+      if (!_isStarting && !_isStopping) {
+        _startReconnect();
+      }
+    });
+  }
+
+  // ------------------------------
+  // Safe Stop (critical)
+  // ------------------------------
+  Future<void> _safeStop() async {
+    if (_isStopping) return;
+    _isStopping = true;
+
+    final old = _conn;
+    _conn = null;
+
+    try {
+      if (old != null && old.state != HubConnectionState.Disconnected) {
+        await old.stop();
+      }
+    } catch (e) {
+      _log("⚠️ stop() ignored: $e");
+    } finally {
+      _isStopping = false;
+    }
+  }
+
+  // ------------------------------
+  // Start
+  // ------------------------------
   Future<void> start() async {
-    if (isConnected) {
-      print('🔌 Hub already connected');
+    if (_isStarting || _isReconnecting) {
+      _log("⏳ Already starting/reconnecting, skip start()");
       return;
     }
-    print('🔌 Connecting to hub: $hubUrl');
-    await _connection.start();
-    print('✅ Hub connected. State: ${_connection.state}');
+
+    if (_conn != null && _conn!.state != HubConnectionState.Disconnected) {
+      _log("⚠️ Cannot start because state is: ${_conn!.state}");
+      return;
+    }
+
+    _isStarting = true;
+    _reconnectTimer?.cancel();
+    _isReconnecting = false;
+
+    _log("🔌 Starting hub: $hubUrl");
+
+    try {
+      await _safeStop(); // ensure clean
+
+      final c = _buildConnection();
+      _wireHandlers(c);
+      _conn = c;
+
+      // ✅ prevent double-stop / already completed crash
+      try {
+        await c.start();
+      } catch (e) {
+        try {
+          await c.stop();
+        } catch (_) {}
+        rethrow;
+      }
+
+      _log("✅ Hub connected (LongPolling)");
+    } catch (e) {
+      _log("❌ start() failed: $e");
+      _startReconnect();
+    } finally {
+      _isStarting = false;
+    }
   }
 
+  // ------------------------------
+  // Stop
+  // ------------------------------
   Future<void> stop() async {
-    if (!isConnected) {
-      print('ℹ️ Hub already disconnected');
-      return;
-    }
-    print('🛑 Stopping hub connection');
-    await _connection.stop();
-    print('✅ Hub stopped. State: ${_connection.state}');
+    _reconnectTimer?.cancel();
+    _isReconnecting = false;
+
+    await _safeStop();
+
+    _log("🛑 Disconnected");
   }
 
-  /// This assumes you have a hub method on backend:
-  /// public Task UpdateLocation(LocationDto dto) { ... }
-  Future<void> sendLocation({
-    required String userId,
-    required double latitude,
-    required double longitude,
-  }) async {
-    final payload = <String, dynamic>{
-      'userId': userId,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+  // ------------------------------
+  // Reconnect loop
+  // ------------------------------
+  void _startReconnect() {
+    if (_isReconnecting) return;
+    _isReconnecting = true;
 
-    print('📡 Sending location via SignalR: $payload');
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (t) async {
+      if (_isStarting || _isStopping) return;
 
-    // "update/location" must match the method name/route in your C# hub
-    await _connection.invoke( //new updation signalR
-      'ReceiveNotification',
-      args: [payload],
-    );
+      _log("🔁 Reconnecting...");
 
-    print('✅ Location sent via hub');
+      try {
+        await _safeStop();
+
+        final c = _buildConnection();
+        _wireHandlers(c);
+        _conn = c;
+
+        await c.start();
+
+        _log("✅ Reconnected (LongPolling)");
+        _isReconnecting = false;
+        t.cancel();
+      } catch (e) {
+        _log("⏳ Reconnect failed: $e");
+      }
+    });
+  }
+
+  void dispose() {
+    _reconnectTimer?.cancel();
   }
 }
 
-// ===================== UI WIDGET =====================
+
+
 
 class TaskerHomeRedesign extends StatefulWidget {
   const TaskerHomeRedesign({super.key});
@@ -80,8 +210,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
   String period = 'Week'; // Week | Month
 
-  // SignalR hub service
-  late final LocationHubService _hubService;
+  // ✅ Updated to DispatchHubService
+  late final DispatchHubService _hubService;
 
   /// Timer for continuous location updates when available = true
   Timer? _locationTimer;
@@ -90,7 +220,6 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   static const Duration _locationInterval = Duration(seconds: 5); // 🔁 5 seconds
 
   // MOCK DATA — plug your real values here
-
   final _avatarUrl =
       'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop';
   final _title = 'Handyman, Pro';
@@ -143,9 +272,19 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   @override
   void initState() {
     super.initState();
-    _hubService = LocationHubService(
-      hubUrl:
-          'http://192.3.3.187:85/hubs/dispatch?userId=${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}',
+
+    final userId = context
+        .read<AuthenticationBloc>()
+        .state
+        .userDetails!
+        .userId
+        .toString();
+
+    _hubService = DispatchHubService(
+      baseUrl: "http://192.3.3.187:85",
+      userId: userId,
+      onLog: (m) => print("HUB: $m"),
+      onNotification: (payload) => print("📩 HUB NOTIFICATION: $payload"),
     );
   }
 
@@ -154,7 +293,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     print('🔄 Availability toggle changed: $value');
 
     if (!value) {
-      // turning OFF → stop location updates and optionally stop hub
+      // turning OFF → stop location updates and hub
       print('⛔ Turning OFF — stopping location timer + hub');
       setState(() => available = false);
       _stopLocationUpdates();
@@ -170,24 +309,29 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('You are now Available. Sending location via SignalR...')),
+          content: Text('You are now Available. Sending location via SignalR...'),
+        ),
       );
     }
   }
 
   /// 👉 Dispatch REST API update to Bloc (UserBookingBloc)
   void _dispatchLocationUpdateToApi() {
-    // TODO: replace with GPS later
-    var userId =
-        '${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}';
-    const double lat = 24.435;
-    const double lng = 67.435;
+    var userId = context
+        .read<AuthenticationBloc>()
+        .state
+        .userDetails!
+        .userId
+        .toString();
+
+    const double lat = 67.00;
+    const double lng = 70.00;
 
     if (!mounted) return;
 
     print(
-        '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$userId, lat=$lat, lng=$lng)');
+        '🛰 [UI] Dispatching UpdateUserLocationRequested (userId=$userId, lat=$lat, lng=$lng)');
+
     context.read<UserBookingBloc>().add(
           UpdateUserLocationRequested(
             userId: userId,
@@ -231,15 +375,14 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
     // 4) send once via SignalR
     print('📡 Sending immediate location update via SignalR');
-    _sendLocationUpdateViaHub();
+    //_sendLocationUpdateViaHub();
 
     // 5) then repeat every _locationInterval
     _locationTimer = Timer.periodic(_locationInterval, (timer) {
-      print(
-          '⏰ Timer tick #${timer.tick} at ${DateTime.now()} — sending location via hub');
-      _sendLocationUpdateViaHub();
+      print('⏰ Timer tick #${timer.tick} — sending location via hub');
+     // _sendLocationUpdateViaHub();
 
-      // 👉 Also hit REST API (Bloc event) every 5 seconds
+      // 👉 Also hit REST API every 5 seconds
       _dispatchLocationUpdateToApi();
     });
 
@@ -259,11 +402,16 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   }
 
   /// actual SignalR invocation (hub-only)
-  Future<void> _sendLocationUpdateViaHub() async {
-    var userId =
-        '${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}';
-    const double lat = 24.435;
-    const double lng = 67.435;
+ /* Future<void> _sendLocationUpdateViaHub() async {
+    var userId = context
+        .read<AuthenticationBloc>()
+        .state
+        .userDetails!
+        .userId
+        .toString();
+
+    const double lat = 67.00;
+    const double lng = 70.00;
 
     if (!_hubService.isConnected) {
       print('⚠️ Hub not connected, skipping SignalR location send');
@@ -279,33 +427,33 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
       print('✅ Location sent via SignalR');
     } catch (e) {
       print('🔥 Error sending location via hub: $e');
-      if (mounted) {
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text('Error sending location via SignalR: $e')),
-        // );
-      }
     }
-  }
+  }*/
 
   @override
   void dispose() {
     print('🧹 dispose() called — cancelling timer & hub');
     _locationTimer?.cancel();
     _hubService.stop();
+    _hubService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final _name =
-        '${context.read<AuthenticationBloc>().state.userDetails!.fullName.toString()}';
+    final _name = context
+        .read<AuthenticationBloc>()
+        .state
+        .userDetails!
+        .fullName
+        .toString();
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenH = MediaQuery.of(context).size.height;
     final expanded = (screenH * 0.28).clamp(220.0, 320.0);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0F0F12) : const Color(0xFFF8F7FB),
+      backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFF8F7FB),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -344,13 +492,10 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                         Expanded(
                           child: _GlassCard(
                             child: _EarningCard(
-                              amount: period == 'Week'
-                                  ? weeklyEarning
-                                  : monthlyEarning,
+                              amount: period == 'Week' ? weeklyEarning : monthlyEarning,
                               sub: 'Earnings per ${period.toLowerCase()}',
                               period: period,
-                              onChangePeriod: (p) =>
-                                  setState(() => period = p),
+                              onChangePeriod: (p) => setState(() => period = p),
                             ),
                           ),
                         ),
@@ -404,17 +549,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     );
   }
 
-  void _onViewMoreUpcoming() {
-    // TODO: navigate to upcoming tasks screen
-  }
-
-  void _onViewMoreCurrent() {
-    // TODO: navigate to current tasks screen
-  }
-
-  void _onDirectionTap() {
-    // TODO: navigate to directions or map
-  }
+  void _onViewMoreUpcoming() {}
+  void _onViewMoreCurrent() {}
+  void _onDirectionTap() {}
 }
 
 /* ===================== UI PARTS (same as before) ===================== */
@@ -435,7 +572,6 @@ class _Header extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Gradient + curve
         ClipPath(
           clipper: _HeaderClipper(),
           child: Container(
@@ -462,8 +598,7 @@ class _Header extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Hello $name,',
@@ -487,31 +622,24 @@ class _Header extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.18),
-                        ),
+                        border: Border.all(color: Colors.white.withOpacity(0.18)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
                             'Available',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(width: 8),
                           Switch.adaptive(
                             value: available,
                             onChanged: onToggle,
-                            activeColor:
-                                _TaskerHomeRedesignState.kAccentGold,
+                            activeColor: _TaskerHomeRedesignState.kAccentGold,
                           ),
                         ],
                       ),
@@ -551,8 +679,7 @@ class _GlassCard extends StatelessWidget {
         return Container(
           margin: EdgeInsets.symmetric(vertical: marginV),
           decoration: BoxDecoration(
-            color:
-                isDark ? const Color(0xFF1A1B20) : Colors.white,
+            color: isDark ? const Color(0xFF1A1B20) : Colors.white,
             borderRadius: BorderRadius.circular(radius),
             boxShadow: [
               BoxShadow(
@@ -562,9 +689,7 @@ class _GlassCard extends StatelessWidget {
               ),
             ],
             border: Border.all(
-              color: isDark
-                  ? const Color(0xFF2A2C33)
-                  : const Color(0xFFF0ECF6),
+              color: isDark ? const Color(0xFF2A2C33) : const Color(0xFFF0ECF6),
             ),
           ),
           child: Padding(
@@ -612,19 +737,9 @@ class _ProfileCard extends StatelessWidget {
         final info = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              name,
-              style: nameStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(name, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
-            Text(
-              title,
-              style: titleStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -639,10 +754,7 @@ class _ProfileCard extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: avatarR,
-              backgroundImage: NetworkImage(avatarUrl),
-            ),
+            CircleAvatar(radius: avatarR, backgroundImage: NetworkImage(avatarUrl)),
             SizedBox(width: gap),
             Expanded(child: info),
           ],
@@ -772,22 +884,14 @@ class _SegmentPill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? _TaskerHomeRedesignState.kAccentGold
-              : Colors.transparent,
+          color: selected ? _TaskerHomeRedesignState.kAccentGold : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -843,11 +947,7 @@ class _KpiRow extends StatelessWidget {
             ),
           ),
         ];
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: tiles,
-        );
+        return Wrap(spacing: 8, runSpacing: 8, children: tiles);
       },
     );
   }
@@ -881,35 +981,15 @@ class _KpiTile extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.star_rate_rounded,
-              size: 20,
-              color: Colors.black87,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: const Icon(Icons.star_rate_rounded, size: 20, color: Colors.black87),
           ),
           const SizedBox(width: 10),
           Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                sub,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 11,
-                ),
-              ),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(sub, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
             ],
           ),
         ],
@@ -933,24 +1013,14 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _GlassCard(
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const Spacer(),
               if (onViewMore != null)
-                TextButton(
-                  onPressed: onViewMore,
-                  child: const Text('View more'),
-                ),
+                TextButton(onPressed: onViewMore, child: const Text('View more')),
             ],
           ),
           const SizedBox(height: 6),
@@ -976,60 +1046,26 @@ class _TaskTile extends StatelessWidget {
       builder: (context, c) {
         final isNarrow = c.maxWidth < 380;
         final content = Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              task.title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-              ),
-            ),
+            Text(task.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(
-                  Icons.calendar_month,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
+                Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 6),
-                Text(
-                  task.date,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12,
-                  ),
-                ),
+                Text(task.date, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                 const SizedBox(width: 14),
-                Icon(
-                  Icons.schedule,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
+                Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 6),
-                Text(
-                  task.time,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12,
-                  ),
-                ),
+                Text(task.time, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                 const SizedBox(width: 14),
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
+                Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     task.location,
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -1041,23 +1077,17 @@ class _TaskTile extends StatelessWidget {
         Widget row;
         if (!isNarrow) {
           row = Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(child: content),
-              if (trailing != null)
-                const SizedBox(width: 12),
+              if (trailing != null) const SizedBox(width: 12),
               if (trailing != null)
                 Flexible(
                   fit: FlexFit.loose,
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints.tightFor(
-                        width: 160,
-                        height: 44,
-                      ),
+                      constraints: const BoxConstraints.tightFor(width: 160, height: 44),
                       child: trailing!,
                     ),
                   ),
@@ -1066,18 +1096,12 @@ class _TaskTile extends StatelessWidget {
           );
         } else {
           row = Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               content,
+              if (trailing != null) const SizedBox(height: 10),
               if (trailing != null)
-                const SizedBox(height: 10),
-              if (trailing != null)
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: trailing!,
-                ),
+                SizedBox(width: double.infinity, height: 44, child: trailing!),
             ],
           );
         }
@@ -1086,10 +1110,7 @@ class _TaskTile extends StatelessWidget {
           children: [
             row,
             const SizedBox(height: 12),
-            Divider(
-              height: 1,
-              color: Colors.grey.withOpacity(0.2),
-            ),
+            Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
             const SizedBox(height: 12),
           ],
         );
@@ -1112,32 +1133,20 @@ class _PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints.tightFor(
-        width: 160,
-        height: 44,
-      ),
+      constraints: const BoxConstraints.tightFor(width: 160, height: 44),
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor:
-              _TaskerHomeRedesignState.kPrimary,
+          backgroundColor: _TaskerHomeRedesignState.kPrimary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
             if (icon != null) const SizedBox(width: 8),
             if (icon != null) Icon(icon, size: 20),
           ],
@@ -1163,36 +1172,21 @@ class _Badge {
 
 class _BadgeChip extends StatelessWidget {
   const _BadgeChip({required this.badge});
-
   final _Badge badge;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: badge.bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(color: badge.bg, borderRadius: BorderRadius.circular(12)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            badge.icon,
-            size: 14,
-            color: badge.fg,
-          ),
+          Icon(badge.icon, size: 14, color: badge.fg),
           const SizedBox(width: 3),
           Text(
             badge.label,
-            style: TextStyle(
-              fontSize: 11,
-              color: badge.fg,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 11, color: badge.fg, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -1237,84 +1231,179 @@ class _HeaderClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(
-    covariant CustomClipper<Path> oldClipper,
-  ) =>
-      false;
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
 
+// class DispatchHubService {
+//   DispatchHubService({
+//     required this.baseUrl,
+//     required this.userId,
+//     this.onNotification,
+//     this.onLog,
+//   });
 
+//   final String baseUrl; // e.g. http://192.3.3.187:85
+//   final String userId;  // GUID
+//   final void Function(dynamic payload)? onNotification;
+//   final void Function(String msg)? onLog;
 
+//   HubConnection? _conn;
 
+//   bool _isStarting = false;
+//   bool _isStopping = false;
+//   bool _isReconnecting = false;
 
+//   Timer? _reconnectTimer;
 
+//   String get hubUrl {
+//     final clean = baseUrl.endsWith("/")
+//         ? baseUrl.substring(0, baseUrl.length - 1)
+//         : baseUrl;
+//     return "$clean/hubs/dispatch?userId=$userId";
+//   }
 
+//   HubConnectionState get state =>
+//       _conn?.state ?? HubConnectionState.Disconnected;
 
+//   bool get isConnected => state == HubConnectionState.Connected;
 
+//   void _log(String s) => onLog?.call(s);
 
-
-
-
-// class LocationHubService {
-//   final String hubUrl;
-//   late final HubConnection _connection;
-
-//   LocationHubService({required this.hubUrl}) {
-//     _connection = HubConnectionBuilder()
-//         .withUrl(hubUrl)
-//         .withAutomaticReconnect()
+//   HubConnection _buildConnection() {
+//     return HubConnectionBuilder()
+//         .withUrl(
+//           hubUrl,
+//           options: HttpConnectionOptions(
+//             skipNegotiation: false,
+//             transport: HttpTransportType.LongPolling,
+//           ),
+//         )
 //         .build();
 //   }
 
-//   bool get isConnected => _connection.state == HubConnectionState.connected;
+//   void _wireHandlers(HubConnection c) {
+//     c.on("receivenotification", (args) {
+//       final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+//       onNotification?.call(payload);
+//       _log("📩 receivenotification: $payload");
+//     });
+
+//     // ✅ FIXED signature (works in your version)
+//     c.onclose(_handleClose);
+//   }
+
+//   void _handleClose(Exception? error) {
+//     _log("🔌 onclose: ${error?.toString() ?? 'none'}");
+
+//     // same guard logic as DispatchToggleScreen
+//     if (!_isStarting && !_isStopping) {
+//       _startReconnect();
+//     }
+//   }
 
 //   Future<void> start() async {
-//     if (isConnected) {
-//       print('🔌 Hub already connected');
+//     if (_isStarting || _isReconnecting) {
+//       _log("⏳ Already starting/reconnecting, skip start()");
 //       return;
 //     }
-//     print('🔌 Connecting to hub: $hubUrl');
-//     await _connection.start();
-//     print('✅ Hub connected. State: ${_connection.state}');
+
+//     if (_conn != null && _conn!.state != HubConnectionState.Disconnected) {
+//       _log("⚠️ Cannot start because state is: ${_conn!.state}");
+//       return;
+//     }
+
+//     _isStarting = true;
+//     _reconnectTimer?.cancel();
+//     _isReconnecting = false;
+
+//     _log("🔌 Starting hub: $hubUrl");
+
+//     try {
+//       await _safeStop();
+
+//       final c = _buildConnection();
+//       _wireHandlers(c);
+//       _conn = c;
+
+//       try {
+//         await c.start();
+//       } catch (e) {
+//         try {
+//           await c.stop();
+//         } catch (_) {}
+//         rethrow;
+//       }
+
+//       _log("✅ Hub connected (LongPolling)");
+//     } catch (e) {
+//       _log("❌ start() failed: $e");
+//       _startReconnect();
+//     } finally {
+//       _isStarting = false;
+//     }
+//   }
+
+//   Future<void> _safeStop() async {
+//     if (_isStopping) return;
+//     _isStopping = true;
+
+//     final old = _conn;
+//     _conn = null;
+
+//     try {
+//       if (old != null && old.state != HubConnectionState.Disconnected) {
+//         await old.stop();
+//       }
+//     } catch (e) {
+//       _log("⚠️ stop() ignored error: $e");
+//     } finally {
+//       _isStopping = false;
+//     }
 //   }
 
 //   Future<void> stop() async {
-//     if (!isConnected) {
-//       print('ℹ️ Hub already disconnected');
-//       return;
-//     }
-//     print('🛑 Stopping hub connection');
-//     await _connection.stop();
-//     print('✅ Hub stopped. State: ${_connection.state}');
+//     _reconnectTimer?.cancel();
+//     _isReconnecting = false;
+//     await _safeStop();
+//     _log("🛑 Disconnected");
 //   }
 
-//   /// This assumes you have a hub method on backend:
-//   /// public Task UpdateLocation(LocationDto dto) { ... }
-//   Future<void> sendLocation({
-//     required String userId,
-//     required double latitude,
-//     required double longitude,
-//   }) async {
-//     final payload = <String, dynamic>{
-//       'userId': userId,
-//       'latitude': latitude,
-//       'longitude': longitude,
-//     };
+//   void _startReconnect() {
+//     if (_isReconnecting) return;
+//     _isReconnecting = true;
 
-//     print('📡 Sending location via SignalR: $payload');
+//     _reconnectTimer?.cancel();
+//     _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (t) async {
+//       if (_isStarting || _isStopping) return;
 
-//     // "update/location" must match the method name/route in your C# hub
-//    await _connection.invoke(  //new updation signalR
-//       'ReceiveNotification',
-//       args: [payload],
-//     );
+//       _log("🔁 Reconnecting...");
 
-//     print('✅ Location sent via hub');
+//       try {
+//         await _safeStop();
+
+//         final c = _buildConnection();
+//         _wireHandlers(c);
+//         _conn = c;
+
+//         await c.start();
+
+//         _log("✅ Reconnected (LongPolling)");
+//         _isReconnecting = false;
+//         t.cancel();
+//       } catch (e) {
+//         _log("⏳ Reconnect failed: $e");
+//       }
+//     });
+//   }
+
+//   void dispose() {
+//     _reconnectTimer?.cancel();
 //   }
 // }
 
-// // ===================== UI WIDGET =====================
+
+
 
 // class TaskerHomeRedesign extends StatefulWidget {
 //   const TaskerHomeRedesign({super.key});
@@ -1336,7 +1425,7 @@ class _HeaderClipper extends CustomClipper<Path> {
 //   Timer? _locationTimer;
 
 //   /// how often to hit SignalR hub
-//   static const Duration _locationInterval = Duration(seconds: 15);
+//   static const Duration _locationInterval = Duration(seconds: 5); // 🔁 5 seconds
 
 //   // MOCK DATA — plug your real values here
 
@@ -1428,15 +1517,16 @@ class _HeaderClipper extends CustomClipper<Path> {
 //   /// 👉 Dispatch REST API update to Bloc (UserBookingBloc)
 //   void _dispatchLocationUpdateToApi() {
 //     // TODO: replace with GPS later
-//     var userId = '${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}';
-//     const double lat = 24.435;
-//     const double lng = 67.435;
+//     var userId =
+//         '${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}';
+//     const double lat = 67.00;
+//     const double lng = 70.00;
 
 //     if (!mounted) return;
 
 //     print(
 //         '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$userId, lat=$lat, lng=$lng)');
-//        context.read<UserBookingBloc>().add(
+//     context.read<UserBookingBloc>().add(
 //           UpdateUserLocationRequested(
 //             userId: userId,
 //             latitude: lat,
@@ -1444,11 +1534,8 @@ class _HeaderClipper extends CustomClipper<Path> {
 //           ),
 //         );
 
-
 //     context.read<UserBookingBloc>().add(
-//           ChangeAvailabilityStatus(
-//             userId: userId
-//           ),
+//           ChangeAvailabilityStatus(userId: userId),
 //         );
 //   }
 
@@ -1490,8 +1577,8 @@ class _HeaderClipper extends CustomClipper<Path> {
 //           '⏰ Timer tick #${timer.tick} at ${DateTime.now()} — sending location via hub');
 //       _sendLocationUpdateViaHub();
 
-//       // 👉 If you also want to hit REST API periodically, uncomment:
-//       // _dispatchLocationUpdateToApi();
+//       // 👉 Also hit REST API (Bloc event) every 5 seconds
+//       _dispatchLocationUpdateToApi();
 //     });
 
 //     print('✅ Timer started with interval: $_locationInterval');
@@ -1511,11 +1598,10 @@ class _HeaderClipper extends CustomClipper<Path> {
 
 //   /// actual SignalR invocation (hub-only)
 //   Future<void> _sendLocationUpdateViaHub() async {
-//     var userId ='${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}'; 
-//     const double lat = 24.435;
-//     const double lng = 67.435;
-
- 
+//     var userId =
+//         '${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}';
+//     const double lat =67.00;
+//     const double lng = 70.00;
 
 //     if (!_hubService.isConnected) {
 //       print('⚠️ Hub not connected, skipping SignalR location send');
@@ -1549,7 +1635,8 @@ class _HeaderClipper extends CustomClipper<Path> {
 
 //   @override
 //   Widget build(BuildContext context) {
-//       final _name = '${context.read<AuthenticationBloc>().state.userDetails!.fullName.toString()}';
+//     final _name =
+//         '${context.read<AuthenticationBloc>().state.userDetails!.fullName.toString()}';
 //     final isDark = Theme.of(context).brightness == Brightness.dark;
 //     final screenH = MediaQuery.of(context).size.height;
 //     final expanded = (screenH * 0.28).clamp(220.0, 320.0);
@@ -2493,4 +2580,14 @@ class _HeaderClipper extends CustomClipper<Path> {
 //   ) =>
 //       false;
 // }
+
+
+
+
+
+
+
+
+
+
 
