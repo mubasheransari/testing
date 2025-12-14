@@ -177,16 +177,16 @@ Future<void> _onUpdateUserLocationRequested(
   UpdateUserLocationRequested e,
   Emitter<UserBookingState> emit,
 ) async {
-  print('📥 [Bloc] UpdateUserLocationRequested received: '
-        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-          print('📥 [Bloc] UpdateUserLocationRequested received: '
-        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-          print('📥 [Bloc] UpdateUserLocationRequested received: '
-        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-          print('📥 [Bloc] UpdateUserLocationRequested received: '
-        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-          print('📥 [Bloc] UpdateUserLocationRequested received: '
-        'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+  // print('📥 [Bloc] UpdateUserLocationRequested received: '
+  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
+  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
+  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
+  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
+  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
 
   emit(state.copyWith(
     locationStatus: UserLocationUpdateStatus.updating,
@@ -200,16 +200,16 @@ Future<void> _onUpdateUserLocationRequested(
   );
 
   if (r.isSuccess) {
-    print('✅ [Bloc] updateUserLocation SUCCESS');
-     print('✅ [Bloc] updateUserLocation SUCCESS');
-         print('✅ [Bloc] updateUserLocation SUCCESS');
-     print('✅ [Bloc] updateUserLocation SUCCESS');
-         print('✅ [Bloc] updateUserLocation SUCCESS');
-     print('✅ [Bloc] updateUserLocation SUCCESS');
-         print('✅ [Bloc] updateUserLocation SUCCESS');
-     print('✅ [Bloc] updateUserLocation SUCCESS');
-         print('✅ [Bloc] updateUserLocation SUCCESS');
-     print('✅ [Bloc] updateUserLocation SUCCESS');
+    // print('✅ [Bloc] updateUserLocation SUCCESS');
+    //  print('✅ [Bloc] updateUserLocation SUCCESS');
+    //      print('✅ [Bloc] updateUserLocation SUCCESS');
+    //  print('✅ [Bloc] updateUserLocation SUCCESS');
+    //      print('✅ [Bloc] updateUserLocation SUCCESS');
+    //  print('✅ [Bloc] updateUserLocation SUCCESS');
+    //      print('✅ [Bloc] updateUserLocation SUCCESS');
+    //  print('✅ [Bloc] updateUserLocation SUCCESS');
+    //      print('✅ [Bloc] updateUserLocation SUCCESS');
+    //  print('✅ [Bloc] updateUserLocation SUCCESS');
 
     emit(state.copyWith(
       locationStatus: UserLocationUpdateStatus.success,
