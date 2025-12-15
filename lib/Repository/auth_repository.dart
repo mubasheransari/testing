@@ -655,10 +655,9 @@ Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
     }
   }
 
- @override
+  @override
 Future<Result<BookingFindResponse>> findBooking({
   required String bookingDetailId,
-
 }) async {
   final uri = Uri.parse(
     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingFindEndpoint}',
@@ -695,11 +694,20 @@ Future<Result<BookingFindResponse>> findBooking({
       }
 
       final resp = BookingFindResponse.fromJson(parsed);
+
       if (!resp.isSuccess) {
+        // if server returned errors list, flatten it
+        final serverErrors = (resp.errors ?? [])
+            .map((e) => '${e.field ?? ""}: ${e.error ?? ""}'.trim())
+            .where((s) => s.isNotEmpty)
+            .join(' • ');
+
         return Result.fail(
           Failure(
             code: 'validation',
-            message: resp.message ?? 'Find booking failed',
+            message: serverErrors.isNotEmpty
+                ? serverErrors
+                : (resp.message ?? 'Find booking failed'),
             statusCode: res.statusCode,
           ),
         );
@@ -708,7 +716,7 @@ Future<Result<BookingFindResponse>> findBooking({
       return Result.ok(resp);
     }
 
-    // error flattening
+    // non-2xx error flattening
     String message = 'Server error (${res.statusCode})';
     final raw = res.body.trim();
     if (raw.isNotEmpty) {
@@ -740,6 +748,93 @@ Future<Result<BookingFindResponse>> findBooking({
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
+
+
+//  @override
+// Future<Result<BookingFindResponse>> findBooking({
+//   required String bookingDetailId,
+
+// }) async {
+//   final uri = Uri.parse(
+//     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingFindEndpoint}',
+//   );
+
+//   final body = <String, dynamic>{
+//     'bookingDetailId': bookingDetailId,
+//   };
+
+//   try {
+//     print('>>> BOOKING FIND POST $uri');
+//     print('>>> REQUEST: ${jsonEncode(body)}');
+
+//     final res = await http
+//         .post(uri, headers: _headers(), body: jsonEncode(body))
+//         .timeout(timeout);
+
+//     print('<<< BOOKING FIND STATUS: ${res.statusCode}');
+//     print('<<< BOOKING FIND BODY: ${res.body}');
+
+//     if (res.statusCode >= 200 && res.statusCode < 300) {
+//       final raw = res.body.trim();
+//       if (raw.isEmpty) {
+//         return Result.fail(
+//           Failure(code: 'empty', message: 'Empty response from server'),
+//         );
+//       }
+
+//       final parsed = jsonDecode(raw);
+//       if (parsed is! Map<String, dynamic>) {
+//         return Result.fail(
+//           Failure(code: 'parse', message: 'Invalid response format'),
+//         );
+//       }
+
+//       final resp = BookingFindResponse.fromJson(parsed);
+//       if (!resp.isSuccess) {
+//         return Result.fail(
+//           Failure(
+//             code: 'validation',
+//             message: resp.message ?? 'Find booking failed',
+//             statusCode: res.statusCode,
+//           ),
+//         );
+//       }
+
+//       return Result.ok(resp);
+//     }
+
+//     // error flattening
+//     String message = 'Server error (${res.statusCode})';
+//     final raw = res.body.trim();
+//     if (raw.isNotEmpty) {
+//       try {
+//         final err = jsonDecode(raw);
+//         if (err is Map && err['errors'] is List) {
+//           final errors = (err['errors'] as List)
+//               .map((e) => '${e['field']}: ${e['error']}')
+//               .join(' • ');
+//           if (errors.isNotEmpty) message = errors;
+//         } else if (err is Map && err['message'] != null) {
+//           message = err['message'].toString();
+//         }
+//       } catch (_) {}
+//     }
+
+//     return Result.fail(
+//       Failure(code: 'server', message: message, statusCode: res.statusCode),
+//     );
+//   } on SocketException {
+//     return Result.fail(
+//       Failure(code: 'network', message: 'No internet connection'),
+//     );
+//   } on TimeoutException {
+//     return Result.fail(
+//       Failure(code: 'timeout', message: 'Request timed out'),
+//     );
+//   } catch (e) {
+//     return Result.fail(Failure(code: 'unknown', message: e.toString()));
+//   }
+// }
 @override
 Future<Result<BookingCreateResponse>> createBooking({
   required String userId,

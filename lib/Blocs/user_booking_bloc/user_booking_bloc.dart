@@ -15,21 +15,47 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<AcceptBooking>(_acceptBooking);
   }
 
-
-Future<void> findingTaskerRequested(
+  Future<void> findingTaskerRequested(
   FindingTaskerRequested e,
   Emitter<UserBookingState> emit,
-)async{
+) async {
+  emit(state.copyWith(
+    findingTaskerStatus: FindingTaskerStatus.updating,
+    clearFindingTaskerError: true,
+    clearBookingFindResponse: true,
+  ));
 
-emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.initial));
- final r = await repo.findBooking(bookingDetailId: e.bookingId);
-   if (r.isSuccess) {
-    emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.success));
-   }
-   else{
-    emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.failure));
-   }
+  final r = await repo.findBooking(bookingDetailId: e.bookingId);
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      findingTaskerStatus: FindingTaskerStatus.success,
+      bookingFindResponse: r.data, // ✅ store full response
+    ));
+  } else {
+    emit(state.copyWith(
+      findingTaskerStatus: FindingTaskerStatus.failure,
+      findingTaskerError: r.failure?.message ?? 'Find booking failed',
+    ));
+  }
 }
+
+
+
+// Future<void> findingTaskerRequested(
+//   FindingTaskerRequested e,
+//   Emitter<UserBookingState> emit,
+// )async{
+
+// emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.initial));
+//  final r = await repo.findBooking(bookingDetailId: e.bookingId);
+//    if (r.isSuccess) {
+//     emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.success));
+//    }
+//    else{
+//     emit(state.copyWith(findingTaskerStatus:  FindingTaskerStatus.failure));
+//    }
+// }
 
 Future<void> _onCreateUserBookingRequested(
   CreateUserBookingRequested e,

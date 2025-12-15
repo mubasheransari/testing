@@ -523,7 +523,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
               ),
               ElevatedButton(
                 onPressed: () {
-                   context.read<UserBookingBloc>().add(AcceptBooking(userId: '2b6bb0c3-6f05-4d04-948e-a2bbf5320f0a', bookingDetailId: offer.bookingDetailId));
+                   context.read<UserBookingBloc>().add(AcceptBooking(userId: context.read<UserBookingBloc>().state.bookingFindResponse!.result.first.userId, bookingDetailId: offer.bookingDetailId));
                  // Navigator.pop(ctx);
                   
 
