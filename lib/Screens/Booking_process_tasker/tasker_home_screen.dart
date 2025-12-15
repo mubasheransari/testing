@@ -368,7 +368,7 @@ class TaskerBooking {
 //     } catch (_) {
 //       return null;
 //     }
-//   }
+//   }Testing@123
 // }
 
 
@@ -523,7 +523,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(ctx);
+                   context.read<UserBookingBloc>().add(AcceptBooking(userId: '2b6bb0c3-6f05-4d04-948e-a2bbf5320f0a', bookingDetailId: offer.bookingDetailId));
+                 // Navigator.pop(ctx);
+                  
 
                   // ✅ TODO: call your accept API / bloc event here
                   // context.read<UserBookingBloc>().add(AcceptOfferRequested(offer.bookingDetailId));

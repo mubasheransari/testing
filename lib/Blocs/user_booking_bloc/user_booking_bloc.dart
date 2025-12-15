@@ -12,6 +12,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
     on<FindingTaskerRequested>(findingTaskerRequested);
     on<ChangeAvailabilityStatus>(_changeAvailabilityStatus);
+    on<AcceptBooking>(_acceptBooking);
   }
 
 
@@ -84,109 +85,12 @@ Future<void> _onCreateUserBookingRequested(
   }
 }
 
-//   Future<void> _onCreateUserBookingRequested(
-//   CreateUserBookingRequested e,
-//   Emitter<UserBookingState> emit,
-// ) async {
-//   // 🔍 Debug log
-//   print('📥 [Bloc] CreateUserBookingRequested: '
-//       'userId=${e.userId}, subCategoryId=${e.subCategoryId}, '
-//       'bookingDate=${e.bookingDate.toIso8601String()}, '
-//       'start=${e.startTime}, end=${e.endTime}, '
-//       'address=${e.address}, taskerLevelId=${e.taskerLevelId}, '
-//       'currency=${e.currency}, paymentType=${e.paymentType}, '
-//       'serviceType=${e.serviceType}, paymentMethod=${e.paymentMethod}');
-
-//   emit(state.copyWith(
-//     createStatus: UserBookingCreateStatus.submitting,
-//     clearCreateError: true,
-//     clearCreateResponse: true,
-//   ));
-
-//   final r = await repo.createBooking(
-//     userId: e.userId,
-//     subCategoryId: e.subCategoryId,
-//     bookingDate: e.bookingDate,
-//     startTime: e.startTime,
-//     endTime: e.endTime,
-//     address: e.address,
-//     taskerLevelId: e.taskerLevelId,
-//     // currency: e.currency,
-//     // paymentType: e.paymentType,
-//     // serviceType: e.serviceType,
-//     // paymentMethod: e.paymentMethod,
-//   );
-
-//   if (r.isSuccess) {
-//     print('✅ [Bloc] createBooking SUCCESS');
-
-//     emit(state.copyWith(
-//       createStatus: UserBookingCreateStatus.success,
-//       createResponse: r.data,
-//       clearCreateError: true,
-//     ));
-//   } else {
-//     print('❌ [Bloc] createBooking FAILURE: ${r.failure?.message}');
-
-//     emit(state.copyWith(
-//       createStatus: UserBookingCreateStatus.failure,
-//       createError: r.failure?.message ?? 'Failed to create booking',
-//       clearCreateResponse: true,
-//     ));
-//   }
-// }
-
-
-  // ---------- /api/Booking/Create ----------
-  // Future<void> _onCreateUserBookingRequested(
-  //   CreateUserBookingRequested e,
-  //   Emitter<UserBookingState> emit,
-  // ) async {
-  //   emit(state.copyWith(
-  //     createStatus: UserBookingCreateStatus.submitting,
-  //     clearCreateError: true,
-  //     clearCreateResponse: true,
-  //   ));
-
-  //   final r = await repo.createBooking(
-  //     userId: e.userId,
-  //     subCategoryId: e.subCategoryId,
-  //     bookingDate: e.bookingDate,
-  //     startTime: e.startTime,
-  //     endTime: e.endTime,
-  //     address: e.address,
-  //     taskerLevelId: e.taskerLevelId,
-  //   );
-
-  //   if (r.isSuccess) {
-  //     emit(state.copyWith(
-  //       createStatus: UserBookingCreateStatus.success,
-  //       createResponse: r.data,
-  //       clearCreateError: true,
-  //     ));
-  //   } else {
-  //     emit(state.copyWith(
-  //       createStatus: UserBookingCreateStatus.failure,
-  //       createError: r.failure?.message ?? 'Failed to create booking',
-  //       clearCreateResponse: true,
-  //     ));
-  //   }
-  // }
 
 Future<void> _onUpdateUserLocationRequested(
   UpdateUserLocationRequested e,
   Emitter<UserBookingState> emit,
 ) async {
-  // print('📥 [Bloc] UpdateUserLocationRequested received: '
-  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
-  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
-  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
-  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
-  //         print('📥 [Bloc] UpdateUserLocationRequested received: '
-  //       'userId=${e.userId}, lat=${e.latitude}, lng=${e.longitude}');
+
 
   emit(state.copyWith(
     locationStatus: UserLocationUpdateStatus.updating,
@@ -200,16 +104,7 @@ Future<void> _onUpdateUserLocationRequested(
   );
 
   if (r.isSuccess) {
-    // print('✅ [Bloc] updateUserLocation SUCCESS');
-    //  print('✅ [Bloc] updateUserLocation SUCCESS');
-    //      print('✅ [Bloc] updateUserLocation SUCCESS');
-    //  print('✅ [Bloc] updateUserLocation SUCCESS');
-    //      print('✅ [Bloc] updateUserLocation SUCCESS');
-    //  print('✅ [Bloc] updateUserLocation SUCCESS');
-    //      print('✅ [Bloc] updateUserLocation SUCCESS');
-    //  print('✅ [Bloc] updateUserLocation SUCCESS');
-    //      print('✅ [Bloc] updateUserLocation SUCCESS');
-    //  print('✅ [Bloc] updateUserLocation SUCCESS');
+
 
     emit(state.copyWith(
       locationStatus: UserLocationUpdateStatus.success,
@@ -218,9 +113,6 @@ Future<void> _onUpdateUserLocationRequested(
       clearLocationError: true,
     ));
   } else {
-    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
-    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
-    print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
     print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
     print('❌ [Bloc] updateUserLocation FAILURE: ${r.failure?.message}');
     
@@ -247,10 +139,10 @@ Future<void> _changeAvailabilityStatus(
   );
 
   if (r.isSuccess) {
-    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
-    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
-      print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
-    print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    // print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    // print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    //   print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
+    // print('✅ [Bloc] _changeAvailabilityStatus SUCCESS');
 
     emit(state.copyWith(
       changeAvailabilityStatusEnum: ChangeAvailabilityStatusEnum.success,
@@ -270,49 +162,39 @@ Future<void> _changeAvailabilityStatus(
   }
 }
 
+Future<void> _acceptBooking(
+  AcceptBooking e,
+  Emitter<UserBookingState> emit,
+) async {
+
+
+  emit(state.copyWith(
+    acceptBookingEnum: AcceptBookingEnum.updating,
+    clearLocationError: true,
+  ));
+
+  final r = await repo.acceptBooking(
+    userId: e.userId,
+     bookingId: e.bookingDetailId
+  );
+
+  if (r.isSuccess) {
+
+
+    emit(state.copyWith(
+      acceptBookingEnum: AcceptBookingEnum.success,
+
+      clearLocationError: true,
+    ));
+  } else {
+    print('❌ [Bloc] _acceptBooking FAILURE: ${r.failure?.message}');
+    print('❌ [Bloc] _acceptBooking FAILURE: ${r.failure?.message}');
+    
+    emit(state.copyWith(
+      acceptBookingEnum: AcceptBookingEnum.failure,
+      locationError: r.failure?.message ?? 'Failed to accept booking',
+    ));
+  }
 }
 
-
-// class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
-//   final AuthRepository repo;
-
-//   UserBookingBloc(this.repo) : super(const UserBookingState()) {
-//     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
-//   }
-
-//   Future<void> _onCreateUserBookingRequested(
-//     CreateUserBookingRequested e,
-//     Emitter<UserBookingState> emit,
-//   ) async {
-//     // set submitting state, clear any previous error/response
-//     emit(state.copyWith(
-//       createStatus: UserBookingCreateStatus.submitting,
-//       clearCreateError: true,
-//       clearCreateResponse: true,
-//     ));
-
-//     final r = await repo.createBooking(
-//       userId: e.userId,
-//       subCategoryId: e.subCategoryId,
-//       bookingDate: e.bookingDate,
-//       startTime: e.startTime,
-//       endTime: e.endTime,
-//       address: e.address,
-//       taskerLevelId: e.taskerLevelId,
-//     );
-
-//     if (r.isSuccess) {
-//       emit(state.copyWith(
-//         createStatus: UserBookingCreateStatus.success,
-//         createResponse: r.data,      // RegistrationResponse from repo
-//         clearCreateError: true,
-//       ));
-//     } else {
-//       emit(state.copyWith(
-//         createStatus: UserBookingCreateStatus.failure,
-//         createError: r.failure?.message ?? 'Failed to create booking',
-//         clearCreateResponse: true,
-//       ));
-//     }
-//   }
-// }
+}

@@ -120,3 +120,16 @@ class ChangeAvailabilityStatus extends UserBookingEvent {
   @override
   List<Object?> get props => [userId];
 }
+
+class AcceptBooking extends UserBookingEvent {
+  final String userId;
+  final String bookingDetailId;
+
+  const AcceptBooking({
+    required this.userId,
+    required this.bookingDetailId
+  });
+
+  @override
+  List<Object?> get props => [userId,bookingDetailId];
+}

@@ -37,7 +37,7 @@ class ApiConfig {
   //user booking
   static const String bookingEndpoint = '/api/booking/create';
   static const String bookingFindEndpoint = '/api/Tasker/Find';
-  static const String bookingAcceptEndpoint = '/api/Booking/accept';
+  static const String bookingAcceptEndpoint = '/api/tasker/accept';
   static const String bookingCancelEndpoint = '/api/Booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
   static const String updateLocationEndpoint = '/api/Address/update/location';
@@ -592,7 +592,7 @@ Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
       '${ApiConfig.baseUrlLocation}${ApiConfig.bookingAcceptEndpoint}',
     );
 
-    final body = <String, dynamic>{"userId": userId, "bookingId": bookingId};
+    final body = <String, dynamic>{"userId": userId, "bookingDetailId": bookingId};
 
     try {
       print('>>> BOOKING ACCEPT POST $uri');
