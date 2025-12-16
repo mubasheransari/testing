@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
@@ -8,10 +9,6 @@ import 'package:signalr_netcore/signalr_client.dart';
 import 'dart:convert';
 
 
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:signalr_netcore/signalr_client.dart';
 
 class DispatchHubService {
   DispatchHubService({
@@ -386,6 +383,10 @@ class TaskerHomeRedesign extends StatefulWidget {
 class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   bool available = false;
   String period = 'Week';
+  var box = GetStorage();
+
+  static const String _kAvailabilityKey = 'tasker_available';
+bool _restored = false; // prevents double-start
 
   late final DispatchHubService _hubService;
 
@@ -470,6 +471,22 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
         _showBookingPopup(offer);
       },
     );
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (!mounted) return;
+
+    final saved = box.read(_kAvailabilityKey) == true;
+
+    setState(() {
+      available = saved;
+      _restored = true;
+    });
+
+    // ✅ if it was ON, auto-start hub + timer
+    if (saved) {
+      await _startLocationUpdates();
+    }
+  });
   }
 
   /// ✅ POPUP (runs safely even if signalr fires in background)
@@ -523,7 +540,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
               ),
               ElevatedButton(
                 onPressed: () {
-                   context.read<UserBookingBloc>().add(AcceptBooking(userId: context.read<UserBookingBloc>().state.bookingFindResponse!.result.first.userId, bookingDetailId: offer.bookingDetailId));
+                   context.read<UserBookingBloc>().add(AcceptBooking(userId:"2b6bb0c3-6f05-4d04-948e-a2bbf5320f0a", //context.read<UserBookingBloc>().state.bookingFindResponse!.result.first.userId,
+                    bookingDetailId: offer.bookingDetailId));
                  // Navigator.pop(ctx);
                   
 
@@ -544,16 +562,32 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   }
 
   Future<void> _onAvailabilityToggle(bool value) async {
-    if (!value) {
-      setState(() => available = false);
-      _stopLocationUpdates();
-      await _hubService.stop();
-      return;
-    }
+  // ✅ save immediately
+  await box.write(_kAvailabilityKey, value);
 
-    setState(() => available = true);
-    await _startLocationUpdates();
+  if (!value) {
+    setState(() => available = false);
+    _stopLocationUpdates();
+    await _hubService.stop();
+    return;
   }
+
+  setState(() => available = true);
+  await _startLocationUpdates();
+}
+
+
+  // Future<void> _onAvailabilityToggle(bool value) async {
+  //   if (!value) {
+  //     setState(() => available = false);
+  //     _stopLocationUpdates();
+  //     await _hubService.stop();
+  //     return;
+  //   }
+
+  //   setState(() => available = true);
+  //   await _startLocationUpdates();
+  // }
 
   void _dispatchLocationUpdateToApi() {
     final userId = context
@@ -582,6 +616,33 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   }
 
   Future<void> _startLocationUpdates() async {
+  if (!_restored) return; // ✅ avoids starting before init restore finishes
+
+  try {
+    await _hubService.start();
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to connect SignalR hub: $e')),
+      );
+    }
+
+    // ✅ rollback + persist OFF if start fails
+    await box.write(_kAvailabilityKey, false);
+    setState(() => available = false);
+    return;
+  }
+
+  _dispatchLocationUpdateToApi();
+
+  _locationTimer?.cancel();
+  _locationTimer = Timer.periodic(_locationInterval, (_) {
+    _dispatchLocationUpdateToApi();
+  });
+}
+
+
+ /* Future<void> _startLocationUpdates() async {
     try {
       await _hubService.start();
     } catch (e) {
@@ -600,7 +661,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     _locationTimer = Timer.periodic(_locationInterval, (_) {
       _dispatchLocationUpdateToApi();
     });
-  }
+  }*/
 
   void _stopLocationUpdates() {
     _locationTimer?.cancel();

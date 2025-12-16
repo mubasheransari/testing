@@ -446,15 +446,15 @@ Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
     };
 
     try {
-      print('>>> UPDATE LOCATION POST $uri');
-      print('>>> REQUEST: ${jsonEncode(body)}');
+      // print('>>> UPDATE LOCATION POST $uri');
+      // print('>>> REQUEST: ${jsonEncode(body)}');
 
       final res = await http
           .post(uri, headers: _headers(), body: jsonEncode(body))
           .timeout(timeout);
 
-      print('<<< UPDATE LOCATION STATUS: ${res.statusCode}');
-      print('<<< UPDATE LOCATION BODY: ${res.body}');
+      // print('<<< UPDATE LOCATION STATUS: ${res.statusCode}');
+      // print('<<< UPDATE LOCATION BODY: ${res.body}');
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final parsed = jsonDecode(res.body);
