@@ -370,12 +370,12 @@ Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
   });
 
   try {
-    print('>>> CHANGE AVAILABILITY STATUS [GET] $uri');
+    //print('>>> CHANGE AVAILABILITY STATUS [GET] $uri');
 
     final res = await http.get(uri, headers: _headers()).timeout(timeout);
 
-    print('<<< CHANGE AVAILABILITY STATUS: ${res.statusCode}');
-    print('<<< CHANGE AVAILABILITY BODY: ${res.body}');
+  //  print('<<< CHANGE AVAILABILITY STATUS: ${res.statusCode}');
+ //   print('<<< CHANGE AVAILABILITY BODY: ${res.body}');
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final parsed = jsonDecode(res.body);

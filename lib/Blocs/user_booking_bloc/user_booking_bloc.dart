@@ -192,35 +192,47 @@ Future<void> _acceptBooking(
   AcceptBooking e,
   Emitter<UserBookingState> emit,
 ) async {
-
-
   emit(state.copyWith(
     acceptBookingEnum: AcceptBookingEnum.updating,
+
+    // clear old accept state
+    clearAcceptBookingError: true,
+    clearAcceptBookingResponse: true,
+    clearAcceptBookingMessage: true,
+
+    // keep your existing behavior
     clearLocationError: true,
   ));
 
   final r = await repo.acceptBooking(
     userId: e.userId,
-     bookingId: e.bookingDetailId
+    bookingId: e.bookingDetailId,
   );
 
-  if (r.isSuccess) {
-
-
+  if (r.isSuccess == true) {
+  print("BOOKING ACCEPT ");
+  print("BOOKING ACCEPT ");
+  print("BOOKING ACCEPT ");
+  print("BOOKING ACCEPT ");
+  print("BOOKING ACCEPT ");
     emit(state.copyWith(
       acceptBookingEnum: AcceptBookingEnum.success,
+
+      // ✅ store full response + message
+      acceptBookingResponse: r.data,
+      acceptBookingMessage: r.data?.message ?? '',
 
       clearLocationError: true,
     ));
   } else {
     print('❌ [Bloc] _acceptBooking FAILURE: ${r.failure?.message}');
-    print('❌ [Bloc] _acceptBooking FAILURE: ${r.failure?.message}');
-    
+
     emit(state.copyWith(
       acceptBookingEnum: AcceptBookingEnum.failure,
-      locationError: r.failure?.message ?? 'Failed to accept booking',
+      acceptBookingError: r.failure?.message ?? 'Failed to accept booking',
     ));
   }
 }
+
 
 }

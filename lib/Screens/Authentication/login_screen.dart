@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         AuthRepositoryHttp(
           timeout: Duration(seconds: 20),
           baseUrl: 'http://192.3.3.187:85',
-          endpoint: '/api/auth/signup',
+          endpoint: '/api/auth/signin',
         ),
       ),
       child: 
@@ -84,7 +84,7 @@ BlocListener<AuthenticationBloc, AuthenticationState>(
         bloc
           ..add(LoadUserDetailsRequested(userId))
           ..add(LoadServiceDocumentsRequested())
-          ..add(LoadServicesRequested())
+          ..add(LoadServicesRequested())..add(LoadUserDetailsRequested(userId))
           ..add(LoadTrainingVideosRequested());
       }
 
