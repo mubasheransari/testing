@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-
 import 'dart:ui';
-
 import 'package:taskoon/Screens/User_booking/rateyourTasker.dart';
 
 

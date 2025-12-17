@@ -9,29 +9,105 @@ import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
 import 'dart:async';
 import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 import 'package:signalr_netcore/signalr_client.dart';
+import 'dart:convert';
 
 
 
+class TaskerBookingOffer {
+  final String bookingDetailId;
+  final double lat;
+  final double lng;
+  final double estimatedCost;
+  final String message;
+  final String? type;
+  final String? date;
 
+  TaskerBookingOffer({
+    required this.bookingDetailId,
+    required this.lat,
+    required this.lng,
+    required this.estimatedCost,
+    required this.message,
+    this.type,
+    this.date,
+  });
 
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:signalr_netcore/signalr_client.dart';
+  static TaskerBookingOffer? tryParse(dynamic payload) {
+    try {
+      dynamic obj = payload;
 
-// ✅ Your blocs/models/screens used below (already in your project)
-/// AuthenticationBloc, AuthenticationState, ServicesStatus, LoadServicesRequested
-/// UserBookingBloc, UpdateUserLocationRequested
-/// GreetingWithLocation, ServiceBookingFormScreen, ServiceCertificatesGridScreen
-/// CertificationGroup etc.
+      // If server sends JSON string
+      if (obj is String) {
+        obj = jsonDecode(obj);
+      }
 
-class LocationHubService {
-  LocationHubService({
-    required this.hubUrl,
+      if (obj is! Map) return null;
+      final map = Map<String, dynamic>.from(obj);
+
+      // common: { type, message, date, data: {...} }
+      final dataAny = map['data'];
+      if (dataAny is Map) {
+        final data = Map<String, dynamic>.from(dataAny);
+
+        final bookingDetailId =
+            (data['bookingDetailId'] ?? data['BookingDetailId'])?.toString();
+        if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
+
+        return TaskerBookingOffer(
+          bookingDetailId: bookingDetailId,
+          lat: _toDouble(data['lat'] ?? data['Lat']),
+          lng: _toDouble(data['lng'] ?? data['Lng']),
+          estimatedCost:
+              _toDouble(data['estimatedCost'] ?? data['EstimatedCost'] ?? 0),
+          message: (map['message'] ?? '').toString(),
+          type: map['type']?.toString(),
+          date: map['date']?.toString(),
+        );
+      }
+
+      // fallback: payload itself contains fields
+      final bookingDetailId =
+          (map['bookingDetailId'] ?? map['BookingDetailId'])?.toString();
+      if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
+
+      return TaskerBookingOffer(
+        bookingDetailId: bookingDetailId,
+        lat: _toDouble(map['lat'] ?? map['Lat']),
+        lng: _toDouble(map['lng'] ?? map['Lng']),
+        estimatedCost: _toDouble(map['estimatedCost'] ?? map['EstimatedCost'] ?? 0),
+        message: (map['message'] ?? '').toString(),
+        type: map['type']?.toString(),
+        date: map['date']?.toString(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
+}
+
+/// ===============================================================
+/// ✅ SIGNALR SERVICE (ONLY)
+/// ===============================================================
+class DispatchHubService {
+  DispatchHubService({
+    required this.baseUrl,
+    required this.userId,
+    this.onNotification,
+    this.onBookingOffer, // popup trigger
     this.onLog,
   });
 
-  final String hubUrl;
+  final String baseUrl; // e.g. http://192.3.3.187:85
+  final String userId; // GUID
+
+  final void Function(dynamic payload)? onNotification;
+  final void Function(TaskerBookingOffer offer)? onBookingOffer;
   final void Function(String msg)? onLog;
 
   HubConnection? _conn;
@@ -39,16 +115,13 @@ class LocationHubService {
   bool _isStarting = false;
   bool _isStopping = false;
   bool _isReconnecting = false;
-
   Timer? _reconnectTimer;
 
-  // -------------------------
-  // Helpers
-  // -------------------------
-  void _log(String msg) {
-    onLog?.call(msg);
-    // ignore: avoid_print
-    print(msg);
+  String get hubUrl {
+    final clean = baseUrl.endsWith("/")
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    return "$clean/hubs/dispatch?userId=$userId";
   }
 
   HubConnectionState get state =>
@@ -56,36 +129,75 @@ class LocationHubService {
 
   bool get isConnected => state == HubConnectionState.Connected;
 
-  // -------------------------
-  // Build connection
-  // -------------------------
+  void _log(String s) {
+    onLog?.call(s);
+    // ignore: avoid_print
+    print(s);
+  }
+
   HubConnection _buildConnection() {
     return HubConnectionBuilder()
         .withUrl(
           hubUrl,
           options: HttpConnectionOptions(
             skipNegotiation: false,
-            transport: HttpTransportType.LongPolling, // ✅ IMPORTANT
+            transport: HttpTransportType.LongPolling, // ✅ stable
           ),
         )
         .build();
   }
 
   void _wireHandlers(HubConnection c) {
-    // ✅ Correct ClosedCallback signature in your version (signalr_netcore)
+    c.on("receivenotification", (args) {
+      final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+      _log("📩 receivenotification RAW → ${_pretty(payload)}");
+
+      onNotification?.call(payload);
+
+      final offer = TaskerBookingOffer.tryParse(payload);
+      if (offer != null) {
+        _log("✅ BookingOffer parsed → bookingDetailId=${offer.bookingDetailId}");
+        onBookingOffer?.call(offer);
+      }
+    });
+
+    c.on("ReceiveNotification", (args) {
+      final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+      _log("📩 ReceiveNotification RAW → ${_pretty(payload)}");
+
+      onNotification?.call(payload);
+
+      final offer = TaskerBookingOffer.tryParse(payload);
+      if (offer != null) {
+        _log("✅ BookingOffer parsed → bookingDetailId=${offer.bookingDetailId}");
+        onBookingOffer?.call(offer);
+      }
+    });
+
     c.onclose(({Exception? error}) {
-      _log("🔌 LocationHub onclose: ${error?.toString() ?? 'none'}");
-
-      // same guard logic as DispatchToggleScreen
-      if (_isStarting || _isStopping) return;
-
-      _startReconnect();
+      _log("🔌 onclose: ${error?.toString() ?? 'none'}");
+      if (!_isStarting && !_isStopping) {
+        _startReconnect();
+      }
     });
   }
 
-  // ------------------------------
-  // Safe Stop (critical)
-  // ------------------------------
+  String _pretty(dynamic v) {
+    try {
+      if (v is String) {
+        try {
+          final decoded = jsonDecode(v);
+          return const JsonEncoder.withIndent("  ").convert(decoded);
+        } catch (_) {
+          return v;
+        }
+      }
+      return const JsonEncoder.withIndent("  ").convert(v);
+    } catch (_) {
+      return v?.toString() ?? 'null';
+    }
+  }
+
   Future<void> _safeStop() async {
     if (_isStopping) return;
     _isStopping = true;
@@ -98,41 +210,36 @@ class LocationHubService {
         await old.stop();
       }
     } catch (e) {
-      _log("⚠️ LocationHub stop() ignored: $e");
+      _log("⚠️ stop() ignored: $e");
     } finally {
       _isStopping = false;
     }
   }
 
-  // -------------------------
-  // Start
-  // -------------------------
   Future<void> start() async {
     if (_isStarting || _isReconnecting) {
-      _log("⏳ LocationHub already starting/reconnecting, skip start()");
+      _log("⏳ Already starting/reconnecting, skip start()");
       return;
     }
 
     if (_conn != null && _conn!.state != HubConnectionState.Disconnected) {
-      _log("⚠️ LocationHub cannot start because state=${_conn!.state}");
+      _log("⚠️ Cannot start because state is: ${_conn!.state}");
       return;
     }
 
     _isStarting = true;
-
     _reconnectTimer?.cancel();
     _isReconnecting = false;
 
-    _log("🔌 Starting LocationHub → $hubUrl");
+    _log("🔌 Starting hub: $hubUrl");
 
     try {
-      await _safeStop(); // ensure clean
+      await _safeStop();
 
       final c = _buildConnection();
       _wireHandlers(c);
       _conn = c;
 
-      // ✅ protect from double-stop / future already completed
       try {
         await c.start();
       } catch (e) {
@@ -142,40 +249,31 @@ class LocationHubService {
         rethrow;
       }
 
-      _log("✅ LocationHub connected (LongPolling)");
+      _log("✅ Hub connected (LongPolling)");
     } catch (e) {
-      _log("❌ LocationHub start failed: $e");
+      _log("❌ start() failed: $e");
       _startReconnect();
     } finally {
       _isStarting = false;
     }
   }
 
-  // -------------------------
-  // Stop
-  // -------------------------
   Future<void> stop() async {
     _reconnectTimer?.cancel();
     _isReconnecting = false;
-
     await _safeStop();
-
-    _log("🛑 LocationHub disconnected");
+    _log("🛑 Disconnected");
   }
 
-  // -------------------------
-  // Reconnect loop
-  // -------------------------
   void _startReconnect() {
     if (_isReconnecting) return;
     _isReconnecting = true;
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (t) async {
-      // stop reconnecting if start/stop in progress
       if (_isStarting || _isStopping) return;
 
-      _log("🔁 LocationHub reconnecting...");
+      _log("🔁 Reconnecting...");
 
       try {
         await _safeStop();
@@ -186,23 +284,23 @@ class LocationHubService {
 
         await c.start();
 
-        _log("✅ LocationHub reconnected (LongPolling)");
+        _log("✅ Reconnected (LongPolling)");
         _isReconnecting = false;
         t.cancel();
       } catch (e) {
-        _log("⏳ LocationHub reconnect failed: $e");
+        _log("⏳ Reconnect failed: $e");
       }
     });
   }
 
-  // -------------------------
-  // Dispose
-  // -------------------------
   void dispose() {
     _reconnectTimer?.cancel();
   }
 }
 
+/// ===============================================================
+/// ✅ USER HOME SCREEN (UI SAME, ONLY SIGNALR ADDED)
+/// ===============================================================
 class UserBookingHome extends StatefulWidget {
   const UserBookingHome({super.key});
 
@@ -214,81 +312,98 @@ class _UserBookingHomeState extends State<UserBookingHome> {
   String _selectedChip = 'All';
   CertificationGroup? _selectedGroup;
 
-  late final LocationHubService _hubService;
+  DispatchHubService? _hub;
+  bool _hubStarted = false;
 
-  Timer? _locationTimer;
-
-  // ✅ Same interval style you used before
-  static const Duration _locationInterval = Duration(seconds: 5);
+  bool _dialogOpen = false;
+  String? _lastDialogKey; // avoid duplicate spam
 
   @override
   void initState() {
     super.initState();
 
-    // 1️⃣ Init hub service (customer/user hub URL)
-    _hubService = LocationHubService(
-      hubUrl:
-          'http://192.3.3.187:85/hubs/dispatch?userId=${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}',
-      onLog: (m) => debugPrint(m),
-    );
+    // start after first frame (context ready)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
 
-    // 2️⃣ After first frame: load services if needed + start hub connection loop
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authBloc = context.read<AuthenticationBloc>();
-      final s = authBloc.state;
+      final userDetails = context.read<AuthenticationBloc>().state.userDetails;
+      final userId = userDetails?.userId?.toString();
 
-      final bool alreadyLoaded =
-          s.servicesStatus == ServicesStatus.success && s.serviceGroups.isNotEmpty;
-
-      if (!alreadyLoaded && s.servicesStatus != ServicesStatus.loading) {
-        authBloc.add(LoadServicesRequested());
-        debugPrint('📦 UserBookingHome: LoadServicesRequested fired from screen');
-      } else {
-        debugPrint(
-          '📦 UserBookingHome: services already loaded (status=${s.servicesStatus}, groups=${s.serviceGroups.length})',
-        );
+      if (userId == null || userId.isEmpty) {
+        debugPrint("❌ UserBookingHome: userId missing (userDetails not loaded)");
+        return;
       }
 
-      // ✅ Start hub + start periodic "work" (no invoke, only ensure connected)
-      _connectHubAndStartTimer();
+      _hub = DispatchHubService(
+        baseUrl: "http://192.3.3.187:85",
+        userId: userId,
+        onLog: (m) => debugPrint("USER HUB: $m"),
+        onNotification: (payload) {
+          // show raw notification popup
+          _showPopup("Notification:\n${payload.toString()}");
+        },
+        onBookingOffer: (offer) {
+          // if it's a booking offer, show formatted popup
+          _showPopup(
+            "New Booking Offer\n\n"
+            "Message: ${offer.message}\n"
+            "BookingDetailId: ${offer.bookingDetailId}\n"
+            "Estimated: ${offer.estimatedCost}\n"
+            "Lat: ${offer.lat}\n"
+            "Lng: ${offer.lng}\n",
+            key: offer.bookingDetailId,
+          );
+        },
+      );
+
+      await _startHubOnce();
     });
   }
 
-  Future<void> _connectHubAndStartTimer() async {
-    debugPrint('▶️ UserBookingHome: _connectHubAndStartTimer');
+  Future<void> _startHubOnce() async {
+    if (_hubStarted) return;
+    _hubStarted = true;
 
-    // connect hub once
     try {
-      await _hubService.start();
+      await _hub?.start();
     } catch (e) {
-      debugPrint('🔥 UserBookingHome: hub start failed: $e');
-      return;
+      debugPrint("🔥 UserBookingHome: hub start failed: $e");
+      _hubStarted = false;
     }
+  }
 
-    // start periodic timer like DispatchToggle logic
-    _locationTimer?.cancel();
-    _locationTimer = Timer.periodic(_locationInterval, (_) async {
-      // ✅ If hub disconnected, attempt start() again (safe guards inside service)
-      if (!_hubService.isConnected) {
-        debugPrint('⚠️ UserBookingHome: hub not connected → calling start()');
-        await _hubService.start();
-      }
+  void _showPopup(String text, {String? key}) {
+    if (!mounted) return;
+    if (_dialogOpen) return;
 
-      // ✅ Since you said: "i didnt have any invoke method in my sample code"
-      // we DO NOT call invoke/sendLocation here.
-      // If you want: you can still dispatch REST API event here (optional).
-      // _dispatchLocationUpdateToApi();
+    // avoid repeating same popup
+    if (key != null && _lastDialogKey == key) return;
+    if (key != null) _lastDialogKey = key;
+
+    _dialogOpen = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        title: const Text("SignalR Notification"),
+        content: Text(text),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    ).then((_) {
+      _dialogOpen = false;
     });
-
-    debugPrint('✅ UserBookingHome: timer started: $_locationInterval');
   }
 
   @override
   void dispose() {
-    debugPrint('🧹 UserBookingHome.dispose() — stopping hub & timer');
-    _locationTimer?.cancel();
-    _hubService.stop();
-    _hubService.dispose();
+    _hub?.stop();
+    _hub?.dispose();
     super.dispose();
   }
 
@@ -523,7 +638,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
     );
   }
 
-  // ==================== UI HELPERS (unchanged) ====================
+  // ==================== UI HELPERS (UNCHANGED) ====================
 
   AppBar _buildAppBar() {
     return AppBar(
@@ -789,7 +904,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
   }
 }
 
-/// ==================== SMALL UI WIDGETS ====================
+/// ==================== SMALL UI WIDGETS (UNCHANGED) ====================
 
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
@@ -896,7 +1011,8 @@ class _ServiceHorizontalCard extends StatelessWidget {
               color: (color ?? const Color(0xFF5C2E91)).withOpacity(.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color ?? const Color(0xFF5C2E91), size: 18),
+            child:
+                Icon(icon, color: color ?? const Color(0xFF5C2E91), size: 18),
           ),
           const SizedBox(height: 10),
           Text(
@@ -925,13 +1041,132 @@ class _ServiceHorizontalCard extends StatelessWidget {
 
 
 
-// class LocationHubService {
-//   LocationHubService({
-//     required this.hubUrl,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// class TaskerBookingOffer {
+//   final String bookingDetailId;
+//   final double lat;
+//   final double lng;
+//   final double estimatedCost;
+//   final String message;
+//   final String? type;
+//   final String? date;
+
+//   TaskerBookingOffer({
+//     required this.bookingDetailId,
+//     required this.lat,
+//     required this.lng,
+//     required this.estimatedCost,
+//     required this.message,
+//     this.type,
+//     this.date,
+//   });
+
+//   static TaskerBookingOffer? tryParse(dynamic payload) {
+//     try {
+//       dynamic obj = payload;
+
+//       // If server sends JSON string
+//       if (obj is String) {
+//         obj = jsonDecode(obj);
+//       }
+
+//       if (obj is! Map) return null;
+
+//       final map = Map<String, dynamic>.from(obj);
+
+//       // Common patterns:
+//       // { type, message, date, data: { bookingDetailId, lat, lng, estimatedCost } }
+//       final dynamic dataAny = map['data'];
+
+//       if (dataAny is Map) {
+//         final data = Map<String, dynamic>.from(dataAny);
+
+//         final bookingDetailId = (data['bookingDetailId'] ?? data['BookingDetailId'])?.toString();
+//         if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
+
+//         final lat = _toDouble(data['lat'] ?? data['Lat']);
+//         final lng = _toDouble(data['lng'] ?? data['Lng']);
+//         final estimated = _toDouble(data['estimatedCost'] ?? data['EstimatedCost'] ?? 0);
+
+//         return TaskerBookingOffer(
+//           bookingDetailId: bookingDetailId,
+//           lat: lat,
+//           lng: lng,
+//           estimatedCost: estimated,
+//           message: (map['message'] ?? '').toString(),
+//           type: map['type']?.toString(),
+//           date: map['date']?.toString(),
+//         );
+//       }
+
+//       // If payload itself contains booking fields directly
+//       final bookingDetailId = (map['bookingDetailId'] ?? map['BookingDetailId'])?.toString();
+//       if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
+
+//       return TaskerBookingOffer(
+//         bookingDetailId: bookingDetailId,
+//         lat: _toDouble(map['lat'] ?? map['Lat']),
+//         lng: _toDouble(map['lng'] ?? map['Lng']),
+//         estimatedCost: _toDouble(map['estimatedCost'] ?? map['EstimatedCost'] ?? 0),
+//         message: (map['message'] ?? '').toString(),
+//         type: map['type']?.toString(),
+//         date: map['date']?.toString(),
+//       );
+//     } catch (_) {
+//       return null;
+//     }
+//   }
+
+//   static double _toDouble(dynamic v) {
+//     if (v == null) return 0;
+//     if (v is num) return v.toDouble();
+//     return double.tryParse(v.toString()) ?? 0;
+//   }
+// }
+
+
+
+
+// class DispatchHubService {
+//   DispatchHubService({
+//     required this.baseUrl,
+//     required this.userId,
+//     this.onNotification,
+//     this.onBookingOffer, // ✅ popup trigger
 //     this.onLog,
 //   });
 
-//   final String hubUrl;
+//   final String baseUrl; // e.g. http://192.3.3.187:85
+//   final String userId; // GUID
+
+//   final void Function(dynamic payload)? onNotification;
+//   final void Function(TaskerBookingOffer offer)? onBookingOffer;
 //   final void Function(String msg)? onLog;
 
 //   HubConnection? _conn;
@@ -942,13 +1177,11 @@ class _ServiceHorizontalCard extends StatelessWidget {
 
 //   Timer? _reconnectTimer;
 
-//   // -------------------------
-//   // Helpers
-//   // -------------------------
-//   void _log(String msg) {
-//     onLog?.call(msg);
-//     // ignore: avoid_print
-//     print(msg);
+//   String get hubUrl {
+//     final clean = baseUrl.endsWith("/")
+//         ? baseUrl.substring(0, baseUrl.length - 1)
+//         : baseUrl;
+//     return "$clean/hubs/dispatch?userId=$userId";
 //   }
 
 //   HubConnectionState get state =>
@@ -956,36 +1189,84 @@ class _ServiceHorizontalCard extends StatelessWidget {
 
 //   bool get isConnected => state == HubConnectionState.Connected;
 
-//   // -------------------------
-//   // Build connection
-//   // -------------------------
+//   void _log(String s) {
+//     onLog?.call(s);
+//     // ignore: avoid_print
+//     print(s);
+//   }
+
 //   HubConnection _buildConnection() {
 //     return HubConnectionBuilder()
 //         .withUrl(
 //           hubUrl,
 //           options: HttpConnectionOptions(
 //             skipNegotiation: false,
-//             transport: HttpTransportType.LongPolling, // ✅ IMPORTANT
+
+//             // ✅ stable transport (works even when websocket fails)
+//             transport: HttpTransportType.LongPolling,
+
+//             // If later you use token:
+//             // accessTokenFactory: () async => token,
 //           ),
 //         )
 //         .build();
 //   }
 
 //   void _wireHandlers(HubConnection c) {
-//     // ✅ Correct ClosedCallback signature in your version
+//     // ✅ server -> client event
+//     c.on("receivenotification", (args) {
+//       final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+//       _log("📩 receivenotification RAW → ${_pretty(payload)}");
+
+//       onNotification?.call(payload);
+
+//       // ✅ Parse booking offer if matches
+//       final offer = TaskerBookingOffer.tryParse(payload);
+//       if (offer != null) {
+//         _log("✅ BookingOffer parsed → bookingDetailId=${offer.bookingDetailId}");
+//         onBookingOffer?.call(offer);
+//       }
+//     });
+
+//     // ✅ optional: listen other possible event names (if backend uses different casing)
+//     c.on("ReceiveNotification", (args) {
+//       final payload = (args != null && args.isNotEmpty) ? args[0] : args;
+//       _log("📩 ReceiveNotification RAW → ${_pretty(payload)}");
+//       onNotification?.call(payload);
+
+//       final offer = TaskerBookingOffer.tryParse(payload);
+//       if (offer != null) {
+//         _log("✅ BookingOffer parsed → bookingDetailId=${offer.bookingDetailId}");
+//         onBookingOffer?.call(offer);
+//       }
+//     });
+
+//     // ✅ ClosedCallback signature
 //     c.onclose(({Exception? error}) {
-//       _log("🔌 LocationHub onclose: ${error?.toString() ?? 'none'}");
-
-//       // same guard logic as DispatchToggleScreen
-//       if (_isStarting || _isStopping) return;
-
-//       _startReconnect();
+//       _log("🔌 onclose: ${error?.toString() ?? 'none'}");
+//       if (!_isStarting && !_isStopping) {
+//         _startReconnect();
+//       }
 //     });
 //   }
 
-//   // ------------------------------
-//   // Safe Stop (critical)
-//   // ------------------------------
+//   String _pretty(dynamic v) {
+//     try {
+//       if (v is String) {
+//         // if it is JSON string, pretty print
+//         try {
+//           final decoded = jsonDecode(v);
+//           return const JsonEncoder.withIndent("  ").convert(decoded);
+//         } catch (_) {
+//           return v;
+//         }
+//       }
+//       return const JsonEncoder.withIndent("  ").convert(v);
+//     } catch (_) {
+//       return v?.toString() ?? 'null';
+//     }
+//   }
+
 //   Future<void> _safeStop() async {
 //     if (_isStopping) return;
 //     _isStopping = true;
@@ -998,41 +1279,36 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //         await old.stop();
 //       }
 //     } catch (e) {
-//       _log("⚠️ LocationHub stop() ignored: $e");
+//       _log("⚠️ stop() ignored: $e");
 //     } finally {
 //       _isStopping = false;
 //     }
 //   }
 
-//   // -------------------------
-//   // Start
-//   // -------------------------
 //   Future<void> start() async {
 //     if (_isStarting || _isReconnecting) {
-//       _log("⏳ LocationHub already starting/reconnecting, skip start()");
+//       _log("⏳ Already starting/reconnecting, skip start()");
 //       return;
 //     }
 
 //     if (_conn != null && _conn!.state != HubConnectionState.Disconnected) {
-//       _log("⚠️ LocationHub cannot start because state=${_conn!.state}");
+//       _log("⚠️ Cannot start because state is: ${_conn!.state}");
 //       return;
 //     }
 
 //     _isStarting = true;
-
 //     _reconnectTimer?.cancel();
 //     _isReconnecting = false;
 
-//     _log("🔌 Starting LocationHub → $hubUrl");
+//     _log("🔌 Starting hub: $hubUrl");
 
 //     try {
-//       await _safeStop(); // ensure clean
+//       await _safeStop();
 
 //       final c = _buildConnection();
 //       _wireHandlers(c);
 //       _conn = c;
 
-//       // ✅ protect from double-stop / future already completed
 //       try {
 //         await c.start();
 //       } catch (e) {
@@ -1042,40 +1318,31 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //         rethrow;
 //       }
 
-//       _log("✅ LocationHub connected (LongPolling)");
+//       _log("✅ Hub connected (LongPolling)");
 //     } catch (e) {
-//       _log("❌ LocationHub start failed: $e");
+//       _log("❌ start() failed: $e");
 //       _startReconnect();
 //     } finally {
 //       _isStarting = false;
 //     }
 //   }
 
-//   // -------------------------
-//   // Stop
-//   // -------------------------
 //   Future<void> stop() async {
 //     _reconnectTimer?.cancel();
 //     _isReconnecting = false;
-
 //     await _safeStop();
-
-//     _log("🛑 LocationHub disconnected");
+//     _log("🛑 Disconnected");
 //   }
 
-//   // -------------------------
-//   // Reconnect loop
-//   // -------------------------
 //   void _startReconnect() {
 //     if (_isReconnecting) return;
 //     _isReconnecting = true;
 
 //     _reconnectTimer?.cancel();
 //     _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (t) async {
-//       // stop reconnecting if start/stop in progress
 //       if (_isStarting || _isStopping) return;
 
-//       _log("🔁 LocationHub reconnecting...");
+//       _log("🔁 Reconnecting...");
 
 //       try {
 //         await _safeStop();
@@ -1086,18 +1353,15 @@ class _ServiceHorizontalCard extends StatelessWidget {
 
 //         await c.start();
 
-//         _log("✅ LocationHub reconnected (LongPolling)");
+//         _log("✅ Reconnected (LongPolling)");
 //         _isReconnecting = false;
 //         t.cancel();
 //       } catch (e) {
-//         _log("⏳ LocationHub reconnect failed: $e");
+//         _log("⏳ Reconnect failed: $e");
 //       }
 //     });
 //   }
 
-//   // -------------------------
-//   // Dispose
-//   // -------------------------
 //   void dispose() {
 //     _reconnectTimer?.cancel();
 //   }
@@ -1113,163 +1377,110 @@ class _ServiceHorizontalCard extends StatelessWidget {
 
 // class _UserBookingHomeState extends State<UserBookingHome> {
 //   String _selectedChip = 'All';
-//   CertificationGroup? _selectedGroup; // to show its services
+//   CertificationGroup? _selectedGroup;
 
-//   late final LocationHubService _hubService;
+//   late final DispatchHubService _hubService;
 
 //   Timer? _locationTimer;
 
-//   // static const String _demoUserId =
-//   //     '54748461-018e-4a05-95b5-d490d07c5ab2'; // resident/user
-//   // static const double _demoLat = 24.435; // Karachi demo
-//   // static const double _demoLng = 67.435;
-  
-//   @override
+//   // ✅ Same interval style you used before
+//   static const Duration _locationInterval = Duration(seconds: 5);
+
+// late final DispatchHubService _hub;
+// bool _dialogOpen = false;
+
+// @override
 // void initState() {
 //   super.initState();
 
-//   // 1️⃣ Init hub service (customer / user hub URL)
-//   _hubService = LocationHubService(
-//     hubUrl: 'http://192.3.3.187:85/hubs/dispatch?userId=${context.read<AuthenticationBloc>().state.userDetails!.userId.toString()}',
+//   final userId = context.read<AuthenticationBloc>().state.userDetails!.userId.toString();
+// _hub = DispatchHubService(
+//     baseUrl: "http://192.3.3.187:85", // ✅ http only
+//     userId: userId,
+//     onLog: (m) => debugPrint("USER HUB: $m"),
+//     onNotification: (payload) {
+//       debugPrint("✅ USER GOT: $payload");
+//       _showPopup(payload.toString());
+//     },
 //   );
 
-//   // 2️⃣ After first frame: check if services are already loaded; if not, load them
-//   WidgetsBinding.instance.addPostFrameCallback((_) {
-//     final authBloc = context.read<AuthenticationBloc>();
-//     final s = authBloc.state;
-
-//     // 🔍 Already have data loaded successfully?
-//     final bool alreadyLoaded =
-//         s.servicesStatus == ServicesStatus.success &&
-//         s.serviceGroups.isNotEmpty;
-
-//     // ❗ Should we trigger loading from this screen?
-//     // - Not already loaded
-//     // - Not currently loading
-//     if (!alreadyLoaded && s.servicesStatus != ServicesStatus.loading) {
-//       authBloc.add(LoadServicesRequested());
-//       debugPrint('📦 UserBookingHome: LoadServicesRequested fired from screen');
-//     } else {
-//       debugPrint(
-//           '📦 UserBookingHome: services already loaded (status=${s.servicesStatus}, groups=${s.serviceGroups.length})');
-//     }
-
-//     // 🔁 Hub + location stuff
-//   //  _connectHubAndSendLocationOnce();
+//   WidgetsBinding.instance.addPostFrameCallback((_) async {
+//     await _hub.start();
 //   });
+//   // _hub = DispatchHubService(
+//   //   baseUrl: "http://192.3.3.187:85", // ✅ http
+//   //   userId: userId,
+//   //   onLog: (m) => debugPrint("USER: $m"),
+//   //   onNotification: (payload) {
+//   //     debugPrint("✅ USER: New Payload -> $payload");
+//   //     _showPopup(payload.toString());
+//   //   },
+//   //   onBookingOffer: (offer) {
+//   //     debugPrint("🎯 OFFER: ${offer.bookingDetailId}");
+//   //     _showPopup("Offer: ${offer.message}\nBookingDetailId: ${offer.bookingDetailId}");
+//   //   },
+//   // );
+
+//   // WidgetsBinding.instance.addPostFrameCallback((_) async {
+//   //   await _hub.start();
+//   // });
 // }
 
+// void _showPopup(String text) {
+//   if (!mounted) return;
+//   if (_dialogOpen) return;
 
-//  /* @override
-//   void initState() { Testing@123
-//     super.initState();
+//   _dialogOpen = true;
+//   showDialog(
+//     context: context,
+//     builder: (_) => AlertDialog(
+//       title: const Text("SignalR Notification"),
+//       content: Text(text),
+//       actions: [
+//         TextButton(
+//           onPressed: () => Navigator.pop(context),
+//           child: const Text("OK"),
+//         ),
+//       ],
+//     ),
+//   ).then((_) => _dialogOpen = false);
+// }
 
-//     // 1️⃣ Init hub service (customer / user hub URL)
-//     _hubService = LocationHubService(
-//       hubUrl:
-//           'http://192.3.3.187:85/hubs/dispatch?userId=$_demoUserId',
-//     );
+//   Future<void> _connectHubAndStartTimer() async {
+//     debugPrint('▶️ UserBookingHome: _connectHubAndStartTimer');
 
-//     // 2️⃣ Existing post-frame callback for loading services + starting hub
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       // ---- existing services loading logic ----
-//       final bloc = context.read<AuthenticationBloc>();
-//       final s = bloc.state;
-//       final hasData =
-//           s.serviceGroups.isNotEmpty && s.servicesStatus == ServicesStatus.success;
-//       if (!hasData && s.servicesStatus == ServicesStatus.initial) {
-//         bloc.add(LoadServicesRequested());
-//       }
-
-//       // ---- NEW: connect hub and send location + fire Bloc event ----
-//       _connectHubAndSendLocationOnce();
-//     });
-//   }*/
-
-//   /// 👉 Dispatch REST API update to Bloc (UserBookingBloc)
-//  /* void _dispatchLocationUpdateToApi() {
-//     if (!mounted) return;
-
-//     print(
-//         '🛰 [UI] Dispatching UpdateUserLocationRequested to UserBookingBloc (userId=$_demoUserId, lat=$_demoLat, lng=$_demoLng)');
-
-//     context.read<UserBookingBloc>().add(
-//         const  UpdateUserLocationRequested(
-//             userId: _demoUserId,
-//             latitude: _demoLat,
-//             longitude: _demoLng,
-//           ),
-//         );
-//   }
-
-//   /// 🚀 Connect hub and send location once on screen open
-//   Future<void> _connectHubAndSendLocationOnce() async {
-//     print('▶️ _connectHubAndSendLocationOnce called');
-
+//     // connect hub once
 //     try {
 //       await _hubService.start();
 //     } catch (e) {
-//       print('🔥 Error connecting hub in UserBookingHome: $e');
-//       // Optional: show UI error
+//       debugPrint('🔥 UserBookingHome: hub start failed: $e');
 //       return;
 //     }
 
-//     if (!_hubService.isConnected) {
-//       print('⚠️ Hub not connected after start(), skipping sendLocation');
-//       return;
-//     }
-
-//     // ✅ 1) Hit REST API via Bloc (same pattern as TaskerHome)
-//     _dispatchLocationUpdateToApi();
-
-//     // ✅ 2) Send via SignalR hub
-//     try {
-//       await _hubService.sendLocation(
-//         userId: _demoUserId,
-//         latitude: _demoLat,
-//         longitude: _demoLng,
-//       );
-//       print('✅ Initial location sent from UserBookingHome');
-//     } catch (e) {
-//       print('🔥 Error sending location from UserBookingHome: $e');
-//     }
-
-//   }
-
-//   void _startPeriodicLocationUpdates(
-//       String userId, double lat, double lng) {
+//     // start periodic timer like DispatchToggle logic
 //     _locationTimer?.cancel();
-//     _locationTimer =
-//         Timer.periodic(const Duration(seconds: 30), (timer) async {
-//       print(
-//           '⏰ UserBookingHome tick #${timer.tick} — sending location via SignalR');
+//     _locationTimer = Timer.periodic(_locationInterval, (_) async {
+//       // ✅ If hub disconnected, attempt start() again (safe guards inside service)
 //       if (!_hubService.isConnected) {
-//         print('⚠️ Hub disconnected, trying to reconnect...');
-//         try {
-//           await _hubService.start();
-//         } catch (e) {
-//           print('🔥 Reconnect failed: $e');
-//           return;
-//         }
-//       }
-//       try {
-//         await _hubService.sendLocation(
-//           userId: userId,
-//           latitude: lat,
-//           longitude: lng,
-//         );
-//       } catch (e) {
-//         print('🔥 Error sending periodic location: $e');
+//         debugPrint('⚠️ UserBookingHome: hub not connected → calling start()');
+//         await _hubService.start();
 //       }
 
+//       // ✅ Since you said: "i didnt have any invoke method in my sample code"
+//       // we DO NOT call invoke/sendLocation here.
+//       // If you want: you can still dispatch REST API event here (optional).
+//       // _dispatchLocationUpdateToApi();
 //     });
+
+//     debugPrint('✅ UserBookingHome: timer started: $_locationInterval');
 //   }
-// */
+
 //   @override
 //   void dispose() {
-//     print('🧹 UserBookingHome.dispose() — stopping hub & timer');
+//     debugPrint('🧹 UserBookingHome.dispose() — stopping hub & timer');
 //     _locationTimer?.cancel();
 //     _hubService.stop();
+//     _hubService.dispose();
 //     super.dispose();
 //   }
 
@@ -1299,7 +1510,6 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //               ),
 //               const SizedBox(height: 10),
 
-//               // ⬇️ chips + below selected certificate services
 //               BlocBuilder<AuthenticationBloc, AuthenticationState>(
 //                 buildWhen: (p, c) =>
 //                     p.serviceGroups != c.serviceGroups ||
@@ -1372,7 +1582,6 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //                               ),
 //                       ),
 
-//                       // ⬇️ when "All" is selected, show ALL services from ALL groups
 //                       if (_selectedGroup == null && groups.isNotEmpty) ...[
 //                         const SizedBox(height: 12),
 //                         const Text(
@@ -1432,7 +1641,6 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //                         ),
 //                       ],
 
-//                       // ⬇️ when a specific group is selected, show only that group's services
 //                       if (_selectedGroup != null &&
 //                           _selectedGroup!.services.isNotEmpty) ...[
 //                         const SizedBox(height: 12),
@@ -1520,37 +1728,6 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //         padding: const EdgeInsets.all(16),
 //         child: const GreetingWithLocation(),
 //       ),
-      
-//      /* Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: const [
-//           Text(
-//             'Good morning 👋',
-//             style: TextStyle(
-//               fontFamily: 'Poppins',
-//               fontSize: 16,
-//               color: Color(0xFF5C2E91),
-//               fontWeight: FontWeight.w600,
-//             ),
-//           ),
-//           SizedBox(height: 3),
-//           Row(
-//             children: [
-//               Icon(Icons.location_on_rounded,
-//                   size: 15, color: Color(0xFF5C2E91)),
-//               SizedBox(width: 4),
-//               Text(
-//                 'Melbourne, AU',
-//                 style: TextStyle(
-//                   fontFamily: 'Poppins',
-//                   fontSize: 12.5,
-//                   color: Color(0xFF75748A),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),*/
 //       actions: [
 //         IconButton(
 //           onPressed: () {},
@@ -1937,3 +2114,5 @@ class _ServiceHorizontalCard extends StatelessWidget {
 //     );
 //   }
 // }
+
+

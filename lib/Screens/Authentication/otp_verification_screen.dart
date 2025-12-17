@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:sms_autofill/sms_autofill.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:sms_autofill/sms_autofill.dart';
 import 'package:taskoon/Screens/Authentication/change_password_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
-import 'package:taskoon/Screens/Tasker_Onboarding/personal_info.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 import 'package:taskoon/widgets/toast_widget.dart';
-
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_event.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
-import '../Tasker_Onboarding/capture_selfie_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sms_autofill/sms_autofill.dart';
 import 'oto_verification_screen_phone.dart';
 
 class OtpVerificationScreen extends StatefulWidget {

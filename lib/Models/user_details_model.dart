@@ -7,12 +7,10 @@ class UserDetails {
   final String phone;
   final String? profilePictureUrl;
   final DateTime? createdDate;
-
   final bool isActive;
   final bool isEmailVerified;
   final bool isPhoneVerified;
   final bool isPaymentVerified;
-
   final String userRole;
   final String? street;
   final String? city;

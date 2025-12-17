@@ -210,11 +210,11 @@ Future<void> _acceptBooking(
   );
 
   if (r.isSuccess == true) {
-  print("BOOKING ACCEPT ");
-  print("BOOKING ACCEPT ");
-  print("BOOKING ACCEPT ");
-  print("BOOKING ACCEPT ");
-  print("BOOKING ACCEPT ");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+
     emit(state.copyWith(
       acceptBookingEnum: AcceptBookingEnum.success,
 
@@ -224,6 +224,10 @@ Future<void> _acceptBooking(
 
       clearLocationError: true,
     ));
+      print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
+  print("BOOKING ACCEPT ${state.acceptBookingEnum}");
   } else {
     print('❌ [Bloc] _acceptBooking FAILURE: ${r.failure?.message}');
 

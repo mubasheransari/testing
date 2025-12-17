@@ -1,12 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 
-
 class FindingYourTaskerScreen extends StatefulWidget {
   String bookingid;
-   FindingYourTaskerScreen({super.key,required this.bookingid});
+  FindingYourTaskerScreen({super.key, required this.bookingid});
 
   // colors picked from screenshot
   static const Color bgPurple = Color(0xFF43106F);
@@ -14,37 +15,21 @@ class FindingYourTaskerScreen extends StatefulWidget {
   static const Color ringGold2 = Color(0xFFD7A939);
 
   @override
-  State<FindingYourTaskerScreen> createState() => _FindingYourTaskerScreenState();
+  State<FindingYourTaskerScreen> createState() =>
+      _FindingYourTaskerScreenState();
 }
 
 class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
+  Timer? _timer;
 
- @override
-  void initState() {
-    super.initState();
-context.read<UserBookingBloc>().add(FindingTaskerRequested(bookingId: widget.bookingid));
-  }
-
-/*late AuthRepository authRepository;
-findingTasker()async{
- await authRepository.findBooking(bookingDetailId: widget.bookingid, userLatitude: 24.435, userLongitude: 67.435
-);
-}
   @override
   void initState() {
     super.initState();
-findingTasker();
+    context.read<UserBookingBloc>().add(
+      FindingTaskerRequested(bookingId: widget.bookingid),
+    );
+  }
 
-  /*  Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-
-      // Navigator.of(context).pushReplacement(
-      //   MaterialPageRoute(
-      //     builder: (_) => const TaskerConfirmationScreen(), // <- your real screen
-      //   ),
-      // );
-    });*/
-  }*/
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -59,9 +44,7 @@ findingTasker();
             left: 0,
             right: 0,
             height: size.height * 0.32,
-            child: CustomPaint(
-              painter: _TopWavePainter(),
-            ),
+            child: CustomPaint(painter: _TopWavePainter()),
           ),
           // bottom wave
           Positioned(
@@ -69,9 +52,7 @@ findingTasker();
             left: 0,
             right: 0,
             height: size.height * 0.30,
-            child: CustomPaint(
-              painter: _BottomWavePainter(),
-            ),
+            child: CustomPaint(painter: _BottomWavePainter()),
           ),
 
           // center logo + text
@@ -83,16 +64,16 @@ findingTasker();
                 Container(
                   width: 190,
                   height: 190,
-                
+
                   child: Center(
-                    child: Image.asset('assets/user_finding_tasker.png')
+                    child: Image.asset('assets/user_finding_tasker.png'),
                   ),
                 ),
                 const SizedBox(height: 28),
                 const Text(
                   'Finding your tasker',
                   style: TextStyle(
-                           fontFamily: 'Poppins',
+                    fontFamily: 'Poppins',
                     fontSize: 23,
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -117,10 +98,18 @@ class _TopWavePainter extends CustomPainter {
 
     final path = Path()
       ..moveTo(0, size.height * 0.55)
-      ..quadraticBezierTo(size.width * 0.25, size.height * 0.20,
-          size.width * 0.55, size.height * 0.35)
-      ..quadraticBezierTo(size.width * 0.78, size.height * 0.48,
-          size.width, size.height * 0.28)
+      ..quadraticBezierTo(
+        size.width * 0.25,
+        size.height * 0.20,
+        size.width * 0.55,
+        size.height * 0.35,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.78,
+        size.height * 0.48,
+        size.width,
+        size.height * 0.28,
+      )
       ..lineTo(size.width, 0)
       ..lineTo(0, 0)
       ..close();
@@ -143,9 +132,17 @@ class _BottomWavePainter extends CustomPainter {
     final path1 = Path()
       ..moveTo(0, size.height * 0.35)
       ..quadraticBezierTo(
-          size.width * 0.25, size.height * 0.15, size.width * 0.45, size.height * 0.35)
+        size.width * 0.25,
+        size.height * 0.15,
+        size.width * 0.45,
+        size.height * 0.35,
+      )
       ..quadraticBezierTo(
-          size.width * 0.72, size.height * 0.68, size.width, size.height * 0.40)
+        size.width * 0.72,
+        size.height * 0.68,
+        size.width,
+        size.height * 0.40,
+      )
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();
@@ -160,7 +157,11 @@ class _BottomWavePainter extends CustomPainter {
     final path2 = Path()
       ..moveTo(size.width * 0.35, size.height * 0.50)
       ..quadraticBezierTo(
-          size.width * 0.65, size.height * 0.15, size.width, size.height * 0.35)
+        size.width * 0.65,
+        size.height * 0.15,
+        size.width,
+        size.height * 0.35,
+      )
       ..lineTo(size.width, size.height)
       ..lineTo(size.width * 0.35, size.height)
       ..close();
