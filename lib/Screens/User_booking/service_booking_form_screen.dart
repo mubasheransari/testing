@@ -170,7 +170,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
 
     context.read<UserBookingBloc>().add(
       CreateUserBookingRequested(
-        userId: '8e6f4229-5041-4f77-9732-7d50736f6fb0',
+        userId:context.read<AuthenticationBloc>().state.userDetails!.userId.toString(),
         subCategoryId: int.parse(widget.subCategoryId),
         bookingDate: _selectedDate!, // DateTime
         startTime: _fmtTimeForApi(_startTime!), // "HH:mm:ss"
