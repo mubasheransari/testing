@@ -297,38 +297,7 @@ class AuthenticationBloc
     );
   }
 
-  //   Future<void> _onLoadServiceDocuments(
-  //   LoadServiceDocumentsRequested e,
-  //   Emitter<AuthenticationState> emit,
-  // ) async {
-  //   emit(state.copyWith(
-  //     documentsStatus: DocumentsStatus.loading,
-  //     documentsError: null,
-  //   ));
 
-  //   final r = await repo.fetchServiceDocuments(); // your GET
-  //   if (!r.isSuccess) {
-  //     emit(state.copyWith(
-  //       documentsStatus: DocumentsStatus.failure,
-  //       documentsError: r.failure?.message ?? 'Failed to load documents',
-  //     ));
-  //     return;
-  //   }
-
-  //   // Flatten List<ServiceDocumentResponse> -> List<ServiceDocument>
-  //   final out = <ServiceDocument>[];
-  //   for (final resp in r.data!) {
-  //     out.addAll(resp.result);
-  //   }
-
-  //   emit(state.copyWith(
-  //     documentsStatus: DocumentsStatus.success,
-  //     documents: out,
-  //     documentsError: null,
-  //   ));
-  // }
-
-  // handlers
   Future<void> _onLoadServices(
     LoadServicesRequested e,
     Emitter<AuthenticationState> emit,
@@ -615,28 +584,6 @@ class AuthenticationBloc
     }
   }
 
-  // sendotpThroughEmail(SendOtpThroughEmail event, emit) {
-  //   //  emit(state.copyWith(status: AuthStatus.loading));
-
-  //   repo
-  //       .sendOtpThroughEmail(
-  //     userId: event.userId,
-  //     email: event.email,
-  //   )
-  //       .then((result) {
-  //     if (result.isSuccess) {
-  //       emit(state.copyWith(
-  //         //   status: AuthStatus.success,
-  //         response: result.data, // reuse registrationResponse
-  //       ));
-  //     } else {
-  //       emit(state.copyWith(
-  //         //  status: AuthStatus.failure,
-  //         error: result.failure?.message ?? 'OTP failed',
-  //       ));
-  //     }
-  //   });
-  // }
 
   sendotpThroughPhone(SendOtpThroughPhone event, emit) {
     repo

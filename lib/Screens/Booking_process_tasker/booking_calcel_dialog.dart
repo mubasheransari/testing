@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 
 enum TaskerCancelledAction { findAnother, cancelTask, viewRefund, closed }
 

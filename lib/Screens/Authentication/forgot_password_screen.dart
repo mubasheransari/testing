@@ -81,18 +81,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     ),
   ),
 );
-
-
-            // Navigator.pushAndRemoveUntil(//Testing@112233
-            //   context,
-            //   MaterialPageRoute(
-            //       builder: (_) => OtpVerificationScreen(
-            //           isForgetFunctionality: true,
-            //           email: emailController.text.trim(),
-            //           userId: state.response!.result!.userId.toString(),
-            //           phone: '')),
-            //   (Route<dynamic> route) => false,
-            // );
           } else if (state.forgotPasswordStatus ==
               ForgotPasswordStatus.failure) {}
         },

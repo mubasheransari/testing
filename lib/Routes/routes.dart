@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/app_shell.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/location_debug_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/splash_screen.dart';
 import 'package:taskoon/Screens/User_booking/user_booking_nav_bar.dart';
@@ -14,8 +12,6 @@ import 'package:taskoon/screens/Tasker_Onboarding/personal_info.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/review_submit.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/selfie_verification.dart';
 import 'package:taskoon/screens/Tasker_Onboarding/success.dart';
-import 'package:taskoon/screens/Tasker_Onboarding/welcome.dart';
-import '../Screens/Authentication/landing_screen.dart';
 import '../Screens/Splash_Slider/slider_screen.dart';
 import '../Screens/Tasker_Onboarding/cerifications_screen.dart';
 
@@ -57,19 +53,13 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const ReviewSubmit());
       case Routes.success:
         return MaterialPageRoute(builder: (_) => const Success());
-      // case Routes.appShellScreen:
-      // return MaterialPageRoute(builder: (_) => const AppShell());
       case Routes.taskerHomeScreen:
         return MaterialPageRoute(builder: (_) => const TaskerHomeRedesign());
       case Routes.takerHomeBottomNavBarRoot:
         return MaterialPageRoute(builder: (_) => const TaskoonApp());
-      // case Routes.locationSignalR:
-      //   return MaterialPageRoute(builder: (_) => const LocationSignalRScreen());
-
       case Routes.userHomeBottomNavBarRoot:
         return MaterialPageRoute(
           builder: (context) {
-            // fire your bloc event once we land on this route
             context.read<AuthenticationBloc>().add(LoadServicesRequested());
             return const UserBottomNavBar();
           },

@@ -7,8 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/arriaved_confirmation_screen.dart';
 import 'package:taskoon/widgets/booking_accept_dialog.dart';
-import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
-
 
 
 class TaskAlertGlassScreen extends StatefulWidget {

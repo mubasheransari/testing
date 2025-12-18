@@ -2,15 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Screens/Authentication/login_screen.dart';
-import 'package:taskoon/main.dart';
-
 import '../../Blocs/auth_bloc/auth_bloc.dart';
 import '../../Blocs/auth_bloc/auth_state.dart';
 import '../../widgets/toast_widget.dart';
-
-// adjust these imports to your project structure
-// import 'package:your_app/auth/authentication_bloc.dart';
-// import 'package:your_app/common/toast_widget.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({
