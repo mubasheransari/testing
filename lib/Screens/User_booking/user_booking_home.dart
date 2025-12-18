@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
-import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:taskoon/Screens/User_booking/select_service.dart';

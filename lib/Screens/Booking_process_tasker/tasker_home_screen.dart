@@ -504,56 +504,348 @@ bool _restored = false; // prevents double-start
       if (_dialogOpen) return;
 
       _dialogOpen = true;
+// ✅ Designed dialog with 1-minute countdown + NO booking id
+// ✅ Designed dialog with 1-minute countdown + NO booking id
+await showDialog(
+  context: context,
+  barrierDismissible: false,
+  barrierColor: Colors.black.withOpacity(0.55),
+  builder: (ctx) {
+    const kPrimary = Color(0xFF5C2E91);
+    const kTextDark = Color(0xFF3E1E69);
+    const kMuted = Color(0xFF75748A);
+    const kGold = Color(0xFFF4C847);
 
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) {
-          return AlertDialog(
-            title: const Text("New Booking Offer"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(offer.message),
-                const SizedBox(height: 10),
-                Text("BookingDetailId: ${offer.bookingDetailId}"),
-                Text("Estimated Cost: \$${offer.estimatedCost.toStringAsFixed(0)}"),
-                Text("Lat: ${offer.lat}"),
-                Text("Lng: ${offer.lng}"),
-                const SizedBox(height: 10),
-                const Text(
-                  "Please respond within 1 minute",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
+    Widget infoRow({
+      required IconData icon,
+      required String label,
+      required String value,
+    }) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: kPrimary.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kPrimary.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: kPrimary, size: 18),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-
-                  // ✅ TODO: call your decline API / bloc event here
-                  // context.read<UserBookingBloc>().add(DeclineOfferRequested(offer.bookingDetailId));
-                },
-                child: const Text("Decline"),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11.5,
+                      color: kMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13.5,
+                      color: kTextDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () {
-                   context.read<UserBookingBloc>().add(AcceptBooking(userId:"2b6bb0c3-6f05-4d04-948e-a2bbf5320f0a", //context.read<UserBookingBloc>().state.bookingFindResponse!.result.first.userId,
-                    bookingDetailId: offer.bookingDetailId));
-                 // Navigator.pop(ctx);
-                  
-
-                  // ✅ TODO: call your accept API / bloc event here
-                  // context.read<UserBookingBloc>().add(AcceptOfferRequested(offer.bookingDetailId));
-                },
-                child: const Text("Accept"),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       );
+    }
+
+    String _mmss(int totalSeconds) {
+      final m = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+      final s = (totalSeconds % 60).toString().padLeft(2, '0');
+      return '$m:$s';
+    }
+
+    // ✅ dialog-local countdown state (no need to change your screen state)
+    return StatefulBuilder(
+      builder: (context, setState) {
+        // Start at 60 seconds
+        int secondsLeft = 60;
+        Timer? t;
+
+        // Start timer once after build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (t != null) return; // already started
+          t = Timer.periodic(const Duration(seconds: 1), (_) {
+            if (!Navigator.of(ctx).mounted) {
+              t?.cancel();
+              return;
+            }
+
+            if (secondsLeft <= 1) {
+              t?.cancel();
+              // ✅ auto-close when time ends
+              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+              return;
+            }
+
+            setState(() => secondsLeft--);
+          });
+        });
+
+        // If dialog is popped manually, cancel timer
+        void closeDialog() {
+          t?.cancel();
+          if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+        }
+
+        final timeText = _mmss(secondsLeft);
+
+        return WillPopScope(
+          onWillPop: () async => false, // block back
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: MediaQuery.of(ctx).size.width * 0.88,
+                constraints: const BoxConstraints(maxWidth: 420),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 24,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: kGold.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_rounded,
+                            color: kPrimary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            "New Booking Offer",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 16,
+                              color: kTextDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        // (hidden close icon to keep layout balanced)
+                        const Icon(Icons.close_rounded,
+                            color: Colors.transparent),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Message card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: kPrimary.withOpacity(0.12)),
+                      ),
+                      child: Text(
+                        offer.message,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          color: kTextDark,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Details (NO booking id)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: infoRow(
+                            icon: Icons.attach_money_rounded,
+                            label: "Estimated",
+                            value:
+                                "\$${offer.estimatedCost.toStringAsFixed(0)}",
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: infoRow(
+                            icon: Icons.timer_outlined,
+                            label: "Time Left",
+                            value: timeText, // ✅ live countdown
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: infoRow(
+                            icon: Icons.my_location_outlined,
+                            label: "Latitude",
+                            value: offer.lat.toStringAsFixed(4),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: infoRow(
+                            icon: Icons.my_location_outlined,
+                            label: "Longitude",
+                            value: offer.lng.toStringAsFixed(4),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Footer warning
+                    Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: kGold,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Please respond within $timeText",
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12.5,
+                              color: kMuted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Actions
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              closeDialog();
+                              // TODO: decline
+                              // context.read<UserBookingBloc>().add(DeclineOfferRequested(offer.bookingDetailId));
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: kPrimary,
+                              side: BorderSide(color: kPrimary.withOpacity(0.35)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              "Decline",
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // ✅ keep your accept logic
+                              context.read<UserBookingBloc>().add(
+                                    AcceptBooking(
+                                      userId:
+                                          "2b6bb0c3-6f05-4d04-948e-a2bbf5320f0a",
+                                      bookingDetailId: offer.bookingDetailId,
+                                    ),
+                                  );
+
+                              // optional: close immediately (or keep open until success)
+                              // closeDialog();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimary,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              "Accept",
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  },
+);
+
 
       if (mounted) {
         _dialogOpen = false;
