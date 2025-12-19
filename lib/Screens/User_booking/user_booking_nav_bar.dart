@@ -112,7 +112,7 @@ class GlassBottomNav extends StatelessWidget {
             height: 70,
             decoration: BoxDecoration(
               // purple base with subtle glass gradient + border
-              gradient: LinearGradient(
+              gradient:const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [

@@ -337,22 +337,22 @@ class _UserBookingHomeState extends State<UserBookingHome> {
         baseUrl: "http://192.3.3.187:85",
         userId: userId,
         onLog: (m) => debugPrint("USER HUB: $m"),
-        onNotification: (payload) {
-          // show raw notification popup
-          _showPopup("Notification:\n${payload.toString()}");
-        },
-        onBookingOffer: (offer) {
-          // if it's a booking offer, show formatted popup
-          _showPopup(
-            "New Booking Offer\n\n"
-            "Message: ${offer.message}\n"
-            "BookingDetailId: ${offer.bookingDetailId}\n"
-            "Estimated: ${offer.estimatedCost}\n"
-            "Lat: ${offer.lat}\n"
-            "Lng: ${offer.lng}\n",
-            key: offer.bookingDetailId,
-          );
-        },
+        // onNotification: (payload) {
+        //   // show raw notification popup
+        //   _showPopup("Notification:\n${payload.toString()}");
+        // },
+        // onBookingOffer: (offer) {
+        //   // if it's a booking offer, show formatted popup
+        //   _showPopup(
+        //     "New Booking Offer\n\n"
+        //     "Message: ${offer.message}\n"
+        //     "BookingDetailId: ${offer.bookingDetailId}\n"
+        //     "Estimated: ${offer.estimatedCost}\n"
+        //     "Lat: ${offer.lat}\n"
+        //     "Lng: ${offer.lng}\n",
+        //     key: offer.bookingDetailId,
+        //   );
+        // },
       );
 
       await _startHubOnce();
@@ -371,7 +371,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
     }
   }
 
-  void _showPopup(String text, {String? key}) {
+ /* void _showPopup(String text, {String? key}) {
     if (!mounted) return;
     if (_dialogOpen) return;
 
@@ -397,7 +397,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
     ).then((_) {
       _dialogOpen = false;
     });
-  }
+  }*/
 
   @override
   void dispose() {
