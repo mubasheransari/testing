@@ -561,14 +561,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         .first
                         .bookingDetailId;
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Booking created successfully'
-                          '${booking != null ? ' (ID: ${booking})' : ''}', //Testing@123
-                        ),
-                      ),
-                    );
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   SnackBar(
+                    //     content: Text(
+                    //       'Booking created successfully'
+                    //       '${booking != null ? ' (ID: ${booking})' : ''}', //Testing@123
+                    //     ),
+                    //   ),
+                    // );
 
                     if (booking != null) {
                       Navigator.push(
