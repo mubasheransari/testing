@@ -77,6 +77,16 @@ void initState() {
 
           // ✅ use stored value (not the old captured payload)
           if (_lastRawNotification != null) {
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
+            print("DATA ${_lastRawNotification['type']}");
             print("IMRAN KHAN PTI");
             t.cancel(); // ✅ stop timer after condition true
 
