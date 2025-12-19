@@ -55,6 +55,13 @@ extension on String {
 
 abstract class AuthRepository {
 
+    Future<Result<RegistrationResponse>> cancelBookingPut({
+    required String bookingDetailId,
+    required String userId,
+    required String reason,
+  });
+
+
   
   Future<Result<RegistrationResponse>> updateUserLocation({
     required String userId,
@@ -66,11 +73,11 @@ abstract class AuthRepository {
     required String userId
   });
 
-  Future<Result<RegistrationResponse>> cancelBooking({
-    required String bookingId,
-    required String userId,
-    required String reason,
-  });
+  // Future<Result<RegistrationResponse>> cancelBooking({
+  //   required String bookingId,
+  //   required String userId,
+  //   required String reason,
+  // });
   Future<Result<RegistrationResponse>> acceptBooking({
     required String userId,
     required String bookingId,
@@ -246,6 +253,106 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+  @override
+Future<Result<RegistrationResponse>> cancelBookingPut({
+  required String bookingDetailId,
+  required String userId,
+  required String reason,
+}) async {
+  // ✅ endpoint example: /api/Booking/cancel  (use your real endpoint constant)
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrlLocation}${ApiConfig.bookingCancelEndpoint}',
+  );
+
+  final body = <String, dynamic>{
+    "bookingDetailId": bookingDetailId,
+    "userId": userId,
+    "reason": reason,
+  };
+
+  try {
+    print('>>> CANCEL BOOKING PUT $uri');
+    print('>>> REQUEST: ${jsonEncode(body)}');
+
+    final res = await http
+        .put(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
+
+    print('<<< CANCEL BOOKING STATUS: ${res.statusCode}');
+    print('<<< CANCEL BOOKING BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(
+          RegistrationResponse(isSuccess: true, message: 'Booking cancelled'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      final resp = RegistrationResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: resp.message ?? 'Booking cancel failed',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    // non-2xx
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+
+        // if backend returns { message: "...", errors:[...] }
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          final errors = (err['errors'] as List)
+              .map((e) => '${e['field']}: ${e['error']}')
+              .join(' • ');
+          if (errors.isNotEmpty) message = errors;
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
 
 
     @override
@@ -506,82 +613,82 @@ Future<Result<RegistrationResponse>> changeAvailbilityStatusTasker({
     }
   }
 
-  @override
-  Future<Result<RegistrationResponse>> cancelBooking({
-    required String bookingId,
-    required String userId,
-    required String reason,
-  }) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrlLocation}${ApiConfig.bookingCancelEndpoint}',
-    );
+  // @override
+  // Future<Result<RegistrationResponse>> cancelBooking({
+  //   required String bookingId,
+  //   required String userId,
+  //   required String reason,
+  // }) async {
+  //   final uri = Uri.parse(
+  //     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingCancelEndpoint}',
+  //   );
 
-    final body = <String, dynamic>{
-      "bookingId": bookingId,
-      "userId": userId,
-      "reason": reason,
-    };
+  //   final body = <String, dynamic>{
+  //     "bookingId": bookingId,
+  //     "userId": userId,
+  //     "reason": reason,
+  //   };
 
-    try {
-      print('>>> BOOKING CANCEL PUT $uri');
-      print('>>> REQUEST: ${jsonEncode(body)}');
+  //   try {
+  //     print('>>> BOOKING CANCEL PUT $uri');
+  //     print('>>> REQUEST: ${jsonEncode(body)}');
 
-      final res = await http
-          .put(uri, headers: _headers(), body: jsonEncode(body))
-          .timeout(timeout);
+  //     final res = await http
+  //         .put(uri, headers: _headers(), body: jsonEncode(body))
+  //         .timeout(timeout);
 
-      print('<<< BOOKING CANCEL STATUS: ${res.statusCode}');
-      print('<<< BOOKING CANCEL BODY: ${res.body}');
+  //     print('<<< BOOKING CANCEL STATUS: ${res.statusCode}');
+  //     print('<<< BOOKING CANCEL BODY: ${res.body}');
 
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final parsed = jsonDecode(res.body);
-        if (parsed is! Map<String, dynamic>) {
-          return Result.fail(
-            Failure(
-              code: 'parse',
-              message: 'Invalid response format',
-              statusCode: res.statusCode,
-            ),
-          );
-        }
+  //     if (res.statusCode >= 200 && res.statusCode < 300) {
+  //       final parsed = jsonDecode(res.body);
+  //       if (parsed is! Map<String, dynamic>) {
+  //         return Result.fail(
+  //           Failure(
+  //             code: 'parse',
+  //             message: 'Invalid response format',
+  //             statusCode: res.statusCode,
+  //           ),
+  //         );
+  //       }
 
-        final resp = RegistrationResponse.fromJson(parsed);
-        if (!resp.isSuccess) {
-          return Result.fail(
-            Failure(
-              code: 'validation',
-              message: resp.message ?? 'Booking cancel failed',
-              statusCode: res.statusCode,
-            ),
-          );
-        }
+  //       final resp = RegistrationResponse.fromJson(parsed);
+  //       if (!resp.isSuccess) {
+  //         return Result.fail(
+  //           Failure(
+  //             code: 'validation',
+  //             message: resp.message ?? 'Booking cancel failed',
+  //             statusCode: res.statusCode,
+  //           ),
+  //         );
+  //       }
 
-        return Result.ok(resp);
-      }
+  //       return Result.ok(resp);
+  //     }
 
-      String message = 'Server error (${res.statusCode})';
-      try {
-        final err = jsonDecode(res.body);
-        if (err is Map && err['message'] != null) {
-          message = err['message'].toString();
-        }
-      } catch (_) {}
+  //     String message = 'Server error (${res.statusCode})';
+  //     try {
+  //       final err = jsonDecode(res.body);
+  //       if (err is Map && err['message'] != null) {
+  //         message = err['message'].toString();
+  //       }
+  //     } catch (_) {}
 
-      return Result.fail(
-        Failure(code: 'server', message: message, statusCode: res.statusCode),
-      );
-    } on SocketException {
-      return Result.fail(
-        Failure(code: 'network', message: 'No internet connection'),
-      );
-    } on TimeoutException {
-      return Result.fail(
-        Failure(code: 'timeout', message: 'Request timed out'),
-      );
-    } catch (e) {
-      return Result.fail(Failure(code: 'unknown', message: e.toString()));
-    }
-  }
+  //     return Result.fail(
+  //       Failure(code: 'server', message: message, statusCode: res.statusCode),
+  //     );
+  //   } on SocketException {
+  //     return Result.fail(
+  //       Failure(code: 'network', message: 'No internet connection'),
+  //     );
+  //   } on TimeoutException {
+  //     return Result.fail(
+  //       Failure(code: 'timeout', message: 'Request timed out'),
+  //     );
+  //   } catch (e) {
+  //     return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  //   }
+  // }
 
   @override
   Future<Result<RegistrationResponse>> acceptBooking({
