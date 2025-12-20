@@ -395,16 +395,12 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     });
   }
 
-
   void _showBookingPopup(TaskerBookingOffer offer) {
   if (!mounted) return;
-
-  // ❌ REMOVE permanent block
   if (_dialogOpen) return;
 
   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    if (!mounted) return;
-    if (_dialogOpen) return;
+    if (!mounted || _dialogOpen) return;
 
     _dialogOpen = true;
     _lastPopupBookingDetailId = offer.bookingDetailId;
@@ -415,32 +411,95 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
         barrierDismissible: false,
         barrierColor: Colors.black.withOpacity(0.55),
         builder: (ctx) {
+          const kGold = Color(0xFFF4C847);
           const int totalSeconds = 60;
+
           int secondsLeft = totalSeconds;
-          Timer? t;
+          Timer? timer;
           bool closed = false;
 
-          void closeDialog(PopupCloseReason reason) {
+          String mmss(int s) =>
+              '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+
+          void closeDialog() {
             if (closed) return;
             closed = true;
 
-            t?.cancel();
-            t = null;
+            timer?.cancel();
+            timer = null;
 
             if (Navigator.of(ctx, rootNavigator: true).canPop()) {
               Navigator.of(ctx, rootNavigator: true).pop();
             }
           }
 
+          Widget infoTile({
+            required IconData icon,
+            required String label,
+            required String value,
+          }) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: kPrimary.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: kPrimary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: kPrimary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.5,
+                            color: kMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          value,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.5,
+                            color: kTextDark,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return StatefulBuilder(
             builder: (context, setState) {
-              t ??= Timer.periodic(const Duration(seconds: 1), (_) {
+              timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
                 if (closed) return;
 
                 if (secondsLeft <= 1) {
-                  closeDialog(PopupCloseReason.autoTimeout);
+                  closeDialog(); // ✅ auto close at 0
                   return;
                 }
+
                 setState(() => secondsLeft--);
               });
 
@@ -454,41 +513,164 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                     color: Colors.transparent,
                     child: Container(
                       width: MediaQuery.of(ctx).size.width * 0.88,
+                      constraints: const BoxConstraints(maxWidth: 420),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
-                            "New Booking Offer",
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w800,
+                          Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: kGold.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_active_rounded,
+                                  color: kPrimary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  "New Booking Offer",
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 16,
+                                    color: kTextDark,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.close_rounded,
+                                  color: Colors.transparent),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: kPrimary.withOpacity(0.10),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                secondsLeft <= 10
+                                    ? Colors.redAccent
+                                    : (secondsLeft <= 25
+                                        ? kGold
+                                        : kPrimary),
+                              ),
                             ),
                           ),
 
                           const SizedBox(height: 12),
 
-                          LinearProgressIndicator(
-                            value: progress,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: kPrimary.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: kPrimary.withOpacity(0.12)),
+                            ),
+                            child: Text(
+                              offer.message,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                color: kTextDark,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
                           ),
 
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
-                          Text(offer.message),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.attach_money_rounded,
+                                  label: "Estimated",
+                                  value:
+                                      "\$${offer.estimatedCost.toStringAsFixed(0)}",
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.timer_outlined,
+                                  label: "Time Left",
+                                  value: mmss(secondsLeft),
+                                ),
+                              ),
+                            ],
+                          ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 10),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.my_location_outlined,
+                                  label: "Latitude",
+                                  value: offer.lat.toStringAsFixed(4),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.my_location_outlined,
+                                  label: "Longitude",
+                                  value: offer.lng.toStringAsFixed(4),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 14),
 
                           Row(
                             children: [
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: () =>
-                                      closeDialog(PopupCloseReason.declined),
-                                  child: const Text("Decline"),
+                                  onPressed: closeDialog,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: kPrimary,
+                                    side: BorderSide(
+                                        color: kPrimary.withOpacity(0.35)),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "Decline",
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -507,9 +689,25 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                                                 offer.bookingDetailId,
                                           ),
                                         );
-                                    closeDialog(PopupCloseReason.accepted);
+                                    closeDialog();
                                   },
-                                  child: const Text("Accept"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: kPrimary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    "Accept",
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -525,12 +723,150 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
         },
       );
     } finally {
-      // ✅ RESET GUARDS SO NEW OFFER CAN SHOW
+      // ✅ VERY IMPORTANT: reset guards so popup can show again
       _dialogOpen = false;
       _lastPopupBookingDetailId = null;
     }
   });
 }
+
+
+
+//   void _showBookingPopup(TaskerBookingOffer offer) {
+//   if (!mounted) return;
+
+//   // ❌ REMOVE permanent block
+//   if (_dialogOpen) return;
+
+//   WidgetsBinding.instance.addPostFrameCallback((_) async {
+//     if (!mounted) return;
+//     if (_dialogOpen) return;
+
+//     _dialogOpen = true;
+//     _lastPopupBookingDetailId = offer.bookingDetailId;
+
+//     try {
+//       await showDialog(
+//         context: context,
+//         barrierDismissible: false,
+//         barrierColor: Colors.black.withOpacity(0.55),
+//         builder: (ctx) {
+//           const int totalSeconds = 60;
+//           int secondsLeft = totalSeconds;
+//           Timer? t;
+//           bool closed = false;
+
+//           void closeDialog(PopupCloseReason reason) {
+//             if (closed) return;
+//             closed = true;
+
+//             t?.cancel();
+//             t = null;
+
+//             if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+//               Navigator.of(ctx, rootNavigator: true).pop();
+//             }
+//           }
+
+//           return StatefulBuilder(
+//             builder: (context, setState) {
+//               t ??= Timer.periodic(const Duration(seconds: 1), (_) {
+//                 if (closed) return;
+
+//                 if (secondsLeft <= 1) {
+//                   closeDialog(PopupCloseReason.autoTimeout);
+//                   return;
+//                 }
+//                 setState(() => secondsLeft--);
+//               });
+
+//               final progress =
+//                   (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+
+//               return WillPopScope(
+//                 onWillPop: () async => false,
+//                 child: Center(
+//                   child: Material(
+//                     color: Colors.transparent,
+//                     child: Container(
+//                       width: MediaQuery.of(ctx).size.width * 0.88,
+//                       padding: const EdgeInsets.all(16),
+//                       decoration: BoxDecoration(
+//                         color: Colors.white,
+//                         borderRadius: BorderRadius.circular(22),
+//                       ),
+//                       child: Column(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           const Text(
+//                             "New Booking Offer",
+//                             style: TextStyle(
+//                               fontFamily: 'Poppins',
+//                               fontWeight: FontWeight.w800,
+//                             ),
+//                           ),
+
+//                           const SizedBox(height: 12),
+
+//                           LinearProgressIndicator(
+//                             value: progress,
+//                           ),
+
+//                           const SizedBox(height: 16),
+
+//                           Text(offer.message),
+
+//                           const SizedBox(height: 20),
+
+//                           Row(
+//                             children: [
+//                               Expanded(
+//                                 child: OutlinedButton(
+//                                   onPressed: () =>
+//                                       closeDialog(PopupCloseReason.declined),
+//                                   child: const Text("Decline"),
+//                                 ),
+//                               ),
+//                               const SizedBox(width: 12),
+//                               Expanded(
+//                                 child: ElevatedButton(
+//                                   onPressed: () {
+//                                     context.read<UserBookingBloc>().add(
+//                                           AcceptBooking(
+//                                             userId: context
+//                                                 .read<AuthenticationBloc>()
+//                                                 .state
+//                                                 .userDetails!
+//                                                 .userId
+//                                                 .toString(),
+//                                             bookingDetailId:
+//                                                 offer.bookingDetailId,
+//                                           ),
+//                                         );
+//                                     closeDialog(PopupCloseReason.accepted);
+//                                   },
+//                                   child: const Text("Accept"),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               );
+//             },
+//           );
+//         },
+//       );
+//     } finally {
+//       // ✅ RESET GUARDS SO NEW OFFER CAN SHOW
+//       _dialogOpen = false;
+//       _lastPopupBookingDetailId = null;
+//     }
+//   });
+// }
 
 
 
