@@ -485,9 +485,21 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     bool started = false;
 
     void closeDialog() {
-      t?.cancel();
-      t = null;
-      if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+            context.read<UserBookingBloc>().add(
+                                    CancelBooking(
+                                      reason: " Not want this booking",
+                                      userId: context
+                                          .read<AuthenticationBloc>()
+                                          .state
+                                          .userDetails!
+                                          .userId
+                                          .toString(),
+                                      bookingDetailId: offer.bookingDetailId,
+                                    ),
+                                  );
+      // t?.cancel();
+      // t = null;
+      // if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
     }
 
     return StatefulBuilder(

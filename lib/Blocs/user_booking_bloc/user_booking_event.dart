@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-/// Base class for all user-booking related events
 abstract class UserBookingEvent extends Equatable {
   const UserBookingEvent();
 
@@ -132,4 +131,19 @@ class AcceptBooking extends UserBookingEvent {
 
   @override
   List<Object?> get props => [userId,bookingDetailId];
+}
+
+class CancelBooking extends UserBookingEvent {
+  final String userId;
+  final String bookingDetailId;
+  final String reason;
+
+  const CancelBooking({
+    required this.userId,
+    required this.bookingDetailId,
+    required this.reason
+  });
+
+  @override
+  List<Object?> get props => [userId,bookingDetailId,reason];
 }

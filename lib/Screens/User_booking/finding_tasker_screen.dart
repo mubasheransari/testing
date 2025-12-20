@@ -75,20 +75,9 @@ void initState() {
             return;
           }
 
-          // ✅ use stored value (not the old captured payload)
-          if (_lastRawNotification != null) {
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("DATA ${_lastRawNotification['type']}");
-            print("IMRAN KHAN PTI");
-            t.cancel(); // ✅ stop timer after condition true
+          if (_lastRawNotification != null && _lastRawNotification['type'] == "BookingAssigned") {
+      
+            t.cancel();
 
             Navigator.push(
               context,
@@ -98,8 +87,6 @@ void initState() {
         });
       },
     );
-
-    // ✅ MUST START HUB
     try {
       await _hub!.start();
       debugPrint("✅ HUB STARTED");

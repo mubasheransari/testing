@@ -38,7 +38,7 @@ class ApiConfig {
   static const String bookingEndpoint = '/api/booking/create';
   static const String bookingFindEndpoint = '/api/Tasker/Find';
   static const String bookingAcceptEndpoint = '/api/tasker/accept';
-  static const String bookingCancelEndpoint = '/api/Booking/cancel';
+  static const String bookingCancelEndpoint = '/api/tasker/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
   static const String updateLocationEndpoint = '/api/Address/update/location';
     static const String changeAvailabilityStatusEndpoint = '/api/user/available/status';

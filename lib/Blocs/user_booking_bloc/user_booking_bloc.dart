@@ -13,6 +13,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<FindingTaskerRequested>(findingTaskerRequested);
     on<ChangeAvailabilityStatus>(_changeAvailabilityStatus);
     on<AcceptBooking>(_acceptBooking);
+    on<CancelBooking>(_onCancelUserBookingRequested);
   }
 
   Future<void> findingTaskerRequested(
@@ -107,6 +108,45 @@ Future<void> _onCreateUserBookingRequested(
       createStatus: UserBookingCreateStatus.failure,
       createError: r.failure?.message ?? 'Failed to create booking',
       clearCreateResponse: true,
+    ));
+  }
+}
+
+
+Future<void> _onCancelUserBookingRequested(
+  CancelBooking e,
+  Emitter<UserBookingState> emit,
+) async {
+
+
+  emit(state.copyWith(
+    userBookingCancelStatus: UserBookingCancelStatus.submitting,
+    // clearCreateError: true,
+    // clearCreateResponse: true,
+  ));
+
+  final r = await repo.cancelBookingPut(
+    userId: e.userId,
+    bookingDetailId:e.bookingDetailId,
+    reason: e.reason
+  );
+
+  if (r.isSuccess) {
+    print('✅ [Bloc] createBooking SUCCESS');
+
+    // r.data is BookingCreateResponse?
+    final bookingResp = r.data; // BookingCreateResponse?
+
+    emit(state.copyWith(
+       userBookingCancelStatus: UserBookingCancelStatus.success,
+
+    ));
+  } else {
+
+    emit(state.copyWith(
+      userBookingCancelStatus: UserBookingCancelStatus.failure,
+      // createError: r.failure?.message ?? 'Failed to create booking',
+      // clearCreateResponse: true,
     ));
   }
 }
