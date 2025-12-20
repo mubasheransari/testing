@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/User_booking/payment_method.dart';
 
 class TaskerConfirmationScreen extends StatelessWidget {
-  const TaskerConfirmationScreen({super.key});
+  String name, distance,rating,cost;
+   TaskerConfirmationScreen({super.key,required this.name,required this.distance,required this.rating,required this.cost});
 
   static const Color kPurple = Color(0xFF5C2D91);
   static const Color kGreen = Color(0xFF2F7D32);
@@ -11,7 +12,7 @@ class TaskerConfirmationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-
+final int ratingValue = int.tryParse(rating) ?? 0;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3FB),
       body: SafeArea(
@@ -56,10 +57,10 @@ class TaskerConfirmationScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
+        const    Text(
               'Your tasker will arrive at your\nscheduled time',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style:  TextStyle(
                 fontFamily: kFont,
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
@@ -92,7 +93,7 @@ class TaskerConfirmationScreen extends StatelessWidget {
                       children: [
                         // name
                         Text(
-                          'Micheal Stance',
+                         name,
                           style: const TextStyle(
                             fontFamily: kFont,
                             fontSize: 20,
@@ -102,24 +103,63 @@ class TaskerConfirmationScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         _divider(),
-                        _rowLabelValue('Distance', '3.1 mi'),
+                        _rowLabelValue('Distance', "${distance} miles"),
                         _divider(),
                         _rowLabelValue('Role', 'Pro, cleaner'),
                         _divider(),
                         Row(
                           children: [
-                            ...List.generate(
-                              5,
-                              (i) => const Icon(
-                                Icons.star_rounded,
-                                color: Color(0xFFFFB800),
-                                size: 20,
-                              ),
-                            ),
+                            Row(
+  children: [
+    ...List.generate(5, (index) {
+      final isFilled = index < ratingValue;
+      return Icon(
+        isFilled ? Icons.star_rounded : Icons.star_border_rounded,
+        size: 18,
+        color: isFilled
+            ? const Color(0xFFFFB800)
+            : Colors.grey.shade400,
+      );
+    }),
+    const SizedBox(width: 6),
+    Text(
+      ratingValue == 0 ? 'No rating yet' : ratingValue.toString(),
+      style: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: ratingValue == 0
+            ? Colors.grey.shade500
+            : const Color(0xFF5C2D91),
+      ),
+    ),
+  ],
+),
+
+
+// Row(
+//   children: List.generate(5, (index) {
+//     final isFilled = index < ratingValue;
+
+//     return Icon(
+//       isFilled ? Icons.star_rounded : Icons.star_border_rounded,
+//       color: isFilled ? const Color(0xFFFFB800) : Colors.grey.shade400,
+//       size: 20,
+//     );
+//   }),
+// ),
+//                           //   ...List.generate(
+                          //  int.parse(rating),
+                          //     (i) => const Icon(
+                          //       Icons.star_rounded,
+                          //       color: Color(0xFFFFB800),
+                          //       size: 20,
+                          //     ),
+                          //   ),
                             const SizedBox(width: 6),
-                            const Text(
-                              '(5)',
-                              style: TextStyle(
+                             Text(
+                              rating.toString(),
+                              style: const TextStyle(
                                 fontFamily: kFont,
                                 fontSize: 13,
                                 color: kPurple,
@@ -139,9 +179,9 @@ class TaskerConfirmationScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'AUD 55.00',
-                          style: TextStyle(
+                         Text(
+                          'AUD $cost',
+                          style:const TextStyle(
                             fontFamily: kFont,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,

@@ -78,11 +78,28 @@ void initState() {
           if (_lastRawNotification != null && _lastRawNotification['type'] == "BookingAssigned") {
       
             t.cancel();
-
             Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => TaskerConfirmationScreen()),
-            );
+  context,
+  MaterialPageRoute(
+    builder: (_) => TaskerConfirmationScreen(
+      name: (_lastRawNotification?['data']?['taskerName'] ?? '').toString(),
+      cost: (_lastRawNotification?['data']?['cost'] ?? 0).toString(),
+      rating: (_lastRawNotification?['data']?['taskerRating'] ?? 0).toString(),
+      distance: (_lastRawNotification?['data']?['distanceInKM'] ?? 0).toString(),
+    ),
+  ),
+);
+
+
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(builder: (_) => TaskerConfirmationScreen(
+            //     name:_lastRawNotification['data']['taskerName'] ,
+            //       cost:_lastRawNotification['data']['cost'] ,
+            //         rating:_lastRawNotification['data']['taskerRating'] ,
+            //           distance:_lastRawNotification['data']['distanceInKM'] ,
+            //   )),
+            // );
           }
         });
       },
