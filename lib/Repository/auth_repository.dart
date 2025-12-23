@@ -920,8 +920,8 @@ Future<Result<BookingCreateResponse>> createBooking({
     'TaskerLevelId': taskerLevelId,
     'latitude': 67.00,
     'longitude': 70.00,
-      "recurrencePatternId": 0,
-  "customDays": ""
+    "recurrencePatternId": 0,
+    "customDays": ""
     // 'currency': currency,
     // 'paymentType': paymentType.toString(),
     // 'serviceType': serviceType.toString(),

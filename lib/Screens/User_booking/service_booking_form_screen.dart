@@ -8,6 +8,10 @@ import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+
+
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
   final ServiceOption? initialService;
@@ -33,14 +37,18 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
   static const Color kPage = Color(0xFFF5F6FA);
   static const Color kText = Color(0xFF111827); // near-black
   static const Color kMuted = Color(0xFF6B7280); // label/assistive
-  static const Color kFieldBg = Color(0xFFF9FAFB); // subtle bg
+
 
   // keep google places
   static const _kPlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
   late final gp.GooglePlace _googlePlace;
 
   ServiceOption? _selectedSubcategory;
-  String? _selectedTaskerLevel;
+
+  // ✅ store numeric id directly:
+  // 1 = Tasker, 2 = Pro Tasker
+  int? _selectedTaskerLevelId;
+
   DateTime? _selectedDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
@@ -83,7 +91,6 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
-        // force 12-hour picker UI
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
           child: child!,
@@ -101,7 +108,6 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
-        // force 12-hour picker UI
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
           child: child!,
@@ -124,12 +130,12 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
     final hour12 = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
     final minute = t.minute.toString().padLeft(2, '0');
 
-    return '$hour12:$minute'; // e.g. "8:00"
+    return '$hour12:$minute';
   }
 
   /// API: send "HH:mm:ss" like "20:00:00"
   String _fmtTimeForApi(TimeOfDay t) {
-    final h = t.hour.toString().padLeft(2, '0'); // 0–23
+    final h = t.hour.toString().padLeft(2, '0');
     final m = t.minute.toString().padLeft(2, '0');
     const s = '00';
     return '$h:$m:$s';
@@ -155,6 +161,14 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
     );
   }
 
+  void _pickTaskerLevel(int id) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedTaskerLevelId = id; // 1 or 2
+      if (_showErrors) _showErrors = false; // optional
+    });
+  }
+
   void _onSubmit() {
     setState(() => _showErrors = true);
 
@@ -164,21 +178,28 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
         _startTime != null &&
         _endTime != null &&
         _manualLocationCtrl.text.trim().isNotEmpty &&
-        _selectedTaskerLevel != null;
+        _selectedTaskerLevelId != null;
 
     if (!isValid) return;
 
     context.read<UserBookingBloc>().add(
-      CreateUserBookingRequested(
-        userId:context.read<AuthenticationBloc>().state.userDetails!.userId.toString(),
-        subCategoryId: int.parse(widget.subCategoryId),
-        bookingDate: _selectedDate!, // DateTime
-        startTime: _fmtTimeForApi(_startTime!), // "HH:mm:ss"
-        endTime: _fmtTimeForApi(_endTime!), // "HH:mm:ss"
-        address: _manualLocationCtrl.text.trim(),
-        taskerLevelId: 2,
-      ),
-    );
+          CreateUserBookingRequested(
+            userId: context
+                .read<AuthenticationBloc>()
+                .state
+                .userDetails!
+                .userId
+                .toString(),
+            subCategoryId: int.parse(widget.subCategoryId),
+            bookingDate: _selectedDate!,
+            startTime: _fmtTimeForApi(_startTime!),
+            endTime: _fmtTimeForApi(_endTime!),
+            address: _manualLocationCtrl.text.trim(),
+
+            // ✅ Tasker -> 1 , Pro Tasker -> 2
+            taskerLevelId: _selectedTaskerLevelId!,
+          ),
+        );
   }
 
   @override
@@ -214,7 +235,6 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
               _TopInfoCard(title: widget.group.name),
               const SizedBox(height: 16),
 
-              // main form card
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -312,9 +332,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                                   _fmtDate(_selectedDate),
                                   style: TextStyle(
                                     fontFamily: 'Poppins',
-                                    color: _selectedDate == null
-                                        ? kMuted
-                                        : kText,
+                                    color:
+                                        _selectedDate == null ? kMuted : kText,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -367,7 +386,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         Expanded(
                           child: _TimeBox(
                             label: 'Start time',
-                            value: _fmtTimeUi(_startTime), // UI string
+                            value: _fmtTimeUi(_startTime),
                             onTap: _pickStartTime,
                           ),
                         ),
@@ -375,7 +394,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         Expanded(
                           child: _TimeBox(
                             label: 'End time',
-                            value: _fmtTimeUi(_endTime), // UI string
+                            value: _fmtTimeUi(_endTime),
                             onTap: _pickEndTime,
                           ),
                         ),
@@ -401,7 +420,6 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // VISIBLE: manual field
                     _ModernFieldShell(
                       label: 'Location',
                       child: TextField(
@@ -445,11 +463,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                             onTap: _openPlacesSheet,
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.search_rounded,
-                                  size: 19,
-                                  color: kPurple,
-                                ),
+                                const Icon(Icons.search_rounded,
+                                    size: 19, color: kPurple),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: IgnorePointer(
@@ -472,10 +487,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                                     ),
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: kPurple,
-                                ),
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: kPurple),
                               ],
                             ),
                           ),
@@ -484,58 +497,43 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                     ),
 
                     const SizedBox(height: 18),
+
+                    // ✅ Tasker level option selector (instead of dropdown)
                     const _SectionTitle(
                       icon: Icons.workspace_premium_rounded,
                       label: 'Tasker level',
                     ),
                     const SizedBox(height: 10),
-                    _ModernFieldShell(
-                      label: 'Tasker level',
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: _selectedTaskerLevel,
-                          icon: const Icon(
-                            Icons.expand_more_rounded,
-                            color: kPurple,
-                          ),
-                          hint: const Text(
-                            'Tasker / Pro tasker',
-                            style: TextStyle(
-                              color: kMuted,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'tasker',
-                              child: Text(
-                                'Tasker',
-                                style: TextStyle(
-                                  color: kText,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: 'pro_tasker',
-                              child: Text(
-                                'Pro tasker',
-                                style: TextStyle(
-                                  color: kText,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => _selectedTaskerLevel = val),
-                        ),
-                      ),
-                    ),
-                    if (_showErrors && _selectedTaskerLevel == null)
+
+              _ModernFieldShell(
+  label: 'Select level',
+  child: Row(
+    children: [
+      Expanded(
+        child: _LevelCardNoIcon(
+          title: 'Tasker',
+          subtitle: 'Standard',
+          selected: _selectedTaskerLevelId == 1,
+          onTap: () => _pickTaskerLevel(1),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: _LevelCardNoIcon(
+          title: 'Pro tasker',
+          subtitle: 'Premium',
+          selected: _selectedTaskerLevelId == 2,
+          onTap: () => _pickTaskerLevel(2),
+        ),
+      ),
+    ],
+  ),
+),
+
+
+                    if (_showErrors && _selectedTaskerLevelId == null)
                       const Padding(
-                        padding: EdgeInsets.only(top: 4),
+                        padding: EdgeInsets.only(top: 6),
                         child: Text(
                           'Please select tasker level',
                           style: TextStyle(
@@ -561,15 +559,6 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                         .first
                         .bookingDetailId;
 
-                    // ScaffoldMessenger.of(context).showSnackBar(
-                    //   SnackBar(
-                    //     content: Text(
-                    //       'Booking created successfully'
-                    //       '${booking != null ? ' (ID: ${booking})' : ''}', //Testing@123
-                    //     ),
-                    //   ),
-                    // );
-
                     if (booking != null) {
                       Navigator.push(
                         context,
@@ -587,28 +576,13 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                           ),
                         ),
                       );
-
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     builder: (_) =>
-                      //         FindingTaskerScreen(bookingid: booking),
-                      //   ),
-                      // );
                     }
                   } else if (state.createStatus ==
                       UserBookingCreateStatus.failure) {
-                    print("ERROR PRINT ${state.createError}");
-                    print("ERROR PRINT ${state.createError}");
-                    print("ERROR PRINT ${state.createError}");
-                    print("ERROR PRINT ${state.createError}");
-                    print("ERROR PRINT ${state.createError}");
-
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          state.createError ?? 'Failed to create booking',
-                        ),
+                        content:
+                            Text(state.createError ?? 'Failed to create booking'),
                       ),
                     );
                   }
@@ -632,11 +606,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                                 ),
                               ),
                             )
-                          : const Icon(
-                              Icons.search_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            ),
+                          : const Icon(Icons.search_rounded,
+                              size: 20, color: Colors.white),
                       label: Text(
                         isSubmitting ? 'PROCESSING...' : 'FIND TASKER ',
                         style: const TextStyle(
@@ -764,7 +735,7 @@ class _ModernFieldShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final box = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: kFieldBg,
         border: Border.all(color: Colors.black.withOpacity(.08), width: 1),
@@ -849,6 +820,113 @@ class _TimeBox extends StatelessWidget {
   }
 }
 
+class _LevelCardNoIcon extends StatelessWidget {
+  const _LevelCardNoIcon({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const Color purple = Color(0xFF7841BA);
+  static const Color lilac = Color(0xFFF3ECFF);
+  static const Color border = Color(0xFFE3DAFF);
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected ? lilac : Colors.white;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$title option',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        splashColor: purple.withOpacity(.08),
+        highlightColor: Colors.transparent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              width: selected ? 2 : 1.5,
+              color: selected ? purple.withOpacity(.45) : border,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: purple.withOpacity(.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: purple,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        letterSpacing: .1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.black.withOpacity(.70),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutBack,
+                child: selected
+                    ? const Icon(
+                        CupertinoIcons.check_mark_circled_solid,
+                        key: ValueKey('check'),
+                        color: purple,
+                        size: 22,
+                      )
+                    : const SizedBox(
+                        key: ValueKey('empty'),
+                        width: 22,
+                        height: 22,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /* ---------------- Google Places bottom sheet ---------------- */
 
 class _PlacesSheet extends StatefulWidget {
@@ -856,7 +934,7 @@ class _PlacesSheet extends StatefulWidget {
 
   final gp.GooglePlace googlePlace;
   final void Function(gp.AutocompletePrediction, gp.DetailsResponse?)
-  onPlacePicked;
+      onPlacePicked;
 
   @override
   State<_PlacesSheet> createState() => _PlacesSheetState();
@@ -867,7 +945,6 @@ class _PlacesSheetState extends State<_PlacesSheet> {
   List<gp.AutocompletePrediction> _preds = [];
   bool _loading = false;
 
-  static const Color kPurple = Color(0xFF5C2E91);
   static const Color kText = Color(0xFF111827);
   static const Color kMuted = Color(0xFF6B7280);
 
@@ -886,9 +963,6 @@ class _PlacesSheetState extends State<_PlacesSheet> {
       _loading = false;
       _preds = res?.predictions ?? [];
     });
-    if (res?.status != null && res!.status != 'OK') {
-      debugPrint('Places error: ${res.status}');
-    }
   }
 
   Future<void> _pick(gp.AutocompletePrediction p) async {
@@ -978,4 +1052,3 @@ class _PlacesSheetState extends State<_PlacesSheet> {
     );
   }
 }
-

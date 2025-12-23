@@ -13,12 +13,7 @@ class RoleSelectScreen extends StatefulWidget {
 class _RoleSelectScreenState extends State<RoleSelectScreen> {
   // Brand palette
   static const Color purple = Color(0xFF7841BA);
-  static const Color purpleAlt = Color(0xFF8B59C6);
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color lilac = Color(0xFFF3ECFF);
-  static const Color border = Color(0xFFE3DAFF);
-
-  String? selected; // 'user' | 'tasker' | 'business'
+  String? selected; 
   bool triedContinue = false;
 
   void _pick(String value) {
