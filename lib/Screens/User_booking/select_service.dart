@@ -192,7 +192,7 @@ class _ServiceCertificatesGridScreenState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ServiceBookingFormScreen(group: g,subCategoryId: g.id.toString(),),
+                            builder: (_) => ServiceBookingFormScreen(group: g, serviceId: g.id),
                           ),
                         );
                       },

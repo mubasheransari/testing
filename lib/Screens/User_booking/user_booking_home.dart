@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Models/services_model.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:taskoon/Screens/User_booking/select_service.dart';
 import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
@@ -305,6 +306,8 @@ class DispatchHubService {
 /// ===============================================================
 /// ✅ USER HOME SCREEN (UI SAME, ONLY SIGNALR ADDED)
 /// ===============================================================
+///
+///
 class UserBookingHome extends StatefulWidget {
   const UserBookingHome({super.key});
 
@@ -315,6 +318,495 @@ class UserBookingHome extends StatefulWidget {
 class _UserBookingHomeState extends State<UserBookingHome> {
   String? _selectedChip;
   CertificationGroup? _selectedGroup;
+  ServiceDto? servicesdto;
+
+  DispatchHubService? _hub;
+  bool _hubStarted = false;
+
+  bool _dialogOpen = false;
+  String? _lastDialogKey;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final userDetails = context.read<AuthenticationBloc>().state.userDetails;
+      final userId = userDetails?.userId?.toString();
+
+      if (userId == null || userId.isEmpty) {
+        debugPrint("❌ UserBookingHome: userId missing (userDetails not loaded)");
+        return;
+      }
+
+      _hub = DispatchHubService(
+        baseUrl: "http://192.3.3.187:85",
+        userId: userId,
+        onLog: (m) => debugPrint("USER HUB: $m"),
+      );
+
+      await _startHubOnce();
+    });
+  }
+
+  Future<void> _startHubOnce() async {
+    if (_hubStarted) return;
+    _hubStarted = true;
+
+    try {
+      await _hub?.start();
+    } catch (e) {
+      debugPrint("🔥 UserBookingHome: hub start failed: $e");
+      _hubStarted = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _hub?.stop();
+    _hub?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearch(),
+              const SizedBox(height: 14),
+              _buildInfoCard(),
+              const SizedBox(height: 18),
+              const Text(
+                'What do you need today?',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  color: Color(0xFF3E1E69),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              BlocBuilder<AuthenticationBloc, AuthenticationState>(
+                buildWhen: (p, c) =>
+                    p.serviceGroups != c.serviceGroups ||
+                    p.servicesStatus != c.servicesStatus,
+                builder: (context, state) {
+                  final groups = state.serviceGroups;
+                  final List<String> chipLabels = groups.map((e) => e.name).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 34,
+                        child: (state.servicesStatus == ServicesStatus.loading &&
+                                groups.isEmpty)
+                            ? _buildLoadingChips()
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: chipLabels.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                itemBuilder: (_, i) {
+                                  final label = chipLabels[i];
+                                  final sel = label == (_selectedChip ?? '');
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedChip = label;
+                                        _selectedGroup = groups.firstWhere(
+                                          (g) => g.name == label,
+                                          orElse: () => groups.first,
+                                        );
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: sel ? const Color(0xFF5C2E91) : Colors.white,
+                                        borderRadius: BorderRadius.circular(999),
+                                        border: sel
+                                            ? null
+                                            : Border.all(
+                                                color: const Color(0xFF5C2E91).withOpacity(.3),
+                                              ),
+                                      ),
+                                      child: Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: sel ? Colors.white : const Color(0xFF5C2E91),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+
+                      if (_selectedGroup != null && _selectedGroup!.services.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Services in "${_selectedGroup!.name}"',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13,
+                            color: Color(0xFF75748A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _selectedGroup!.services.map((svc) {
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ServiceBookingFormScreen(
+                                      group: _selectedGroup!,
+                                      initialService: svc,
+
+                                      // ✅ svc.id is SERVICE ID (not certificate id)
+                                      serviceId: svc.id, 
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF5C2E91).withOpacity(.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF5C2E91).withOpacity(.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  svc.name,
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12,
+                                    color: Color(0xFF3E1E69),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+              _buildActionRow(context),
+              const SizedBox(height: 20),
+              _buildPopular(context),
+              const SizedBox(height: 20),
+              _buildRecent(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== UI HELPERS (UNCHANGED) ====================
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 16,
+      title: Padding(
+        padding: const EdgeInsets.all(16),
+        child: const GreetingWithLocation(),
+      ),
+      actions: [
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Color(0xFF5C2E91),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(right: 16),
+          child: CircleAvatar(
+            radius: 18,
+            backgroundImage: AssetImage('assets/avatar.png'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearch() {
+    return Material(
+      elevation: 0,
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: TextField(
+        style: const TextStyle(fontFamily: 'Poppins'),
+        decoration: InputDecoration(
+          hintText: 'Search for services...',
+          hintStyle: TextStyle(
+            fontFamily: 'Poppins',
+            color: Colors.grey.shade500,
+            fontSize: 13.5,
+          ),
+          border: InputBorder.none,
+          prefixIcon: const Icon(Icons.search_rounded),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF5C2E91).withOpacity(.07)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFF5C2E91).withOpacity(.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.flash_on_rounded, color: Color(0xFF5C2E91)),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              '1 active booking today. Tap to view or reschedule.',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12.5,
+                color: Color(0xFF5C2E91),
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Color(0xFF5C2E91)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingChips() {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemBuilder: (_, __) => Container(
+        width: 80,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemCount: 4,
+    );
+  }
+
+  Widget _buildActionRow(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionCard(
+            title: 'Book a service',
+            subtitle: 'Schedule instantly',
+            icon: Icons.event_available_rounded,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ServiceCertificatesGridScreen()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ActionCard(
+            title: 'Track booking',
+            subtitle: 'See status',
+            icon: Icons.schedule_rounded,
+            color: const Color(0xFF3DB38D),
+            onTap: () {},
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPopular(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Popular near you',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF3E1E69),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ServiceCertificatesGridScreen()),
+                );
+              },
+              child: const Text(
+                'View all',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  color: Color(0xFF5C2E91),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 150,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: const [
+              _ServiceHorizontalCard(
+                title: 'House cleaning',
+                price: 'From \$45',
+                icon: Icons.cleaning_services_rounded,
+              ),
+              _ServiceHorizontalCard(
+                title: 'AC repair',
+                price: 'From \$60',
+                icon: Icons.ac_unit_rounded,
+                color: Color(0xFF3DB38D),
+              ),
+              _ServiceHorizontalCard(
+                title: 'Furniture assemble',
+                price: 'From \$35',
+                icon: Icons.chair_alt_rounded,
+                color: Color(0xFFEE8A41),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent activity',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF3E1E69),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.02),
+                blurRadius: 18,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: const Column(
+            children: [
+              Icon(Icons.inbox_rounded, size: 40, color: Color(0xFF75748A)),
+              SizedBox(height: 8),
+              Text(
+                'No bookings yet',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Book a task to see it here.',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12.5,
+                  color: Color(0xFF75748A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+ 
+/*
+class UserBookingHome extends StatefulWidget {
+  const UserBookingHome({super.key});
+
+  @override
+  State<UserBookingHome> createState() => _UserBookingHomeState();
+}
+
+class _UserBookingHomeState extends State<UserBookingHome> {
+  String? _selectedChip;
+  CertificationGroup? _selectedGroup;
+  ServiceDto ? servicesdto;
 
   DispatchHubService? _hub;
   bool _hubStarted = false;
@@ -866,7 +1358,7 @@ class _UserBookingHomeState extends State<UserBookingHome> {
       ],
     );
   }
-}
+}*/
 
 /// ==================== SMALL UI WIDGETS (UNCHANGED) ====================
 

@@ -7,7 +7,7 @@ import 'package:taskoon/Repository/auth_repository.dart';
 class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
 
-  UserBookingBloc(this.repo) : super( UserBookingState()) {
+  UserBookingBloc(this.repo) : super(UserBookingState()) {
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
     on<FindingTaskerRequested>(findingTaskerRequested);
@@ -79,7 +79,7 @@ Future<void> _onCreateUserBookingRequested(
   // ⬇️ Now returns Result<BookingCreateResponse>
   final r = await repo.createBooking(
     userId: e.userId,
-    subCategoryId:1032, //e.subCategoryId, 123
+    subCategoryId:e.subCategoryId, 
     bookingDate: e.bookingDate,
     startTime: e.startTime,
     endTime: e.endTime,

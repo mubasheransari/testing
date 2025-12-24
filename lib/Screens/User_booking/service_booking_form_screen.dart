@@ -7,11 +7,1031 @@ import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:google_place/google_place.dart' as gp;
 import 'package:taskoon/Screens/User_booking/finding_tasker_screen.dart';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 
+class ServiceBookingFormScreen extends StatefulWidget {
+  final CertificationGroup group;
+  final ServiceOption? initialService;
+
+  // ✅ This is SERVICE ID (not certificate id)
+  final int serviceId;
+
+  const ServiceBookingFormScreen({
+    super.key,
+    required this.group,
+    this.initialService,
+    required this.serviceId,
+  });
+
+  @override
+  State<ServiceBookingFormScreen> createState() => _ServiceBookingFormScreenState();
+}
+
+class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
+  static const Color kPurple = Color(0xFF5C2E91);
+  static const Color kPage = Color(0xFFF5F6FA);
+  static const Color kText = Color(0xFF111827);
+  static const Color kMuted = Color(0xFF6B7280);
+
+  static const _kPlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+  late final gp.GooglePlace _googlePlace;
+
+  ServiceOption? _selectedSubcategory;
+
+  int? _selectedTaskerLevelId;
+
+  DateTime? _selectedDate;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
+
+  final _manualLocationCtrl = TextEditingController();
+  final _placesLocationCtrl = TextEditingController();
+  gp.DetailsResponse? _pickedPlaceDetails;
+
+  bool _showErrors = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+
+    // ✅ preselect passed service
+    _selectedSubcategory = widget.initialService;
+
+    // ✅ if initialService is null, find by widget.serviceId
+    _selectedSubcategory ??= widget.group.services.firstWhere(
+      (s) => s.id == widget.serviceId,
+      orElse: () => widget.group.services.isNotEmpty ? widget.group.services.first : ServiceOption(id: widget.serviceId, name: ''),
+    );
+
+    _googlePlace = gp.GooglePlace(_kPlacesApiKey);
+  }
+
+  @override
+  void dispose() {
+    _manualLocationCtrl.dispose();
+    _placesLocationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: now,
+      lastDate: DateTime(now.year + 1),
+      initialDate: now,
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickStartTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => _startTime = picked);
+    }
+  }
+
+  Future<void> _pickEndTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => _endTime = picked);
+    }
+  }
+
+  String _fmtDate(DateTime? d) =>
+      d == null ? 'Select date' : '${d.day}/${d.month}/${d.year}';
+
+  String _fmtTimeUi(TimeOfDay? t) {
+    if (t == null) return 'Pick time';
+    final hour12 = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final minute = t.minute.toString().padLeft(2, '0');
+    return '$hour12:$minute';
+  }
+
+  String _fmtTimeForApi(TimeOfDay t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    const s = '00';
+    return '$h:$m:$s';
+  }
+
+  Future<void> _openPlacesSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return _PlacesSheet(
+          googlePlace: _googlePlace,
+          onPlacePicked: (prediction, details) {
+            Navigator.pop(ctx);
+            setState(() {
+              _placesLocationCtrl.text = prediction.description ?? '';
+              _pickedPlaceDetails = details;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  void _pickTaskerLevel(int id) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedTaskerLevelId = id;
+      if (_showErrors) _showErrors = false;
+    });
+  }
+
+  // ✅ THIS resolves the SERVICE ID to send
+  int _resolveServiceIdForApi() {
+    // ✅ always prefer current dropdown selection
+    final selected = _selectedSubcategory?.id;
+    if (selected != null) return selected;
+
+    // fallback: passed from home
+    return widget.serviceId;
+  }
+
+  void _onSubmit() {
+    setState(() => _showErrors = true);
+
+    final isValid =
+        _selectedSubcategory != null &&
+        _selectedDate != null &&
+        _startTime != null &&
+        _endTime != null &&
+        _manualLocationCtrl.text.trim().isNotEmpty &&
+        _selectedTaskerLevelId != null;
+
+    if (!isValid) return;
+
+    final userId = context.read<AuthenticationBloc>().state.userDetails?.userId?.toString();
+    if (userId == null || userId.isEmpty) return;
+
+    final serviceIdForApi = _resolveServiceIdForApi();
+
+    context.read<UserBookingBloc>().add(
+          CreateUserBookingRequested(
+            userId: userId,
+            subCategoryId:widget.serviceId,// serviceIdForApi, // ✅ serviceId
+            bookingDate: _selectedDate!,
+            startTime: _fmtTimeForApi(_startTime!),
+            endTime: _fmtTimeForApi(_endTime!),
+            address: _manualLocationCtrl.text.trim(),
+            taskerLevelId: _selectedTaskerLevelId!,
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+
+print("SERVICES ID ${widget.serviceId}");
+    final subs = widget.group.services;
+
+    return Scaffold(
+      backgroundColor: kPage,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left_rounded, color: kPurple),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Service booking',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 17,
+            color: kText,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TopInfoCard(title: widget.group.name),
+              const SizedBox(height: 16),
+
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.black.withOpacity(.03)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(.03),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionTitle(
+                      icon: Icons.list_alt_rounded,
+                      label: 'Service details',
+                    ),
+                    const SizedBox(height: 10),
+
+                    _ModernFieldShell(
+                      label: 'Subcategory',
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<ServiceOption>(
+                          isExpanded: true,
+                          value: _selectedSubcategory,
+                          icon: const Icon(Icons.expand_more_rounded, color: kPurple),
+                          hint: const Text(
+                            'Select subcategory',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              color: kMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          items: subs.map((s) {
+                            return DropdownMenuItem<ServiceOption>(
+                              value: s,
+                              child: Text(
+                                s.name,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: kText,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) => setState(() => _selectedSubcategory = val),
+                        ),
+                      ),
+                    ),
+                    if (_showErrors && _selectedSubcategory == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select a subcategory',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      icon: Icons.calendar_month_rounded,
+                      label: 'Schedule',
+                    ),
+                    const SizedBox(height: 10),
+
+                    _ModernFieldShell(
+                      label: 'Booking date(s)',
+                      onTap: _pickDate,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.event_rounded, color: kPurple),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 43,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _fmtDate(_selectedDate),
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: _selectedDate == null ? kMuted : kText,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: kPurple),
+                        ],
+                      ),
+                    ),
+                    if (_showErrors && _selectedDate == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select a booking date',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 10),
+                    const Text(
+                      'One booking fee',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: kMuted,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'Duration',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: kText,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TimeBox(
+                            label: 'Start time',
+                            value: _fmtTimeUi(_startTime),
+                            onTap: _pickStartTime,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _TimeBox(
+                            label: 'End time',
+                            value: _fmtTimeUi(_endTime),
+                            onTap: _pickEndTime,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_showErrors && (_startTime == null || _endTime == null))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please select both start & end time',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 14),
+                    const _SectionTitle(icon: Icons.place_rounded, label: 'Location'),
+                    const SizedBox(height: 10),
+
+                    _ModernFieldShell(
+                      label: 'Location',
+                      child: TextField(
+                        controller: _manualLocationCtrl,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: 'Enter your address / house / suburb',
+                          hintStyle: TextStyle(color: kMuted, fontFamily: 'Poppins'),
+                        ),
+                        style: const TextStyle(color: kText, fontFamily: 'Poppins'),
+                      ),
+                    ),
+                    if (_showErrors && _manualLocationCtrl.text.trim().isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please enter location',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ),
+
+                    Offstage(
+                      offstage: true,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          _ModernFieldShell(
+                            label: 'Location (Google Places)',
+                            onTap: _openPlacesSheet,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.search_rounded, size: 19, color: kPurple),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: IgnorePointer(
+                                    child: TextField(
+                                      controller: _placesLocationCtrl,
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        border: InputBorder.none,
+                                        hintText: 'Search street, city, state (AU)',
+                                        hintStyle: TextStyle(color: kMuted, fontFamily: 'Poppins'),
+                                      ),
+                                      style: const TextStyle(color: kText, fontFamily: 'Poppins'),
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded, color: kPurple),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      icon: Icons.workspace_premium_rounded,
+                      label: 'Tasker level',
+                    ),
+                    const SizedBox(height: 10),
+
+                    _ModernFieldShell(
+                      label: 'Select level',
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _LevelCardNoIcon(
+                              title: 'Tasker',
+                              subtitle: 'Standard',
+                              selected: _selectedTaskerLevelId == 1,
+                              onTap: () => _pickTaskerLevel(1),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _LevelCardNoIcon(
+                              title: 'Pro tasker',
+                              subtitle: 'Premium',
+                              selected: _selectedTaskerLevelId == 2,
+                              onTap: () => _pickTaskerLevel(2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (_showErrors && _selectedTaskerLevelId == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Please select tasker level',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              BlocConsumer<UserBookingBloc, UserBookingState>(
+                listenWhen: (previous, current) =>
+                    previous.createStatus != current.createStatus,
+                listener: (context, state) {
+                  if (state.createStatus == UserBookingCreateStatus.success) {
+                    final booking = state.bookingCreateResponse!.result!.first.bookingDetailId;
+
+                    if (booking != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MultiBlocProvider(
+                            providers: [
+                              BlocProvider.value(value: context.read<UserBookingBloc>()),
+                              BlocProvider.value(value: context.read<AuthenticationBloc>()),
+                            ],
+                            child: FindingYourTaskerScreen(bookingid: booking),
+                          ),
+                        ),
+                      );
+                    }
+                  } else if (state.createStatus == UserBookingCreateStatus.failure) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.createError ?? 'Failed to create booking'),
+                      ),
+                    );
+                  }
+                },
+                builder: (context, state) {
+                  final isSubmitting =
+                      state.createStatus == UserBookingCreateStatus.submitting;
+
+                  return SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      icon: isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.search_rounded, size: 20, color: Colors.white),
+                      label: Text(
+                        isSubmitting ? 'PROCESSING...' : 'FIND TASKER ',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          letterSpacing: .3,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPurple,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      onPressed: isSubmitting ? null : _onSubmit,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class _TopInfoCard extends StatelessWidget {
+  const _TopInfoCard({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    const kPurple = Color(0xFF5C2E91);
+    const kText = Color(0xFF111827);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.black.withOpacity(.03)),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(
+              color: kPurple.withOpacity(.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.task_alt_rounded, color: kPurple),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Book: $title',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                color: kText,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    const kText = Color(0xFF111827);
+    const kMuted = Color(0xFF6B7280);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: kMuted),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            color: kText,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ModernFieldShell extends StatelessWidget {
+  const _ModernFieldShell({
+    required this.label,
+    required this.child,
+    this.onTap,
+  });
+
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  static const kMuted = Color(0xFF6B7280);
+  static const kFieldBg = Color(0xFFF9FAFB);
+
+  @override
+  Widget build(BuildContext context) {
+    final box = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: kFieldBg,
+        border: Border.all(color: Colors.black.withOpacity(.08), width: 1),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: child,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            color: kMuted,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        onTap != null
+            ? InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: onTap,
+                child: box,
+              )
+            : box,
+      ],
+    );
+  }
+}
+
+class _TimeBox extends StatelessWidget {
+  const _TimeBox({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  static const kPurple = Color(0xFF5C2E91);
+  static const kText = Color(0xFF111827);
+  static const kFieldBg = Color(0xFFF9FAFB);
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmpty = value.isEmpty || value == 'Pick time';
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: kFieldBg,
+          border: Border.all(color: Colors.black.withOpacity(.08), width: 1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.access_time_rounded, size: 18, color: kPurple),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isEmpty ? label : value,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  color: isEmpty ? Colors.grey[500] : kText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: kPurple),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LevelCardNoIcon extends StatelessWidget {
+  const _LevelCardNoIcon({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const Color purple = Color(0xFF7841BA);
+  static const Color lilac = Color(0xFFF3ECFF);
+  static const Color border = Color(0xFFE3DAFF);
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected ? lilac : Colors.white;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$title option',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        splashColor: purple.withOpacity(.08),
+        highlightColor: Colors.transparent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              width: selected ? 2 : 1.5,
+              color: selected ? purple.withOpacity(.45) : border,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: purple.withOpacity(.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: purple,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        letterSpacing: .1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.black.withOpacity(.70),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutBack,
+                child: selected
+                    ? const Icon(
+                        CupertinoIcons.check_mark_circled_solid,
+                        key: ValueKey('check'),
+                        color: purple,
+                        size: 22,
+                      )
+                    : const SizedBox(
+                        key: ValueKey('empty'),
+                        width: 22,
+                        height: 22,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/* ---------------- Google Places bottom sheet ---------------- */
+
+class _PlacesSheet extends StatefulWidget {
+  const _PlacesSheet({required this.googlePlace, required this.onPlacePicked});
+
+  final gp.GooglePlace googlePlace;
+  final void Function(gp.AutocompletePrediction, gp.DetailsResponse?)
+      onPlacePicked;
+
+  @override
+  State<_PlacesSheet> createState() => _PlacesSheetState();
+}
+
+class _PlacesSheetState extends State<_PlacesSheet> {
+  final _searchCtrl = TextEditingController();
+  List<gp.AutocompletePrediction> _preds = [];
+  bool _loading = false;
+
+  static const Color kText = Color(0xFF111827);
+  static const Color kMuted = Color(0xFF6B7280);
+
+  Future<void> _search(String q) async {
+    if (q.trim().isEmpty) {
+      setState(() => _preds = []);
+      return;
+    }
+    setState(() => _loading = true);
+    final res = await widget.googlePlace.autocomplete.get(
+      q,
+      components: [gp.Component('country', 'au')],
+      language: 'en',
+    );
+    setState(() {
+      _loading = false;
+      _preds = res?.predictions ?? [];
+    });
+  }
+
+  Future<void> _pick(gp.AutocompletePrediction p) async {
+    gp.DetailsResponse? d;
+    if (p.placeId != null) {
+      d = await widget.googlePlace.details.get(p.placeId!);
+    }
+    widget.onPlacePicked(p, d);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = MediaQuery.of(context).viewInsets.bottom;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      padding: EdgeInsets.only(bottom: inset),
+      child: Container(
+        height: 420,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Search address',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                fontFamily: 'Poppins',
+                color: kText,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: _search,
+                decoration: InputDecoration(
+                  hintText: 'Street, city, state, house no…',
+                  hintStyle: const TextStyle(fontFamily: 'Poppins'),
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: const TextStyle(fontFamily: 'Poppins', color: kText),
+              ),
+            ),
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _preds.length,
+                itemBuilder: (ctx, i) {
+                  final p = _preds[i];
+                  return ListTile(
+                    leading: const Icon(Icons.place_outlined, color: kMuted),
+                    title: Text(
+                      p.description ?? '',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: kText,
+                      ),
+                    ),
+                    onTap: () => _pick(p),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/*
 class ServiceBookingFormScreen extends StatefulWidget {
   final CertificationGroup group;
   final ServiceOption? initialService;
@@ -1052,3 +2072,4 @@ class _PlacesSheetState extends State<_PlacesSheet> {
     );
   }
 }
+*/
