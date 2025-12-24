@@ -558,7 +558,7 @@ print("SERVICES ID ${widget.serviceId}");
                               BlocProvider.value(value: context.read<UserBookingBloc>()),
                               BlocProvider.value(value: context.read<AuthenticationBloc>()),
                             ],
-                            child: FindingYourTaskerScreen(bookingid: booking),
+                            child: FindingYourTaskerScreen(bookingid: booking,id:  state.bookingCreateResponse!.result!.first.bookingId),
                           ),
                         ),
                       );

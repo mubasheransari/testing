@@ -38,7 +38,7 @@ class ApiConfig {
   static const String bookingEndpoint = '/api/booking/create';
   static const String bookingFindEndpoint = '/api/Tasker/Find';
   static const String bookingAcceptEndpoint = '/api/tasker/accept';
-  static const String bookingCancelEndpoint = '/api/tasker/cancel';
+  static const String bookingCancelEndpoint = '/api/booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
   static const String updateLocationEndpoint = '/api/Address/update/location';
     static const String changeAvailabilityStatusEndpoint = '/api/user/available/status';
@@ -73,11 +73,7 @@ abstract class AuthRepository {
     required String userId
   });
 
-  // Future<Result<RegistrationResponse>> cancelBooking({
-  //   required String bookingId,
-  //   required String userId,
-  //   required String reason,
-  // });
+
   Future<Result<RegistrationResponse>> acceptBooking({
     required String userId,
     required String bookingId,
@@ -260,23 +256,22 @@ Future<Result<RegistrationResponse>> cancelBookingPut({
   required String userId,
   required String reason,
 }) async {
-  // ✅ endpoint example: /api/Booking/cancel  (use your real endpoint constant)
   final uri = Uri.parse(
     '${ApiConfig.baseUrlLocation}${ApiConfig.bookingCancelEndpoint}',
   );
 
   final body = <String, dynamic>{
-    "bookingDetailId": bookingDetailId,
+    "bookingId": bookingDetailId,
     "userId": userId,
     "reason": reason,
   };
 
   try {
-    print('>>> CANCEL BOOKING PUT $uri');
+    print('>>> CANCEL BOOKING POST $uri');
     print('>>> REQUEST: ${jsonEncode(body)}');
 
     final res = await http
-        .put(uri, headers: _headers(), body: jsonEncode(body))
+        .post(uri, headers: _headers(), body: jsonEncode(body))
         .timeout(timeout);
 
     print('<<< CANCEL BOOKING STATUS: ${res.statusCode}');

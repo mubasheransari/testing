@@ -11,7 +11,8 @@ import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 
 class FindingYourTaskerScreen extends StatefulWidget {
   final String bookingid;
-  FindingYourTaskerScreen({super.key, required this.bookingid});
+  final String id;
+  FindingYourTaskerScreen({super.key, required this.bookingid,required this.id});
 
   static const Color bgPurple = Color(0xFF43106F);
 
@@ -211,6 +212,8 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
         }
 
         void closeDialog() {
+              var userId = context.read<AuthenticationBloc>().state.userDetails?.userId.toString();
+          context.read<UserBookingBloc>().add(CancelBooking(userId: userId.toString(), bookingDetailId: widget.id, reason: 'not want right now'));
           if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
         }
 
