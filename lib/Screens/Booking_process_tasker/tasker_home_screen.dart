@@ -5,10 +5,12 @@ import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
-import 'package:signalr_netcore/signalr_client.dart';
 import 'dart:convert';
-enum PopupCloseReason { autoTimeout, declined, accepted }
+import 'package:taskoon/Realtime/dispatch_hub_service.dart';
 
+
+
+enum PopupCloseReason { autoTimeout, declined, accepted }
 
 class TaskerBookingOffer {
   final String bookingDetailId;
@@ -33,56 +35,64 @@ class TaskerBookingOffer {
     try {
       dynamic obj = payload;
 
-      // If server sends JSON string
-      if (obj is String) {
-        obj = jsonDecode(obj);
+      // SignalR sometimes sends [ {..} ] wrapper
+      if (obj is List && obj.isNotEmpty) obj = obj.first;
+
+      // Server might send JSON string
+      if (obj is String) obj = jsonDecode(obj);
+
+      if (obj is! Map) {
+        debugPrint("❌ tryParse: payload is not Map => ${obj.runtimeType}");
+        return null;
       }
 
-      // Sometimes signalR gives list wrapper
-      if (obj is List && obj.isNotEmpty) {
-        obj = obj[0];
-      }
-
-      if (obj is! Map) return null;
       final map = Map<String, dynamic>.from(obj);
 
-      // common: { type, message, date, data: {...} }
-      final dataAny = map['data'];
-      if (dataAny is Map) {
-        final data = Map<String, dynamic>.from(dataAny);
-
-        final bookingDetailId =
-            (data['bookingDetailId'] ?? data['BookingDetailId'])?.toString();
-        if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
-
-        return TaskerBookingOffer(
-          bookingDetailId: bookingDetailId,
-          lat: _toDouble(data['lat'] ?? data['Lat']),
-          lng: _toDouble(data['lng'] ?? data['Lng']),
-          estimatedCost:
-              _toDouble(data['estimatedCost'] ?? data['EstimatedCost'] ?? 0),
-          message: (map['message'] ?? '').toString(),
-          type: map['type']?.toString(),
-          date: map['date']?.toString(),
-        );
+      // data can be Map or JSON string
+      dynamic dataAny = map['data'];
+      if (dataAny is String) {
+        try {
+          dataAny = jsonDecode(dataAny);
+        } catch (_) {}
       }
 
-      // fallback: payload itself contains fields
-      final bookingDetailId =
-          (map['bookingDetailId'] ?? map['BookingDetailId'])?.toString();
-      if (bookingDetailId == null || bookingDetailId.isEmpty) return null;
+      Map<String, dynamic>? data;
+      if (dataAny is Map) data = Map<String, dynamic>.from(dataAny);
+
+      // bookingDetailId can live in data or root
+      final bookingDetailId = (data?['bookingDetailId'] ??
+              data?['BookingDetailId'] ??
+              map['bookingDetailId'] ??
+              map['BookingDetailId'])
+          ?.toString();
+
+      if (bookingDetailId == null || bookingDetailId.isEmpty) {
+        debugPrint("❌ tryParse: bookingDetailId missing. keys=${map.keys}");
+        return null;
+      }
+
+      final lat = _toDouble(
+          data?['lat'] ?? data?['Lat'] ?? map['lat'] ?? map['Lat'] ?? 0);
+      final lng = _toDouble(
+          data?['lng'] ?? data?['Lng'] ?? map['lng'] ?? map['Lng'] ?? 0);
+
+      final estimatedCost = _toDouble(data?['estimatedCost'] ??
+          data?['EstimatedCost'] ??
+          map['estimatedCost'] ??
+          map['EstimatedCost'] ??
+          0);
 
       return TaskerBookingOffer(
         bookingDetailId: bookingDetailId,
-        lat: _toDouble(map['lat'] ?? map['Lat']),
-        lng: _toDouble(map['lng'] ?? map['Lng']),
-        estimatedCost:
-            _toDouble(map['estimatedCost'] ?? map['EstimatedCost'] ?? 0),
+        lat: lat,
+        lng: lng,
+        estimatedCost: estimatedCost,
         message: (map['message'] ?? '').toString(),
         type: map['type']?.toString(),
         date: map['date']?.toString(),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint("❌ tryParse exception => $e");
       return null;
     }
   }
@@ -94,207 +104,6 @@ class TaskerBookingOffer {
   }
 }
 
-/// ===============================================================
-/// ✅ SIGNALR SERVICE (LongPolling + reconnect) - your style
-/// ===============================================================
-class DispatchHubService {
-  DispatchHubService({
-    required this.baseUrl,
-    required this.userId,
-    this.onNotification,
-    this.onBookingOffer,
-    this.onLog,
-  });
-
-  final String baseUrl; // e.g. http://192.3.3.187:85
-  final String userId;
-
-  final void Function(dynamic payload)? onNotification;
-  final void Function(TaskerBookingOffer offer)? onBookingOffer;
-  final void Function(String msg)? onLog;
-
-  HubConnection? _conn;
-
-  bool _isStarting = false;
-  bool _isStopping = false;
-  bool _isReconnecting = false;
-  Timer? _reconnectTimer;
-
-  String get hubUrl {
-    final clean = baseUrl.endsWith("/")
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    return "$clean/hubs/dispatch?userId=$userId";
-  }
-
-  HubConnectionState get state =>
-      _conn?.state ?? HubConnectionState.Disconnected;
-
-  bool get isConnected => state == HubConnectionState.Connected;
-
-  void _log(String s) {
-    onLog?.call(s);
-    // ignore: avoid_print
-    print(s);
-  }
-
-  HubConnection _buildConnection() {
-    return HubConnectionBuilder()
-        .withUrl(
-          hubUrl,
-          options: HttpConnectionOptions(
-            skipNegotiation: false,
-            transport: HttpTransportType.LongPolling, // ✅ stable
-          ),
-        )
-        .build();
-  }
-
-  void _wireHandlers(HubConnection c) {
-    void handle(dynamic payload, String tag) {
-      _log("📩 $tag RAW → ${_pretty(payload)}");
-      onNotification?.call(payload);
-
-      final offer = TaskerBookingOffer.tryParse(payload);
-      if (offer != null) {
-        _log("✅ BookingOffer parsed → bookingDetailId=${offer.bookingDetailId}");
-        onBookingOffer?.call(offer);
-      }
-    }
-
-    c.on("receivenotification", (args) {
-      final payload = (args != null && args.isNotEmpty) ? args[0] : args;
-      handle(payload, "receivenotification");
-    });
-
-    c.on("ReceiveNotification", (args) {
-      final payload = (args != null && args.isNotEmpty) ? args[0] : args;
-      handle(payload, "ReceiveNotification");
-    });
-
-    c.onclose(({Exception? error}) {
-      _log("🔌 onclose: ${error?.toString() ?? 'none'}");
-      if (!_isStarting && !_isStopping) _startReconnect();
-    });
-  }
-
-  String _pretty(dynamic v) {
-    try {
-      if (v is String) {
-        try {
-          final decoded = jsonDecode(v);
-          return const JsonEncoder.withIndent("  ").convert(decoded);
-        } catch (_) {
-          return v;
-        }
-      }
-      return const JsonEncoder.withIndent("  ").convert(v);
-    } catch (_) {
-      return v?.toString() ?? 'null';
-    }
-  }
-
-  Future<void> _safeStop() async {
-    if (_isStopping) return;
-    _isStopping = true;
-
-    final old = _conn;
-    _conn = null;
-
-    try {
-      if (old != null && old.state != HubConnectionState.Disconnected) {
-        await old.stop();
-      }
-    } catch (e) {
-      _log("⚠️ stop() ignored: $e");
-    } finally {
-      _isStopping = false;
-    }
-  }
-
-  Future<void> start() async {
-    if (_isStarting || _isReconnecting) {
-      _log("⏳ Already starting/reconnecting, skip start()");
-      return;
-    }
-
-    if (_conn != null && _conn!.state != HubConnectionState.Disconnected) {
-      _log("⚠️ Cannot start because state is: ${_conn!.state}");
-      return;
-    }
-
-    _isStarting = true;
-    _reconnectTimer?.cancel();
-    _isReconnecting = false;
-
-    _log("🔌 Starting hub: $hubUrl");
-
-    try {
-      await _safeStop();
-
-      final c = _buildConnection();
-      _wireHandlers(c);
-      _conn = c;
-
-      try {
-        await c.start();
-      } catch (e) {
-        try {
-          await c.stop();
-        } catch (_) {}
-        rethrow;
-      }
-
-      _log("✅ Hub connected (LongPolling)");
-    } catch (e) {
-      _log("❌ start() failed: $e");
-      _startReconnect();
-    } finally {
-      _isStarting = false;
-    }
-  }
-
-  Future<void> stop() async {
-    _reconnectTimer?.cancel();
-    _isReconnecting = false;
-    await _safeStop();
-    _log("🛑 Disconnected");
-  }
-
-  void _startReconnect() {
-    if (_isReconnecting) return;
-    _isReconnecting = true;
-
-    _reconnectTimer?.cancel();
-    _reconnectTimer = Timer.periodic(const Duration(seconds: 5), (t) async {
-      if (_isStarting || _isStopping) return;
-
-      _log("🔁 Reconnecting...");
-
-      try {
-        await _safeStop();
-
-        final c = _buildConnection();
-        _wireHandlers(c);
-        _conn = c;
-
-        await c.start();
-
-        _log("✅ Reconnected (LongPolling)");
-        _isReconnecting = false;
-        t.cancel();
-      } catch (e) {
-        _log("⏳ Reconnect failed: $e");
-      }
-    });
-  }
-
-  void dispose() {
-    _reconnectTimer?.cancel();
-  }
-}
-
-
 class TaskerHomeRedesign extends StatefulWidget {
   const TaskerHomeRedesign({super.key});
 
@@ -303,11 +112,14 @@ class TaskerHomeRedesign extends StatefulWidget {
 }
 
 class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
-  // theme tokens (same feel as UserBookingHome)
+  // theme tokens
   static const Color kPrimary = Color(0xFF5C2E91);
   static const Color kTextDark = Color(0xFF3E1E69);
   static const Color kMuted = Color(0xFF75748A);
   static const Color kBg = Color(0xFFF8F7FB);
+
+  // ✅ IMPORTANT: use same baseUrl you use everywhere
+  static const String _baseUrl = "http://192.3.3.187:85";
 
   bool available = false;
   String period = 'Week';
@@ -315,8 +127,11 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   static const String _kAvailabilityKey = 'tasker_available';
   bool _restored = false;
 
-  late final DispatchHubService _hubService;
+  // ✅ hub subscription
+  StreamSubscription? _hubSub;
+  bool _hubConfigured = false;
 
+  // ✅ periodic location updates
   Timer? _locationTimer;
   static const Duration _locationInterval = Duration(seconds: 5);
 
@@ -324,7 +139,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   bool _dialogOpen = false;
   String? _lastPopupBookingDetailId;
 
-  // SAME CONTENT (your mock data)
+  // mock data
   final _avatarUrl =
       'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop';
   final _title = 'Handyman, Pro';
@@ -352,35 +167,29 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   int monthlyEarning = 3280;
 
   final List<_Task> upcoming = const [
-    _Task(title: 'Furniture assembly', date: 'Apr 24', time: '10:30', location: 'East Perth'),
+    _Task(
+      title: 'Furniture assembly',
+      date: 'Apr 24',
+      time: '10:30',
+      location: 'East Perth',
+    ),
   ];
 
   final List<_Task> current = const [
-    _Task(title: 'TV wall mount', date: 'Apr 24', time: '09:00', location: 'Perth CBD'),
+    _Task(
+      title: 'TV wall mount',
+      date: 'Apr 24',
+      time: '09:00',
+      location: 'Perth CBD',
+    ),
   ];
 
-  // UI chip filter (UserBookingHome style)
   String _selectedChip = 'All';
   final List<String> _chipLabels = const ['All', 'Upcoming', 'Current'];
 
   @override
   void initState() {
     super.initState();
-
-    final userId = context
-        .read<AuthenticationBloc>()
-        .state
-        .userDetails!
-        .userId
-        .toString();
-
-    _hubService = DispatchHubService(
-      baseUrl: "http://192.3.3.187:85",
-      userId: userId,
-      onLog: (m) => debugPrint("TASKER HUB: $m"),
-      onNotification: (payload) => debugPrint("📩 TASKER HUB payload: $payload"),
-      onBookingOffer: (offer) => _showBookingPopup(offer),
-    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -391,513 +200,133 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
         _restored = true;
       });
 
-      if (saved) await _startLocationUpdates();
+      debugPrint("🟣 TaskerHome init: restored available=$saved");
+
+      // ✅ configure + connect hub (always), then attach listener
+      await _setupSignalR();
+
+      // ✅ if tasker restored as online -> start timer too
+      if (saved) {
+        _startLocationUpdates();
+      }
     });
   }
 
-  void _showBookingPopup(TaskerBookingOffer offer) {
-  if (!mounted) return;
-  if (_dialogOpen) return;
+  /// ✅ FULL SignalR setup inside this screen
+  Future<void> _setupSignalR() async {
+    final authState = context.read<AuthenticationBloc>().state;
+    final userDetails = authState.userDetails;
+    final userId = userDetails?.userId?.toString();
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    if (!mounted || _dialogOpen) return;
-
-    _dialogOpen = true;
-    _lastPopupBookingDetailId = offer.bookingDetailId;
-
-    try {
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withOpacity(0.55),
-        builder: (ctx) {
-          const kGold = Color(0xFFF4C847);
-          const int totalSeconds = 60;
-
-          int secondsLeft = totalSeconds;
-          Timer? timer;
-          bool closed = false;
-
-          String mmss(int s) =>
-              '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
-
-          void closeDialog() {
-            if (closed) return;
-            closed = true;
-
-            timer?.cancel();
-            timer = null;
-
-            if (Navigator.of(ctx, rootNavigator: true).canPop()) {
-              Navigator.of(ctx, rootNavigator: true).pop();
-            }
-          }
-
-          Widget infoTile({
-            required IconData icon,
-            required String label,
-            required String value,
-          }) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: kPrimary.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kPrimary.withOpacity(0.15)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: kPrimary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: kPrimary, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11.5,
-                            color: kMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          value,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13.5,
-                            color: kTextDark,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return StatefulBuilder(
-            builder: (context, setState) {
-              timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
-                if (closed) return;
-
-                if (secondsLeft <= 1) {
-                  closeDialog(); // ✅ auto close at 0
-                  return;
-                }
-
-                setState(() => secondsLeft--);
-              });
-
-              final progress =
-                  (secondsLeft / totalSeconds).clamp(0.0, 1.0);
-
-              return WillPopScope(
-                onWillPop: () async => false,
-                child: Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      width: MediaQuery.of(ctx).size.width * 0.88,
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
-                            blurRadius: 24,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: kGold.withOpacity(0.25),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_active_rounded,
-                                  color: kPrimary,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  "New Booking Offer",
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 16,
-                                    color: kTextDark,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              const Icon(Icons.close_rounded,
-                                  color: Colors.transparent),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 8,
-                              backgroundColor: kPrimary.withOpacity(0.10),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                secondsLeft <= 10
-                                    ? Colors.redAccent
-                                    : (secondsLeft <= 25
-                                        ? kGold
-                                        : kPrimary),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: kPrimary.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: kPrimary.withOpacity(0.12)),
-                            ),
-                            child: Text(
-                              offer.message,
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                color: kTextDark,
-                                fontWeight: FontWeight.w600,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.attach_money_rounded,
-                                  label: "Estimated",
-                                  value:
-                                      "\$${offer.estimatedCost.toStringAsFixed(0)}",
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.timer_outlined,
-                                  label: "Time Left",
-                                  value: mmss(secondsLeft),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.my_location_outlined,
-                                  label: "Latitude",
-                                  value: offer.lat.toStringAsFixed(4),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.my_location_outlined,
-                                  label: "Longitude",
-                                  value: offer.lng.toStringAsFixed(4),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: closeDialog,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: kPrimary,
-                                    side: BorderSide(
-                                        color: kPrimary.withOpacity(0.35)),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "Decline",
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    context.read<UserBookingBloc>().add(
-                                          AcceptBooking(
-                                            userId: context
-                                                .read<AuthenticationBloc>()
-                                                .state
-                                                .userDetails!
-                                                .userId
-                                                .toString(),
-                                            bookingDetailId:
-                                                offer.bookingDetailId,
-                                          ),
-                                        );
-                                    closeDialog();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: kPrimary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: const Text(
-                                    "Accept",
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      // ✅ VERY IMPORTANT: reset guards so popup can show again
-      _dialogOpen = false;
-      _lastPopupBookingDetailId = null;
+    if (userId == null || userId.isEmpty) {
+      debugPrint("❌ TASKER HUB: userId missing (userDetails not loaded)");
+      return;
     }
-  });
-}
 
+    // ✅ configure singleton once (VERY IMPORTANT)
+    if (!_hubConfigured) {
+      debugPrint("🧩 TASKER HUB: configuring baseUrl=$_baseUrl userId=$userId");
+      DispatchHubSingleton.instance.configure(
+        baseUrl: _baseUrl,
+        userId: userId,
+      );
+      _hubConfigured = true;
+    }
 
+    // ✅ connect
+    await _ensureHubConnectedWithLogs();
 
-//   void _showBookingPopup(TaskerBookingOffer offer) {
-//   if (!mounted) return;
+    // ✅ attach listener AFTER connect
+    _attachHubListener();
+  }
 
-//   // ❌ REMOVE permanent block
-//   if (_dialogOpen) return;
+  Future<void> _ensureHubConnectedWithLogs() async {
+    try {
+      debugPrint("🔌 TASKER HUB: ensureConnected()...");
+      await DispatchHubSingleton.instance.ensureConnected();
+      debugPrint("✅ TASKER HUB: connected (or already connected)");
+    } catch (e) {
+      debugPrint("❌ TASKER HUB: ensureConnected failed => $e");
+    }
+  }
 
-//   WidgetsBinding.instance.addPostFrameCallback((_) async {
-//     if (!mounted) return;
-//     if (_dialogOpen) return;
+  void _attachHubListener() {
+    _hubSub?.cancel();
 
-//     _dialogOpen = true;
-//     _lastPopupBookingDetailId = offer.bookingDetailId;
+    debugPrint("🧩 TASKER HUB: attaching notifications listener...");
 
-//     try {
-//       await showDialog(
-//         context: context,
-//         barrierDismissible: false,
-//         barrierColor: Colors.black.withOpacity(0.55),
-//         builder: (ctx) {
-//           const int totalSeconds = 60;
-//           int secondsLeft = totalSeconds;
-//           Timer? t;
-//           bool closed = false;
+    _hubSub = DispatchHubSingleton.instance.notifications.listen(
+      (payload) {
+        if (!mounted) return;
 
-//           void closeDialog(PopupCloseReason reason) {
-//             if (closed) return;
-//             closed = true;
+        debugPrint("📩 TASKER HUB payload type=${payload.runtimeType}");
+        debugPrint("📩 TASKER HUB payload => $payload");
 
-//             t?.cancel();
-//             t = null;
+        // ✅ show popup only when tasker is ONLINE (you can remove this if you want popup always)
+        if (!available) {
+          debugPrint("⚠️ TASKER HUB: offer received but available=false (no popup)");
+          return;
+        }
 
-//             if (Navigator.of(ctx, rootNavigator: true).canPop()) {
-//               Navigator.of(ctx, rootNavigator: true).pop();
-//             }
-//           }
+        final offer = TaskerBookingOffer.tryParse(payload);
+        if (offer == null) {
+          debugPrint("❌ TASKER HUB: offer parse FAILED (popup not shown)");
+          return;
+        }
 
-//           return StatefulBuilder(
-//             builder: (context, setState) {
-//               t ??= Timer.periodic(const Duration(seconds: 1), (_) {
-//                 if (closed) return;
-
-//                 if (secondsLeft <= 1) {
-//                   closeDialog(PopupCloseReason.autoTimeout);
-//                   return;
-//                 }
-//                 setState(() => secondsLeft--);
-//               });
-
-//               final progress =
-//                   (secondsLeft / totalSeconds).clamp(0.0, 1.0);
-
-//               return WillPopScope(
-//                 onWillPop: () async => false,
-//                 child: Center(
-//                   child: Material(
-//                     color: Colors.transparent,
-//                     child: Container(
-//                       width: MediaQuery.of(ctx).size.width * 0.88,
-//                       padding: const EdgeInsets.all(16),
-//                       decoration: BoxDecoration(
-//                         color: Colors.white,
-//                         borderRadius: BorderRadius.circular(22),
-//                       ),
-//                       child: Column(
-//                         mainAxisSize: MainAxisSize.min,
-//                         children: [
-//                           const Text(
-//                             "New Booking Offer",
-//                             style: TextStyle(
-//                               fontFamily: 'Poppins',
-//                               fontWeight: FontWeight.w800,
-//                             ),
-//                           ),
-
-//                           const SizedBox(height: 12),
-
-//                           LinearProgressIndicator(
-//                             value: progress,
-//                           ),
-
-//                           const SizedBox(height: 16),
-
-//                           Text(offer.message),
-
-//                           const SizedBox(height: 20),
-
-//                           Row(
-//                             children: [
-//                               Expanded(
-//                                 child: OutlinedButton(
-//                                   onPressed: () =>
-//                                       closeDialog(PopupCloseReason.declined),
-//                                   child: const Text("Decline"),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 12),
-//                               Expanded(
-//                                 child: ElevatedButton(
-//                                   onPressed: () {
-//                                     context.read<UserBookingBloc>().add(
-//                                           AcceptBooking(
-//                                             userId: context
-//                                                 .read<AuthenticationBloc>()
-//                                                 .state
-//                                                 .userDetails!
-//                                                 .userId
-//                                                 .toString(),
-//                                             bookingDetailId:
-//                                                 offer.bookingDetailId,
-//                                           ),
-//                                         );
-//                                     closeDialog(PopupCloseReason.accepted);
-//                                   },
-//                                   child: const Text("Accept"),
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               );
-//             },
-//           );
-//         },
-//       );
-//     } finally {
-//       // ✅ RESET GUARDS SO NEW OFFER CAN SHOW
-//       _dialogOpen = false;
-//       _lastPopupBookingDetailId = null;
-//     }
-//   });
-// }
-
-
+        debugPrint("✅ TASKER HUB: offer parsed bookingDetailId=${offer.bookingDetailId}");
+        _showBookingPopup(offer);
+      },
+      onError: (e) => debugPrint("❌ TASKER HUB stream error => $e"),
+      onDone: () => debugPrint("⚠️ TASKER HUB stream closed"),
+    );
+  }
 
   Future<void> _onAvailabilityToggle(bool value) async {
+    debugPrint("🟡 Availability toggle => $value");
     await box.write(_kAvailabilityKey, value);
 
     if (!value) {
       setState(() => available = false);
+      debugPrint("🔴 TASKER OFFLINE: stop location updates");
       _stopLocationUpdates();
-      await _hubService.stop();
       return;
     }
 
     setState(() => available = true);
-    await _startLocationUpdates();
+
+    // ✅ ensure hub connected (in case it dropped)
+    await _ensureHubConnectedWithLogs();
+
+    debugPrint("🟢 TASKER ONLINE: start location updates (every 5s)");
+    _startLocationUpdates();
   }
 
   void _dispatchLocationUpdateToApi() {
-    final userId = context
-        .read<AuthenticationBloc>()
-        .state
-        .userDetails!
-        .userId
-        .toString();
+    if (!mounted) return;
+
+    if (!available) {
+      debugPrint("⚠️ LOCATION: skipped (available=false)");
+      return;
+    }
+
+    final authState = context.read<AuthenticationBloc>().state;
+    final userDetails = authState.userDetails;
+
+    if (userDetails == null || userDetails.userId == null) {
+      debugPrint("❌ LOCATION: userDetails missing (cannot send)");
+      return;
+    }
+
+    final userId = userDetails.userId.toString();
 
     // ✅ replace with real GPS later
     const double lat = 67.00;
     const double lng = 70.00;
 
-    if (!mounted) return;
+    debugPrint("📍 LOCATION: sending => userId=$userId lat=$lat lng=$lng");
 
+    // ✅ 1) Update location
     context.read<UserBookingBloc>().add(
           UpdateUserLocationRequested(
             userId: userId,
@@ -905,59 +334,386 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
             longitude: lng,
           ),
         );
+    debugPrint("✅ EVENT: UpdateUserLocationRequested dispatched");
 
+    // ✅ 2) Availability status event
     context.read<UserBookingBloc>().add(
           ChangeAvailabilityStatus(userId: userId),
         );
+    debugPrint("✅ EVENT: ChangeAvailabilityStatus dispatched");
   }
 
-  Future<void> _startLocationUpdates() async {
+  void _startLocationUpdates() {
     if (!_restored) return;
 
-    try {
-      await _hubService.start();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to connect SignalR hub: $e')),
-        );
-      }
-
-      await box.write(_kAvailabilityKey, false);
-      setState(() => available = false);
-      return;
-    }
+    debugPrint("⏱️ LOCATION TIMER: start interval=${_locationInterval.inSeconds}s");
 
     _dispatchLocationUpdateToApi();
-
     _locationTimer?.cancel();
     _locationTimer = Timer.periodic(_locationInterval, (_) {
+      debugPrint("⏱️ LOCATION TIMER TICK");
       _dispatchLocationUpdateToApi();
     });
   }
 
   void _stopLocationUpdates() {
+    debugPrint("🛑 LOCATION TIMER: stop");
     _locationTimer?.cancel();
     _locationTimer = null;
   }
 
+  void _showBookingPopup(TaskerBookingOffer offer) {
+    if (!mounted) return;
+
+    if (_dialogOpen) {
+      debugPrint("⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}");
+      return;
+    }
+
+    if (_lastPopupBookingDetailId == offer.bookingDetailId) {
+      debugPrint("⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}");
+      return;
+    }
+
+    debugPrint("🟢 POPUP: preparing booking=${offer.bookingDetailId}");
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (_dialogOpen) return;
+
+      _dialogOpen = true;
+      _lastPopupBookingDetailId = offer.bookingDetailId;
+
+      debugPrint("🟢 POPUP: OPEN booking=${offer.bookingDetailId}");
+
+      try {
+        await showDialog(
+          context: context,
+          useRootNavigator: true, // ✅ important
+          barrierDismissible: false,
+          barrierColor: Colors.black.withOpacity(0.55),
+          builder: (ctx) {
+            const kGold = Color(0xFFF4C847);
+            const int totalSeconds = 60;
+
+            int secondsLeft = totalSeconds;
+            Timer? timer;
+            bool closed = false;
+
+            String mmss(int s) =>
+                '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+
+            void closeDialog() {
+              if (closed) return;
+              closed = true;
+
+              timer?.cancel();
+              timer = null;
+
+              if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+                Navigator.of(ctx, rootNavigator: true).pop();
+              }
+            }
+
+            Widget infoTile({
+              required IconData icon,
+              required String label,
+              required String value,
+            }) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: kPrimary.withOpacity(0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: kPrimary, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.5,
+                              color: kMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            value,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.5,
+                              color: kTextDark,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return StatefulBuilder(
+              builder: (context, setState) {
+                timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+                  if (closed) return;
+
+                  if (secondsLeft <= 1) {
+                    debugPrint("⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}");
+                    closeDialog();
+                    return;
+                  }
+
+                  setState(() => secondsLeft--);
+                });
+
+                final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+
+                return WillPopScope(
+                  onWillPop: () async => false,
+                  child: Center(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        width: MediaQuery.of(ctx).size.width * 0.88,
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 24,
+                              offset: const Offset(0, 14),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: kGold.withOpacity(0.25),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_active_rounded,
+                                    color: kPrimary,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    "New Booking Offer",
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 16,
+                                      color: kTextDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.close_rounded, color: Colors.transparent),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 8,
+                                backgroundColor: kPrimary.withOpacity(0.10),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  secondsLeft <= 10
+                                      ? Colors.redAccent
+                                      : (secondsLeft <= 25 ? kGold : kPrimary),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kPrimary.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: kPrimary.withOpacity(0.12)),
+                              ),
+                              child: Text(
+                                offer.message,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13,
+                                  color: kTextDark,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.attach_money_rounded,
+                                    label: "Estimated",
+                                    value: "\$${offer.estimatedCost.toStringAsFixed(0)}",
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.timer_outlined,
+                                    label: "Time Left",
+                                    value: mmss(secondsLeft),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.my_location_outlined,
+                                    label: "Latitude",
+                                    value: offer.lat.toStringAsFixed(4),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.my_location_outlined,
+                                    label: "Longitude",
+                                    value: offer.lng.toStringAsFixed(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      debugPrint("🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}");
+                                      closeDialog();
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: kPrimary,
+                                      side: BorderSide(color: kPrimary.withOpacity(0.35)),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Decline",
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      final authState = context.read<AuthenticationBloc>().state;
+                                      final uid = authState.userDetails?.userId?.toString() ?? "";
+
+                                      debugPrint("🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
+
+                                      context.read<UserBookingBloc>().add(
+                                            AcceptBooking(
+                                              userId: uid,
+                                              bookingDetailId: offer.bookingDetailId,
+                                            ),
+                                          );
+
+                                      debugPrint("✅ EVENT: AcceptBooking dispatched");
+                                      closeDialog();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text(
+                                      "Accept",
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+
+        debugPrint("🟠 POPUP: closed (showDialog returned)");
+      } catch (e) {
+        debugPrint("❌ POPUP: showDialog exception => $e");
+      } finally {
+        debugPrint("🔁 POPUP: reset guards");
+        _dialogOpen = false;
+        _lastPopupBookingDetailId = null;
+      }
+    });
+  }
+
   @override
   void dispose() {
-    _locationTimer?.cancel();
-    _hubService.stop();
-    _hubService.dispose();
+    debugPrint("🧹 TaskerHome dispose()");
+    _stopLocationUpdates();
+    _hubSub?.cancel();
     super.dispose();
   }
 
-  /// ================== UI (UserBookingHome theme) ==================
   @override
   Widget build(BuildContext context) {
-    final name = context
-        .read<AuthenticationBloc>()
-        .state
-        .userDetails!
-        .fullName
-        .toString();
+    final authState = context.read<AuthenticationBloc>().state;
+    final name = authState.userDetails?.fullName?.toString() ?? 'Tasker';
 
     final earnings = period == 'Week' ? weeklyEarning : monthlyEarning;
 
@@ -1034,9 +790,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              //_SearchBar(),
               const SizedBox(height: 14),
-
               _InfoCard(
                 icon: available ? Icons.wifi_tethering_rounded : Icons.wifi_off_rounded,
                 text: available
@@ -1044,37 +798,16 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                     : 'You are offline. Turn on availability to receive offers.',
               ),
               const SizedBox(height: 14),
-
-              // ✅ SAME CONTENT (profile + earnings) but in clean cards
-              Row(
-                children: [
-                  // Expanded(
-                  //   child: _WhiteCard(
-                  //     child: _ProfileCard(
-                  //       avatarUrl: _avatarUrl,
-                  //       name: 'Mark',
-                  //       title: _title,
-                  //       badges: _badges,
-                  //     ),
-                  //   ),
-                  // ),
-                  // const SizedBox(width: 12),
-                  Expanded(
-                    child: _WhiteCard(
-                      child: _EarningsCard(
-                        period: period,
-                        amount: earnings,
-                        onChange: (p) => setState(() => period = p),
-                      ),
-                    ),
-                  ),
-                ],
+              _WhiteCard(
+                child: _EarningsCard(
+                  period: period,
+                  amount: earnings,
+                  onChange: (p) => setState(() => period = p),
+                ),
               ),
-
               const SizedBox(height: 12),
-
               SizedBox(
-                width: MediaQuery.of(context).size.width *0.90,
+                width: MediaQuery.of(context).size.width * 0.90,
                 child: _WhiteCard(
                   child: _KpiRow(
                     rating: rating,
@@ -1084,9 +817,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 18),
-
               const Text(
                 'Your jobs',
                 style: TextStyle(
@@ -1097,15 +828,12 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                 ),
               ),
               const SizedBox(height: 10),
-
               _ChipsRow(
                 labels: _chipLabels,
                 selected: _selectedChip,
                 onTap: (v) => setState(() => _selectedChip = v),
               ),
-
               const SizedBox(height: 14),
-
               _WhiteCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1121,7 +849,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                     ),
                     const SizedBox(height: 10),
                     if (filteredTasks.isEmpty)
-                      const _EmptyState(text: 'No tasks yet. Turn on availability to get offers.')
+                      const _EmptyState(
+                        text: 'No tasks yet. Turn on availability to get offers.',
+                      )
                     else
                       Column(
                         children: [
@@ -1135,6 +865,64 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                   ],
                 ),
               ),
+              const SizedBox(height: 18),
+              _WhiteCard(
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 24, backgroundImage: NetworkImage(_avatarUrl)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _title,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w800,
+                              color: kTextDark,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _badges
+                                .map(
+                                  (b) => Container(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: b.bg,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(b.icon, size: 16, color: b.fg),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          b.label,
+                                          style: TextStyle(
+                                            fontFamily: 'Poppins',
+                                            fontSize: 11.5,
+                                            color: b.fg,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1144,33 +932,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 }
 
 /// ===============================================================
-/// ✅ SMALL UI WIDGETS (CLEAN THEME)
+/// UI WIDGETS
 /// ===============================================================
-
-class _SearchBar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 0,
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: TextField(
-        style: const TextStyle(fontFamily: 'Poppins'),
-        decoration: InputDecoration(
-          hintText: 'Search jobs, bookings...',
-          hintStyle: TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.grey.shade500,
-            fontSize: 13.5,
-          ),
-          border: InputBorder.none,
-          prefixIcon: const Icon(Icons.search_rounded),
-          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        ),
-      ),
-    );
-  }
-}
 
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.icon, required this.text});
@@ -1296,66 +1059,6 @@ class _ChipsRow extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.avatarUrl,
-    required this.name,
-    required this.title,
-    required this.badges,
-  });
-
-  final String avatarUrl;
-  final String name;
-  final String title;
-  final List<_Badge> badges;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(radius: 26, backgroundImage: NetworkImage(avatarUrl)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: Color(0xFF3E1E69),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  color: Color(0xFF75748A),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [for (final b in badges) _BadgeChip(badge: b)],
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1525,7 +1228,7 @@ class _KpiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: (MediaQuery.of(context).size.width *0.90), // responsive-ish
+      width: (MediaQuery.of(context).size.width * 0.90),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: kPrimary.withOpacity(0.06),
@@ -1576,7 +1279,6 @@ class _KpiTile extends StatelessWidget {
 
 class _TaskTile extends StatelessWidget {
   const _TaskTile({required this.task});
-
   final _Task task;
 
   @override
@@ -1598,11 +1300,13 @@ class _TaskTile extends StatelessWidget {
           children: [
             const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
-            Text(task.date, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(task.date,
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
             const SizedBox(width: 14),
             const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
-            Text(task.time, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(task.time,
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
             const SizedBox(width: 14),
             const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
@@ -1610,8 +1314,7 @@ class _TaskTile extends StatelessWidget {
               child: Text(
                 task.location,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A)),
-              ),
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
             ),
           ],
         ),
@@ -1662,38 +1365,6 @@ class _Badge {
   });
 }
 
-class _BadgeChip extends StatelessWidget {
-  const _BadgeChip({required this.badge});
-  final _Badge badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: badge.bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(badge.icon, size: 14, color: badge.fg),
-          const SizedBox(width: 4),
-          Text(
-            badge.label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 11,
-              color: badge.fg,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Task {
   final String title;
   final String date;
@@ -1707,5 +1378,3 @@ class _Task {
     required this.location,
   });
 }
-
-
