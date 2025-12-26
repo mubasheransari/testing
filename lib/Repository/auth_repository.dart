@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:taskoon/Models/add_booking_request_model.dart';
+import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/named_bytes.dart';
@@ -84,27 +86,22 @@ Future<Result<BookingFindResponse>> findBooking({
   required String bookingDetailId
 });
 
-
-  // AFTER
 Future<Result<BookingCreateResponse>> createBooking({
-  required String userId,
+required String userId,
   required int subCategoryId,
+  required int bookingTypeId,
   required DateTime bookingDate,
-  required String startTime,
-  required String endTime,
+  required DateTime startTime,
+  required DateTime endTime,
   required String address,
   required int taskerLevelId,
-  // 🔽 new fields with defaults for now
-  int bookingTypeId = 1,
-  double latitude = 67.0,
-  double longitude = 70.00
- 
-  // String currency = 'AUD',
-  // int paymentType = 1,
-  // int serviceType = 1,
-  // int paymentMethod = 1,
-  // String request = 'N/A',
+  DateTime? endDate,
+  int? recurrencePatternId,
+  String? customDays,
+  required double latitude,
+  required double longitude,
 });
+
 
   Future<Result<RegistrationResponse>> getUserStatus({
     String? userId,
@@ -851,160 +848,81 @@ Future<Result<BookingFindResponse>> findBooking({
   }
 }
 
-
-@override
 Future<Result<BookingCreateResponse>> createBooking({
   required String userId,
   required int subCategoryId,
+  required int bookingTypeId,
   required DateTime bookingDate,
-  required String startTime,   // "21:00:00" from UI
-  required String endTime,     // "22:00:00" from UI
+  DateTime? endDate,
+  required DateTime startTime,
+  required DateTime endTime,
   required String address,
   required int taskerLevelId,
-  int bookingTypeId = 1,
-  double latitude = 0.0,
-  double longitude = 0.0,
- // String currency = 'AUD',
- // int paymentType = 1,
-  //int serviceType = 1,
-//  int paymentMethod = 1,
-  //String request = 'N/A',
+  int? recurrencePatternId,
+  String? customDays,
+  required double latitude,
+  required double longitude,
 }) async {
-  final uri = Uri.parse(
-    '${ApiConfig.baseUrlLocation}${ApiConfig.bookingEndpoint}',
+  final uri = Uri.parse('${ApiConfig.baseUrl}/api/booking/create');
+
+  final model = AddBookingRequestModel(
+    userId: userId,
+    subCategoryId: subCategoryId,
+    bookingTypeId: bookingTypeId,
+    bookingDate: bookingDate,
+    startTime: startTime,
+    endTime: endTime,
+    address: address,
+    taskerLevelId: taskerLevelId,
+    endDate: endDate,
+    recurrencePatternId: recurrencePatternId,
+    customDays: customDays,
+    latitude: latitude,
+    longitude: longitude,
   );
-
-  // 🔹 Helper: combine date + "HH:mm[:ss]" string into a local DateTime
-  DateTime _combineDateAndTime(DateTime date, String time) {
-    int h = 0;
-    int m = 0;
-
-    if (time.contains(':')) {
-      final parts = time.split(':'); // "21:00:00" -> ["21","00","00"]
-      h = int.tryParse(parts[0]) ?? 0;
-      if (parts.length > 1) {
-        m = int.tryParse(parts[1]) ?? 0;
-      }
-    } else {
-      h = int.tryParse(time) ?? 0;
-    }
-
-    return DateTime(date.year, date.month, date.day, h, m);
-  }
-
-  // 🔹 Date-only at midnight (LOCAL, no UTC)
-  final bookingDateOnly = DateTime(
-    bookingDate.year,
-    bookingDate.month,
-    bookingDate.day,
-  );
-
-  // 🔹 Local DateTimes for start & end
-  final startDateTime = _combineDateAndTime(bookingDate, startTime);
-  final endDateTime = _combineDateAndTime(bookingDate, endTime);
-
-  final body = <String, dynamic>{
-    'UserId': userId,
-    'SubCategoryId': subCategoryId,
-    'BookingTypeId': bookingTypeId,
-    // 👇 send full ISO, but LOCAL (no .toUtc(), no "Z")
-    'BookingDate': bookingDateOnly.toIso8601String(),
-    'StartTime': startDateTime.toIso8601String(),
-    'EndTime': endDateTime.toIso8601String(),
-    'Address': address,
-    'TaskerLevelId': taskerLevelId,
-    'latitude': 67.00,
-    'longitude': 70.00,
-    "recurrencePatternId": 0,
-    "customDays": ""
-    // 'currency': currency,
-    // 'paymentType': paymentType.toString(),
-    // 'serviceType': serviceType.toString(),
-    // 'paymentMethod': paymentMethod.toString(),
-    // 'request': request,
-  };
 
   try {
-    print('>>> BOOKING CREATE POST $uri');
-    print('>>> REQUEST: ${jsonEncode(body)}');
+    debugPrint('>>> BOOKING CREATE POST $uri');
+    debugPrint('>>> REQUEST: ${jsonEncode(model.toJson())}'); // ✅ no wrapper
 
     final res = await http
-        .post(uri, headers: _headers(), body: jsonEncode(body))
-        .timeout(timeout);
+        .post(
+          uri,
+          headers: const {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(model.toJson()), // ✅ no wrapper
+        )
+        .timeout(const Duration(seconds: 30));
 
-    print('<<< BOOKING CREATE STATUS: ${res.statusCode}');
-    print('<<< BOOKING CREATE BODY: ${res.body}');
+    debugPrint('<<< BOOKING CREATE STATUS: ${res.statusCode}');
+    debugPrint('<<< BOOKING CREATE BODY: ${res.body}');
 
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final raw = res.body.trim();
-      if (raw.isEmpty) {
-        return Result.ok(
-          BookingCreateResponse(
-            isSuccess: true,
-            message: 'Booking created',
-            result: null,
-            errors: null,
-          ),
-        );
-      }
+    final jsonMap = jsonDecode(res.body) as Map<String, dynamic>;
+    final parsed = BookingCreateResponse.fromJson(jsonMap);
 
-      final parsed = jsonDecode(raw);
-      if (parsed is! Map<String, dynamic>) {
-        return Result.fail(
-          Failure(
-            code: 'parse',
-            message: 'Invalid response format',
-            statusCode: res.statusCode,
-          ),
-        );
-      }
-
-      final resp = BookingCreateResponse.fromJson(parsed);
-
-      if (!resp.isSuccess) {
-        return Result.fail(
-          Failure(
-            code: 'validation',
-            message: resp.message,
-            statusCode: res.statusCode,
-          ),
-        );
-      }
-
-      return Result.ok(resp);
+    // ✅ success is controlled by isSuccess from API
+    if (res.statusCode >= 200 && res.statusCode < 300 && parsed.isSuccess) {
+      return Result.ok(parsed);
     }
 
-    String message = 'Server error (${res.statusCode})';
-    final raw = res.body.trim();
-    if (raw.isNotEmpty) {
-      try {
-        final err = jsonDecode(raw);
-        if (err is Map && err['errors'] is List) {
-          final errors = (err['errors'] as List)
-              .map((e) => '${e['field']}: ${e['error']}')
-              .join(' • ');
-          if (errors.isNotEmpty) message = errors;
-        } else if (err is Map && err['message'] != null) {
-          message = err['message'].toString();
-        }
-      } catch (_) {}
+    // ✅ build readable error from errors[]
+    String errText = parsed.message.isNotEmpty ? parsed.message : "Validation failed";
+    final errs = parsed.errors;
+    if (errs != null && errs.isNotEmpty) {
+      errText = errs
+          .map((e) => "${e.field ?? ''}${(e.field ?? '').isEmpty ? '' : ': '}${e.error ?? ''}")
+          .join(" | ");
     }
 
-    return Result.fail(
-      Failure(code: 'server', message: message, statusCode: res.statusCode),
-    );
-  } on SocketException {
-    return Result.fail(
-      Failure(code: 'network', message: 'No internet connection'),
-    );
-  } on TimeoutException {
-    return Result.fail(
-      Failure(code: 'timeout', message: 'Request timed out'),
-    );
+    return Result.fail(Failure(code: res.statusCode.toString(), message: errText));
   } catch (e) {
-    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    return Result.fail(Failure(code: "-1", message: "Create booking failed: $e"));
   }
 }
+
+
 
   @override
   Future<Result<List<TrainingVideo>>> fetchTrainingVideos() async {

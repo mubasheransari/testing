@@ -6,9 +6,37 @@ import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'dart:convert';
-import 'package:taskoon/Realtime/dispatch_hub_service.dart';
+import 'package:signalr_netcore/signalr_client.dart';
 
 
+
+class _Badge {
+  final String label;
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+
+  const _Badge({
+    required this.label,
+    required this.icon,
+    required this.bg,
+    required this.fg,
+  });
+}
+
+class _Task {
+  final String title;
+  final String date;
+  final String time;
+  final String location;
+
+  const _Task({
+    required this.title,
+    required this.date,
+    required this.time,
+    required this.location,
+  });
+}
 
 enum PopupCloseReason { autoTimeout, declined, accepted }
 
@@ -35,10 +63,10 @@ class TaskerBookingOffer {
     try {
       dynamic obj = payload;
 
-      // SignalR sometimes sends [ {..} ] wrapper
+      // SignalR sometimes sends [ {..} ]
       if (obj is List && obj.isNotEmpty) obj = obj.first;
 
-      // Server might send JSON string
+      // Server can send json string
       if (obj is String) obj = jsonDecode(obj);
 
       if (obj is! Map) {
@@ -48,7 +76,6 @@ class TaskerBookingOffer {
 
       final map = Map<String, dynamic>.from(obj);
 
-      // data can be Map or JSON string
       dynamic dataAny = map['data'];
       if (dataAny is String) {
         try {
@@ -59,7 +86,6 @@ class TaskerBookingOffer {
       Map<String, dynamic>? data;
       if (dataAny is Map) data = Map<String, dynamic>.from(dataAny);
 
-      // bookingDetailId can live in data or root
       final bookingDetailId = (data?['bookingDetailId'] ??
               data?['BookingDetailId'] ??
               map['bookingDetailId'] ??
@@ -76,11 +102,13 @@ class TaskerBookingOffer {
       final lng = _toDouble(
           data?['lng'] ?? data?['Lng'] ?? map['lng'] ?? map['Lng'] ?? 0);
 
-      final estimatedCost = _toDouble(data?['estimatedCost'] ??
-          data?['EstimatedCost'] ??
-          map['estimatedCost'] ??
-          map['EstimatedCost'] ??
-          0);
+      final estimatedCost = _toDouble(
+        data?['estimatedCost'] ??
+            data?['EstimatedCost'] ??
+            map['estimatedCost'] ??
+            map['EstimatedCost'] ??
+            0,
+      );
 
       return TaskerBookingOffer(
         bookingDetailId: bookingDetailId,
@@ -104,6 +132,178 @@ class TaskerBookingOffer {
   }
 }
 
+/// ===============================================================
+/// ✅ SEPARATE SIGNALR IMPLEMENTATION (INSIDE THIS FILE)
+/// ===============================================================
+class TaskerDispatchHubService {
+  HubConnection? _conn;
+
+  String? _baseUrl;
+  String? _userId;
+
+  Completer<void>? _startCompleter;
+  bool _handlersAttached = false;
+
+  final _notifCtrl = StreamController<dynamic>.broadcast();
+  Stream<dynamic> get notifications => _notifCtrl.stream;
+
+  bool get isConnected =>
+      _conn != null && _conn!.state == HubConnectionState.Connected;
+
+  HubConnectionState? get state => _conn?.state;
+
+  void configure({
+    required String baseUrl,
+    required String userId,
+  }) {
+    final changed = (_baseUrl != baseUrl) || (_userId != userId);
+    _baseUrl = baseUrl;
+    _userId = userId;
+
+    if (changed) {
+      debugPrint("🧩 HUB(SVC): config changed -> rebuilding");
+      _handlersAttached = false;
+      _disposeConnectionOnly();
+    }
+  }
+
+  Future<void> ensureConnected() async {
+    if (_baseUrl == null || _userId == null || _userId!.isEmpty) {
+      throw Exception("HUB(SVC): configure(baseUrl,userId) first");
+    }
+
+    if (isConnected) return;
+
+    // If already starting, wait
+    if (_startCompleter != null) {
+      await _startCompleter!.future;
+      return;
+    }
+
+    _startCompleter = Completer<void>();
+    try {
+      await _startInternal();
+    } finally {
+      _startCompleter?.complete();
+      _startCompleter = null;
+    }
+  }
+
+  Future<void> _startInternal() async {
+    final baseUrl = _baseUrl!;
+    final userId = _userId!;
+    final url = "$baseUrl/hubs/dispatch?userId=$userId";
+
+    try {
+      _conn ??= HubConnectionBuilder()
+          .withUrl(
+            url,
+            options: HttpConnectionOptions(
+              // ✅ Mobile stable
+              transport: HttpTransportType.LongPolling,
+              // If your server needs headers/token, add here
+              // accessTokenFactory: () async => "token",
+            ),
+          )
+          .withAutomaticReconnect()
+          .build();
+
+      _wireLifecycle(_conn!);
+
+      if (!_handlersAttached) {
+        _registerHandlers(_conn!);
+        _handlersAttached = true;
+      }
+
+      debugPrint("🔌 HUB(SVC): start... url=$url state(before)=${_conn!.state}");
+
+      // Reset if in weird state
+      if (_conn!.state != HubConnectionState.Disconnected) {
+        try {
+          await _conn!.stop();
+        } catch (_) {}
+      }
+
+      await _conn!.start();
+
+      debugPrint("✅ HUB(SVC): start done. state(after)=${_conn!.state}");
+
+      if (_conn!.state != HubConnectionState.Connected) {
+        throw Exception("HUB(SVC): start finished but state=${_conn!.state}");
+      }
+    } catch (e) {
+      debugPrint("❌ HUB(SVC): start failed => $e");
+      _handlersAttached = false;
+      _disposeConnectionOnly();
+      rethrow;
+    }
+  }
+
+  void _wireLifecycle(HubConnection c) {
+    c.onclose(({error}) {
+      debugPrint("🛑 HUB(SVC): onClose error=$error state=${c.state}");
+    });
+
+    c.onreconnecting(({error}) {
+      debugPrint("🔄 HUB(SVC): onReconnecting error=$error state=${c.state}");
+    });
+
+    c.onreconnected(({connectionId}) {
+      debugPrint("✅ HUB(SVC): onReconnected id=$connectionId state=${c.state}");
+    });
+  }
+
+  void _registerHandlers(HubConnection c) {
+    // Prevent duplicate
+    c.off("ReceiveBookingOffer");
+    c.off("ReceiveNotification");
+
+    c.on("ReceiveBookingOffer", (args) {
+      final payload = _normalizeArgs(args);
+      if (payload == null) return;
+      debugPrint("📩 HUB(SVC): ReceiveBookingOffer => $payload");
+      _notifCtrl.add(payload);
+    });
+
+    c.on("ReceiveNotification", (args) {
+      final payload = _normalizeArgs(args);
+      if (payload == null) return;
+      debugPrint("📩 HUB(SVC): ReceiveNotification => $payload");
+      _notifCtrl.add(payload);
+    });
+  }
+
+  dynamic _normalizeArgs(List<Object?>? args) {
+    if (args == null || args.isEmpty) return null;
+    dynamic first = args.first;
+
+    if (first is List && first.isNotEmpty) first = first.first;
+
+    if (first is String) {
+      try {
+        first = jsonDecode(first);
+      } catch (_) {}
+    }
+
+    return first;
+  }
+
+  void _disposeConnectionOnly() {
+    try {
+      _conn?.stop();
+    } catch (_) {}
+    _conn = null;
+  }
+
+  Future<void> dispose() async {
+    _disposeConnectionOnly();
+    await _notifCtrl.close();
+  }
+}
+
+/// ===============================================================
+/// ✅ SCREEN (OLD UI kept, SignalR separate)
+/// ===============================================================
 class TaskerHomeRedesign extends StatefulWidget {
   const TaskerHomeRedesign({super.key});
 
@@ -111,14 +311,14 @@ class TaskerHomeRedesign extends StatefulWidget {
   State<TaskerHomeRedesign> createState() => _TaskerHomeRedesignState();
 }
 
-class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
+class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
+    with WidgetsBindingObserver {
   // theme tokens
   static const Color kPrimary = Color(0xFF5C2E91);
   static const Color kTextDark = Color(0xFF3E1E69);
   static const Color kMuted = Color(0xFF75748A);
   static const Color kBg = Color(0xFFF8F7FB);
 
-  // ✅ IMPORTANT: use same baseUrl you use everywhere
   static const String _baseUrl = "http://192.3.3.187:85";
 
   bool available = false;
@@ -127,9 +327,22 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   static const String _kAvailabilityKey = 'tasker_available';
   bool _restored = false;
 
-  // ✅ hub subscription
+  // ✅ separate hub
+  final TaskerDispatchHubService _hub = TaskerDispatchHubService();
   StreamSubscription? _hubSub;
+
+  // ✅ watchdog
+  Timer? _hubWatchdog;
   bool _hubConfigured = false;
+  bool _hubEnsuring = false;
+  int _attempt = 0;
+
+  // Adaptive backoff: 2s,4s,8s,16s,30s...
+  Duration _nextBackoff() {
+    final secs = [2, 4, 8, 16, 30, 30, 30];
+    final idx = (_attempt - 1).clamp(0, secs.length - 1);
+    return Duration(seconds: secs[idx]);
+  }
 
   // ✅ periodic location updates
   Timer? _locationTimer;
@@ -139,7 +352,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   bool _dialogOpen = false;
   String? _lastPopupBookingDetailId;
 
-  // mock data
+  // mock data (UI unchanged)
   final _avatarUrl =
       'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop';
   final _title = 'Handyman, Pro';
@@ -167,21 +380,11 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   int monthlyEarning = 3280;
 
   final List<_Task> upcoming = const [
-    _Task(
-      title: 'Furniture assembly',
-      date: 'Apr 24',
-      time: '10:30',
-      location: 'East Perth',
-    ),
+    _Task(title: 'Furniture assembly', date: 'Apr 24', time: '10:30', location: 'East Perth'),
   ];
 
   final List<_Task> current = const [
-    _Task(
-      title: 'TV wall mount',
-      date: 'Apr 24',
-      time: '09:00',
-      location: 'Perth CBD',
-    ),
+    _Task(title: 'TV wall mount', date: 'Apr 24', time: '09:00', location: 'Perth CBD'),
   ];
 
   String _selectedChip = 'All';
@@ -190,6 +393,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -202,52 +406,100 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
       debugPrint("🟣 TaskerHome init: restored available=$saved");
 
-      // ✅ configure + connect hub (always), then attach listener
-      await _setupSignalR();
+      // ✅ Configure & connect hub (retry until userId ready)
+      await _trySetupSignalR(reason: "init");
 
-      // ✅ if tasker restored as online -> start timer too
-      if (saved) {
-        _startLocationUpdates();
-      }
+      // ✅ attach listener once (kept)
+      _attachHubListener();
+
+      // ✅ watchdog to keep connected forever
+      _startHubWatchdog();
+
+      if (saved) _startLocationUpdates();
     });
   }
 
-  /// ✅ FULL SignalR setup inside this screen
-  Future<void> _setupSignalR() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint("🔁 TaskerHome resumed -> ensure hub connected");
+      _safeEnsureHubConnected(reason: "resumed");
+    }
+  }
+
+  Future<void> _trySetupSignalR({required String reason}) async {
     final authState = context.read<AuthenticationBloc>().state;
-    final userDetails = authState.userDetails;
-    final userId = userDetails?.userId?.toString();
+    final userId = authState.userDetails?.userId.toString();
 
     if (userId == null || userId.isEmpty) {
-      debugPrint("❌ TASKER HUB: userId missing (userDetails not loaded)");
+      debugPrint("⏳ TASKER HUB: userId not ready yet (reason=$reason)");
       return;
     }
 
-    // ✅ configure singleton once (VERY IMPORTANT)
     if (!_hubConfigured) {
-      debugPrint("🧩 TASKER HUB: configuring baseUrl=$_baseUrl userId=$userId");
-      DispatchHubSingleton.instance.configure(
-        baseUrl: _baseUrl,
-        userId: userId,
-      );
+      debugPrint("🧩 TASKER HUB: configure baseUrl=$_baseUrl userId=$userId");
+      _hub.configure(baseUrl: _baseUrl, userId: userId);
       _hubConfigured = true;
     }
 
-    // ✅ connect
-    await _ensureHubConnectedWithLogs();
-
-    // ✅ attach listener AFTER connect
-    _attachHubListener();
+    await _safeEnsureHubConnected(reason: reason);
   }
 
-  Future<void> _ensureHubConnectedWithLogs() async {
+  Future<void> _safeEnsureHubConnected({required String reason}) async {
+    if (!_hubConfigured) {
+      await _trySetupSignalR(reason: "ensure($reason)");
+      return;
+    }
+
+    if (_hubEnsuring) return;
+    if (_hub.isConnected) return;
+
+    _hubEnsuring = true;
     try {
-      debugPrint("🔌 TASKER HUB: ensureConnected()...");
-      await DispatchHubSingleton.instance.ensureConnected();
-      debugPrint("✅ TASKER HUB: connected (or already connected)");
+      debugPrint(
+          "🔌 TASKER HUB: ensureConnected... reason=$reason isConnected(before)=${_hub.isConnected} state=${_hub.state}");
+
+      await _hub.ensureConnected();
+
+      debugPrint(
+          "✅ TASKER HUB: ensureConnected done. isConnected=${_hub.isConnected} state=${_hub.state}");
+
+      if (_hub.isConnected) _attempt = 0;
     } catch (e) {
       debugPrint("❌ TASKER HUB: ensureConnected failed => $e");
+    } finally {
+      _hubEnsuring = false;
     }
+  }
+
+  void _startHubWatchdog() {
+    _hubWatchdog?.cancel();
+
+    // Lightweight tick that schedules reconnect attempts with backoff.
+    _hubWatchdog = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (!mounted) return;
+
+      // userId might come late — keep trying
+      if (!_hubConfigured) {
+        await _trySetupSignalR(reason: "watchdog-config");
+        return;
+      }
+
+      if (_hub.isConnected) return;
+      if (_hubEnsuring) return;
+
+      _attempt++;
+      final wait = _nextBackoff();
+
+      debugPrint(
+          "🛡️ TASKER HUB WATCHDOG: disconnected -> reconnecting attempt=$_attempt in ${wait.inSeconds}s");
+
+      // Delay per backoff before attempting (so you don't spam the server)
+      await Future.delayed(wait);
+      if (!mounted) return;
+
+      await _safeEnsureHubConnected(reason: "watchdog");
+    });
   }
 
   void _attachHubListener() {
@@ -255,14 +507,13 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
     debugPrint("🧩 TASKER HUB: attaching notifications listener...");
 
-    _hubSub = DispatchHubSingleton.instance.notifications.listen(
+    _hubSub = _hub.notifications.listen(
       (payload) {
         if (!mounted) return;
 
-        debugPrint("📩 TASKER HUB payload type=${payload.runtimeType}");
         debugPrint("📩 TASKER HUB payload => $payload");
 
-        // ✅ show popup only when tasker is ONLINE (you can remove this if you want popup always)
+        // Popup only when online (same as before)
         if (!available) {
           debugPrint("⚠️ TASKER HUB: offer received but available=false (no popup)");
           return;
@@ -295,8 +546,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
     setState(() => available = true);
 
-    // ✅ ensure hub connected (in case it dropped)
-    await _ensureHubConnectedWithLogs();
+    // Ensure hub immediately too
+    await _safeEnsureHubConnected(reason: "availability-on");
 
     debugPrint("🟢 TASKER ONLINE: start location updates (every 5s)");
     _startLocationUpdates();
@@ -320,26 +571,18 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
     final userId = userDetails.userId.toString();
 
-    // ✅ replace with real GPS later
+    // TODO replace with GPS later
     const double lat = 67.00;
     const double lng = 70.00;
 
     debugPrint("📍 LOCATION: sending => userId=$userId lat=$lat lng=$lng");
 
-    // ✅ 1) Update location
     context.read<UserBookingBloc>().add(
-          UpdateUserLocationRequested(
-            userId: userId,
-            latitude: lat,
-            longitude: lng,
-          ),
+          UpdateUserLocationRequested(userId: userId, latitude: lat, longitude: lng),
         );
     debugPrint("✅ EVENT: UpdateUserLocationRequested dispatched");
 
-    // ✅ 2) Availability status event
-    context.read<UserBookingBloc>().add(
-          ChangeAvailabilityStatus(userId: userId),
-        );
+    context.read<UserBookingBloc>().add(ChangeAvailabilityStatus(userId: userId));
     debugPrint("✅ EVENT: ChangeAvailabilityStatus dispatched");
   }
 
@@ -362,6 +605,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
     _locationTimer = null;
   }
 
+  /// ===============================================================
+  /// ✅ POPUP (OLD DESIGN - included)
+  /// ===============================================================
   void _showBookingPopup(TaskerBookingOffer offer) {
     if (!mounted) return;
 
@@ -375,8 +621,6 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
       return;
     }
 
-    debugPrint("🟢 POPUP: preparing booking=${offer.bookingDetailId}");
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (_dialogOpen) return;
@@ -384,12 +628,10 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
       _dialogOpen = true;
       _lastPopupBookingDetailId = offer.bookingDetailId;
 
-      debugPrint("🟢 POPUP: OPEN booking=${offer.bookingDetailId}");
-
       try {
         await showDialog(
           context: context,
-          useRootNavigator: true, // ✅ important
+          useRootNavigator: true,
           barrierDismissible: false,
           barrierColor: Colors.black.withOpacity(0.55),
           builder: (ctx) {
@@ -406,7 +648,6 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
             void closeDialog() {
               if (closed) return;
               closed = true;
-
               timer?.cancel();
               timer = null;
 
@@ -646,7 +887,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                                   child: ElevatedButton(
                                     onPressed: () {
                                       final authState = context.read<AuthenticationBloc>().state;
-                                      final uid = authState.userDetails?.userId?.toString() ?? "";
+                                      final uid = authState.userDetails?.userId.toString() ?? "";
 
                                       debugPrint("🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
 
@@ -690,12 +931,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
             );
           },
         );
-
-        debugPrint("🟠 POPUP: closed (showDialog returned)");
       } catch (e) {
         debugPrint("❌ POPUP: showDialog exception => $e");
       } finally {
-        debugPrint("🔁 POPUP: reset guards");
         _dialogOpen = false;
         _lastPopupBookingDetailId = null;
       }
@@ -704,16 +942,23 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 
   @override
   void dispose() {
-    debugPrint("🧹 TaskerHome dispose()");
+    WidgetsBinding.instance.removeObserver(this);
+
     _stopLocationUpdates();
+
+    _hubWatchdog?.cancel();
     _hubSub?.cancel();
+
+    // dispose hub service (fire-and-forget)
+    _hub.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthenticationBloc>().state;
-    final name = authState.userDetails?.fullName?.toString() ?? 'Tasker';
+    final name = authState.userDetails?.fullName.toString() ?? 'Tasker';
 
     final earnings = period == 'Week' ? weeklyEarning : monthlyEarning;
 
@@ -806,15 +1051,12 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.90,
-                child: _WhiteCard(
-                  child: _KpiRow(
-                    rating: rating,
-                    reviews: reviews,
-                    acceptance: acceptanceRate,
-                    completion: completionRate,
-                  ),
+              _WhiteCard(
+                child: _KpiRow(
+                  rating: rating,
+                  reviews: reviews,
+                  acceptance: acceptanceRate,
+                  completion: completionRate,
                 ),
               ),
               const SizedBox(height: 18),
@@ -849,9 +1091,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                     ),
                     const SizedBox(height: 10),
                     if (filteredTasks.isEmpty)
-                      const _EmptyState(
-                        text: 'No tasks yet. Turn on availability to get offers.',
-                      )
+                      const _EmptyState(text: 'No tasks yet. Turn on availability to get offers.')
                     else
                       Column(
                         children: [
@@ -891,8 +1131,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
                             children: _badges
                                 .map(
                                   (b) => Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: b.bg,
                                       borderRadius: BorderRadius.circular(999),
@@ -932,7 +1171,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign> {
 }
 
 /// ===============================================================
-/// UI WIDGETS
+/// UI WIDGETS (OLD UI kept)
 /// ===============================================================
 
 class _InfoCard extends StatelessWidget {
@@ -1121,16 +1360,8 @@ class _EarningsCard extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Pill(
-                label: 'Week',
-                selected: period == 'Week',
-                onTap: () => onChange('Week'),
-              ),
-              _Pill(
-                label: 'Month',
-                selected: period == 'Month',
-                onTap: () => onChange('Month'),
-              ),
+              _Pill(label: 'Week', selected: period == 'Week', onTap: () => onChange('Week')),
+              _Pill(label: 'Month', selected: period == 'Month', onTap: () => onChange('Month')),
             ],
           ),
         ),
@@ -1192,32 +1423,16 @@ class _KpiRow extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _KpiTile(
-          icon: Icons.star_rate_rounded,
-          title: rating.toStringAsFixed(1),
-          sub: '$reviews reviews',
-        ),
-        _KpiTile(
-          icon: Icons.bolt_rounded,
-          title: '$acceptance%',
-          sub: 'acceptance',
-        ),
-        _KpiTile(
-          icon: Icons.check_circle_rounded,
-          title: '$completion%',
-          sub: 'completion',
-        ),
+        _KpiTile(icon: Icons.star_rate_rounded, title: rating.toStringAsFixed(1), sub: '$reviews reviews'),
+        _KpiTile(icon: Icons.bolt_rounded, title: '$acceptance%', sub: 'acceptance'),
+        _KpiTile(icon: Icons.check_circle_rounded, title: '$completion%', sub: 'completion'),
       ],
     );
   }
 }
 
 class _KpiTile extends StatelessWidget {
-  const _KpiTile({
-    required this.icon,
-    required this.title,
-    required this.sub,
-  });
+  const _KpiTile({required this.icon, required this.title, required this.sub});
 
   final IconData icon;
   final String title;
@@ -1228,7 +1443,7 @@ class _KpiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: (MediaQuery.of(context).size.width * 0.90),
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: kPrimary.withOpacity(0.06),
@@ -1300,13 +1515,11 @@ class _TaskTile extends StatelessWidget {
           children: [
             const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
-            Text(task.date,
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(task.date, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
             const SizedBox(width: 14),
             const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
-            Text(task.time,
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(task.time, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
             const SizedBox(width: 14),
             const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF75748A)),
             const SizedBox(width: 6),
@@ -1314,7 +1527,8 @@ class _TaskTile extends StatelessWidget {
               child: Text(
                 task.location,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A)),
+              ),
             ),
           ],
         ),
@@ -1349,32 +1563,4 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Badge {
-  final String label;
-  final IconData icon;
-  final Color bg;
-  final Color fg;
-
-  const _Badge({
-    required this.label,
-    required this.icon,
-    required this.bg,
-    required this.fg,
-  });
-}
-
-class _Task {
-  final String title;
-  final String date;
-  final String time;
-  final String location;
-
-  const _Task({
-    required this.title,
-    required this.date,
-    required this.time,
-    required this.location,
-  });
 }
