@@ -411,7 +411,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
       titleSpacing: 16,
       title: Padding(
         padding: const EdgeInsets.all(16),
-        child: const GreetingWithLocation(),
+        child:  GreetingText(name: context.read<AuthenticationBloc>().state.userDetails!.fullName.toString(),),
       ),
       actions: [
         IconButton(
