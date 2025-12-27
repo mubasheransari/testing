@@ -45,19 +45,75 @@ class TaskerBookingOffer {
   final double lat;
   final double lng;
   final double estimatedCost;
+
+  // ✅ new fields
+  final String? bookingService;
+  final String? userName;
+  final int? bookingDuration; // hours (based on your sample)
+  final DateTime? bookingTime;
+  final double? distanceKm;
+  final String? location;
+
+  // existing
   final String message;
   final String? type;
-  final String? date;
+  final String? date; // raw string from server
 
   TaskerBookingOffer({
     required this.bookingDetailId,
     required this.lat,
     required this.lng,
     required this.estimatedCost,
+
+    // new
+    this.bookingService,
+    this.userName,
+    this.bookingDuration,
+    this.bookingTime,
+    this.distanceKm,
+    this.location,
+
+    // existing
     required this.message,
     this.type,
     this.date,
   });
+Map<String, String> toDisplayMap() {
+  String fmtDate(DateTime? dt) {
+    if (dt == null) return "";
+    final d = dt.toLocal();
+    return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  }
+
+  String fmtTime(DateTime? dt) {
+    if (dt == null) return "";
+    final t = dt.toLocal();
+    return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+  }
+
+  final map = <String, String>{
+    "Service": bookingService ?? "",
+    "User Name": userName ?? "",
+    "Distance": distanceKm == null ? "" : "${distanceKm!.toStringAsFixed(2)} km",
+    "Location": location ?? "",
+    "Estimated Cost": estimatedCost == 0 ? "" : "\$${estimatedCost.toStringAsFixed(2)}",
+    "Duration": bookingDuration == null ? "" : "${bookingDuration} hr",
+
+    // booking date/time separately (from bookingTime)
+    "Booking Date": fmtDate(bookingTime),
+    "Booking Time": fmtTime(bookingTime),
+
+    // top-level date (if you also want it)
+    "Notification Date": (date ?? "").isEmpty ? "" : date!,
+    "Type": type ?? "",
+
+    "Message": message,
+  };
+
+  map.removeWhere((k, v) => v.trim().isEmpty);
+  return map;
+}
+
 
   static TaskerBookingOffer? tryParse(dynamic payload) {
     try {
@@ -76,6 +132,7 @@ class TaskerBookingOffer {
 
       final map = Map<String, dynamic>.from(obj);
 
+      // data can be a map or json string
       dynamic dataAny = map['data'];
       if (dataAny is String) {
         try {
@@ -86,6 +143,7 @@ class TaskerBookingOffer {
       Map<String, dynamic>? data;
       if (dataAny is Map) data = Map<String, dynamic>.from(dataAny);
 
+      // bookingDetailId (support multiple casings / old placements)
       final bookingDetailId = (data?['bookingDetailId'] ??
               data?['BookingDetailId'] ??
               map['bookingDetailId'] ??
@@ -110,11 +168,41 @@ class TaskerBookingOffer {
             0,
       );
 
+      // ✅ new fields parsing
+      final bookingService =
+          (data?['bookingService'] ?? data?['BookingService'])?.toString();
+      final userName =
+          (data?['userName'] ?? data?['UserName'])?.toString();
+
+      final bookingDuration = _toInt(
+        data?['bookingDuration'] ?? data?['BookingDuration'],
+      );
+
+      final bookingTime = _toDateTime(
+        data?['bookingTime'] ?? data?['BookingTime'],
+      );
+
+      final distanceKm = _toDoubleOrNull(
+        data?['distanceKm'] ?? data?['DistanceKm'],
+      );
+
+      final location = (data?['location'] ?? data?['Location'])?.toString();
+
       return TaskerBookingOffer(
         bookingDetailId: bookingDetailId,
         lat: lat,
         lng: lng,
         estimatedCost: estimatedCost,
+
+        // new
+        bookingService: bookingService,
+        userName: userName,
+        bookingDuration: bookingDuration,
+        bookingTime: bookingTime,
+        distanceKm: distanceKm,
+        location: location,
+
+        // existing
         message: (map['message'] ?? '').toString(),
         type: map['type']?.toString(),
         date: map['date']?.toString(),
@@ -130,7 +218,119 @@ class TaskerBookingOffer {
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString()) ?? 0;
   }
+
+  static double? _toDoubleOrNull(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
+  }
+
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  static DateTime? _toDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    final s = v.toString();
+    return DateTime.tryParse(s);
+  }
 }
+
+// class TaskerBookingOffer {
+//   final String bookingDetailId;
+//   final double lat;
+//   final double lng;
+//   final double estimatedCost;
+//   final String message;
+//   final String? type;
+//   final String? date;
+
+//   TaskerBookingOffer({
+//     required this.bookingDetailId,
+//     required this.lat,
+//     required this.lng,
+//     required this.estimatedCost,
+//     required this.message,
+//     this.type,
+//     this.date,
+//   });
+
+//   static TaskerBookingOffer? tryParse(dynamic payload) {
+//     try {
+//       dynamic obj = payload;
+
+//       // SignalR sometimes sends [ {..} ]
+//       if (obj is List && obj.isNotEmpty) obj = obj.first;
+
+//       // Server can send json string
+//       if (obj is String) obj = jsonDecode(obj);
+
+//       if (obj is! Map) {
+//         debugPrint("❌ tryParse: payload is not Map => ${obj.runtimeType}");
+//         return null;
+//       }
+
+//       final map = Map<String, dynamic>.from(obj);
+
+//       dynamic dataAny = map['data'];
+//       if (dataAny is String) {
+//         try {
+//           dataAny = jsonDecode(dataAny);
+//         } catch (_) {}
+//       }
+
+//       Map<String, dynamic>? data;
+//       if (dataAny is Map) data = Map<String, dynamic>.from(dataAny);
+
+//       final bookingDetailId = (data?['bookingDetailId'] ??
+//               data?['BookingDetailId'] ??
+//               map['bookingDetailId'] ??
+//               map['BookingDetailId'])
+//           ?.toString();
+
+//       if (bookingDetailId == null || bookingDetailId.isEmpty) {
+//         debugPrint("❌ tryParse: bookingDetailId missing. keys=${map.keys}");
+//         return null;
+//       }
+
+//       final lat = _toDouble(
+//           data?['lat'] ?? data?['Lat'] ?? map['lat'] ?? map['Lat'] ?? 0);
+//       final lng = _toDouble(
+//           data?['lng'] ?? data?['Lng'] ?? map['lng'] ?? map['Lng'] ?? 0);
+
+//       final estimatedCost = _toDouble(
+//         data?['estimatedCost'] ??
+//             data?['EstimatedCost'] ??
+//             map['estimatedCost'] ??
+//             map['EstimatedCost'] ??
+//             0,
+//       );
+
+//       return TaskerBookingOffer(
+//         bookingDetailId: bookingDetailId,
+//         lat: lat,
+//         lng: lng,
+//         estimatedCost: estimatedCost,
+//         message: (map['message'] ?? '').toString(),
+//         type: map['type']?.toString(),
+//         date: map['date']?.toString(),
+//       );
+//     } catch (e) {
+//       debugPrint("❌ tryParse exception => $e");
+//       return null;
+//     }
+//   }
+
+//   static double _toDouble(dynamic v) {
+//     if (v == null) return 0;
+//     if (v is num) return v.toDouble();
+//     return double.tryParse(v.toString()) ?? 0;
+//   }
+// }
 
 /// ===============================================================
 /// ✅ SEPARATE SIGNALR IMPLEMENTATION (INSIDE THIS FILE)
@@ -608,337 +808,792 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   /// ===============================================================
   /// ✅ POPUP (OLD DESIGN - included)
   /// ===============================================================
-  void _showBookingPopup(TaskerBookingOffer offer) {
+  // void _showBookingPopup(TaskerBookingOffer offer) {
+  //   if (!mounted) return;
+
+  //   if (_dialogOpen) {
+  //     debugPrint("⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}");
+  //     return;
+  //   }
+
+  //   if (_lastPopupBookingDetailId == offer.bookingDetailId) {
+  //     debugPrint("⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}");
+  //     return;
+  //   }
+
+  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //     if (!mounted) return;
+  //     if (_dialogOpen) return;
+
+  //     _dialogOpen = true;
+  //     _lastPopupBookingDetailId = offer.bookingDetailId;
+
+  //     try {
+  //       await showDialog(
+  //         context: context,
+  //         useRootNavigator: true,
+  //         barrierDismissible: false,
+  //         barrierColor: Colors.black.withOpacity(0.55),
+  //         builder: (ctx) {
+  //           const kGold = Color(0xFFF4C847);
+  //           const int totalSeconds = 60;
+
+  //           int secondsLeft = totalSeconds;
+  //           Timer? timer;
+  //           bool closed = false;
+
+  //           String mmss(int s) =>
+  //               '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+
+  //           void closeDialog() {
+  //             if (closed) return;
+  //             closed = true;
+  //             timer?.cancel();
+  //             timer = null;
+
+  //             if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+  //               Navigator.of(ctx, rootNavigator: true).pop();
+  //             }
+  //           }
+
+  //           Widget infoTile({
+  //             required IconData icon,
+  //             required String label,
+  //             required String value,
+  //           }) {
+  //             return Container(
+  //               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  //               decoration: BoxDecoration(
+  //                 color: kPrimary.withOpacity(0.06),
+  //                 borderRadius: BorderRadius.circular(14),
+  //                 border: Border.all(color: kPrimary.withOpacity(0.15)),
+  //               ),
+  //               child: Row(
+  //                 children: [
+  //                   Container(
+  //                     width: 34,
+  //                     height: 34,
+  //                     decoration: BoxDecoration(
+  //                       color: kPrimary.withOpacity(0.12),
+  //                       borderRadius: BorderRadius.circular(12),
+  //                     ),
+  //                     child: Icon(icon, color: kPrimary, size: 18),
+  //                   ),
+  //                   const SizedBox(width: 10),
+  //                   Expanded(
+  //                     child: Column(
+  //                       crossAxisAlignment: CrossAxisAlignment.start,
+  //                       children: [
+  //                         Text(
+  //                           label,
+  //                           style: const TextStyle(
+  //                             fontFamily: 'Poppins',
+  //                             fontSize: 11.5,
+  //                             color: kMuted,
+  //                             fontWeight: FontWeight.w500,
+  //                           ),
+  //                         ),
+  //                         const SizedBox(height: 2),
+  //                         Text(
+  //                           value,
+  //                           maxLines: 2,
+  //                           overflow: TextOverflow.ellipsis,
+  //                           style: const TextStyle(
+  //                             fontFamily: 'Poppins',
+  //                             fontSize: 13.5,
+  //                             color: kTextDark,
+  //                             fontWeight: FontWeight.w700,
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             );
+  //           }
+
+  //           return StatefulBuilder(
+  //             builder: (context, setState) {
+  //               timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+  //                 if (closed) return;
+
+  //                 if (secondsLeft <= 1) {
+  //                   debugPrint("⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}");
+  //                   closeDialog();
+  //                   return;
+  //                 }
+
+  //                 setState(() => secondsLeft--);
+  //               });
+
+  //               final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+
+  //               return WillPopScope(
+  //                 onWillPop: () async => false,
+  //                 child: Center(
+  //                   child: Material(
+  //                     color: Colors.transparent,
+  //                     child: Container(
+  //                       width: MediaQuery.of(ctx).size.width * 0.88,
+  //                       constraints: const BoxConstraints(maxWidth: 420),
+  //                       padding: const EdgeInsets.all(16),
+  //                       decoration: BoxDecoration(
+  //                         color: Colors.white,
+  //                         borderRadius: BorderRadius.circular(22),
+  //                         boxShadow: [
+  //                           BoxShadow(
+  //                             color: Colors.black.withOpacity(0.12),
+  //                             blurRadius: 24,
+  //                             offset: const Offset(0, 14),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                       child: Column(
+  //                         mainAxisSize: MainAxisSize.min,
+  //                         children: [
+  //                           Row(
+  //                             children: [
+  //                               Container(
+  //                                 width: 42,
+  //                                 height: 42,
+  //                                 decoration: BoxDecoration(
+  //                                   color: kGold.withOpacity(0.25),
+  //                                   borderRadius: BorderRadius.circular(14),
+  //                                 ),
+  //                                 child: const Icon(
+  //                                   Icons.notifications_active_rounded,
+  //                                   color: kPrimary,
+  //                                   size: 24,
+  //                                 ),
+  //                               ),
+  //                               const SizedBox(width: 12),
+  //                               const Expanded(
+  //                                 child: Text(
+  //                                   "New Booking Offer",
+  //                                   style: TextStyle(
+  //                                     fontFamily: 'Poppins',
+  //                                     fontSize: 16,
+  //                                     color: kTextDark,
+  //                                     fontWeight: FontWeight.w800,
+  //                                   ),
+  //                                 ),
+  //                               ),
+  //                               const Icon(Icons.close_rounded, color: Colors.transparent),
+  //                             ],
+  //                           ),
+  //                           const SizedBox(height: 10),
+  //                           ClipRRect(
+  //                             borderRadius: BorderRadius.circular(999),
+  //                             child: LinearProgressIndicator(
+  //                               value: progress,
+  //                               minHeight: 8,
+  //                               backgroundColor: kPrimary.withOpacity(0.10),
+  //                               valueColor: AlwaysStoppedAnimation<Color>(
+  //                                 secondsLeft <= 10
+  //                                     ? Colors.redAccent
+  //                                     : (secondsLeft <= 25 ? kGold : kPrimary),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                           const SizedBox(height: 12),
+  //                           Container(
+  //                             width: double.infinity,
+  //                             padding: const EdgeInsets.all(12),
+  //                             decoration: BoxDecoration(
+  //                               color: kPrimary.withOpacity(0.06),
+  //                               borderRadius: BorderRadius.circular(16),
+  //                               border: Border.all(color: kPrimary.withOpacity(0.12)),
+  //                             ),
+  //                             child: Text(
+  //                               offer.message,
+  //                               style: const TextStyle(
+  //                                 fontFamily: 'Poppins',
+  //                                 fontSize: 13,
+  //                                 color: kTextDark,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 height: 1.35,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                           const SizedBox(height: 12),
+  //                           Row(
+  //                             children: [
+  //                               Expanded(
+  //                                 child: infoTile(
+  //                                   icon: Icons.attach_money_rounded,
+  //                                   label: "Estimated",
+  //                                   value: "\$${offer.estimatedCost.toStringAsFixed(0)}",
+  //                                 ),
+  //                               ),
+  //                               const SizedBox(width: 10),
+  //                               Expanded(
+  //                                 child: infoTile(
+  //                                   icon: Icons.timer_outlined,
+  //                                   label: "Time Left",
+  //                                   value: mmss(secondsLeft),
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ),
+  //                           const SizedBox(height: 10),
+  //                           Row(
+  //                             children: [
+  //                               Expanded(
+  //                                 child: infoTile(
+  //                                   icon: Icons.my_location_outlined,
+  //                                   label: "Latitude",
+  //                                   value: offer.lat.toStringAsFixed(4),
+  //                                 ),
+  //                               ),
+  //                               const SizedBox(width: 10),
+  //                               Expanded(
+  //                                 child: infoTile(
+  //                                   icon: Icons.my_location_outlined,
+  //                                   label: "Longitude",
+  //                                   value: offer.lng.toStringAsFixed(4),
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ),
+  //                           const SizedBox(height: 14),
+  //                           Row(
+  //                             children: [
+  //                               Expanded(
+  //                                 child: OutlinedButton(
+  //                                   onPressed: () {
+  //                                     debugPrint("🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}");
+  //                                     closeDialog();
+  //                                   },
+  //                                   style: OutlinedButton.styleFrom(
+  //                                     foregroundColor: kPrimary,
+  //                                     side: BorderSide(color: kPrimary.withOpacity(0.35)),
+  //                                     padding: const EdgeInsets.symmetric(vertical: 12),
+  //                                     shape: RoundedRectangleBorder(
+  //                                       borderRadius: BorderRadius.circular(14),
+  //                                     ),
+  //                                   ),
+  //                                   child: const Text(
+  //                                     "Decline",
+  //                                     style: TextStyle(
+  //                                       fontFamily: 'Poppins',
+  //                                       fontWeight: FontWeight.w700,
+  //                                     ),
+  //                                   ),
+  //                                 ),
+  //                               ),
+  //                               const SizedBox(width: 12),
+  //                               Expanded(
+  //                                 child: ElevatedButton(
+  //                                   onPressed: () {
+  //                                     final authState = context.read<AuthenticationBloc>().state;
+  //                                     final uid = authState.userDetails?.userId.toString() ?? "";
+
+  //                                     debugPrint("🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
+
+  //                                     context.read<UserBookingBloc>().add(
+  //                                           AcceptBooking(
+  //                                             userId: uid,
+  //                                             bookingDetailId: offer.bookingDetailId,
+  //                                           ),
+  //                                         );
+
+  //                                     debugPrint("✅ EVENT: AcceptBooking dispatched");
+  //                                     closeDialog();
+  //                                   },
+  //                                   style: ElevatedButton.styleFrom(
+  //                                     backgroundColor: kPrimary,
+  //                                     foregroundColor: Colors.white,
+  //                                     padding: const EdgeInsets.symmetric(vertical: 12),
+  //                                     shape: RoundedRectangleBorder(
+  //                                       borderRadius: BorderRadius.circular(14),
+  //                                     ),
+  //                                     elevation: 0,
+  //                                   ),
+  //                                   child: const Text(
+  //                                     "Accept",
+  //                                     style: TextStyle(
+  //                                       fontFamily: 'Poppins',
+  //                                       fontWeight: FontWeight.w800,
+  //                                     ),
+  //                                   ),
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               );
+  //             },
+  //           );
+  //         },
+  //       );
+  //     } catch (e) {
+  //       debugPrint("❌ POPUP: showDialog exception => $e");
+  //     } finally {
+  //       _dialogOpen = false;
+  //       _lastPopupBookingDetailId = null;
+  //     }
+  //   });
+  // }
+  
+
+void _showBookingPopup(TaskerBookingOffer offer) {
+  if (!mounted) return;
+
+  if (_dialogOpen) {
+    debugPrint("⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}");
+    return;
+  }
+
+  if (_lastPopupBookingDetailId == offer.bookingDetailId) {
+    debugPrint("⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}");
+    return;
+  }
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
     if (!mounted) return;
+    if (_dialogOpen) return;
 
-    if (_dialogOpen) {
-      debugPrint("⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}");
-      return;
-    }
+    _dialogOpen = true;
+    _lastPopupBookingDetailId = offer.bookingDetailId;
 
-    if (_lastPopupBookingDetailId == offer.bookingDetailId) {
-      debugPrint("⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}");
-      return;
-    }
+    try {
+      await showDialog(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withOpacity(0.55),
+        builder: (ctx) {
+          const kGold = Color(0xFFF4C847);
+          const int totalSeconds = 60;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      if (_dialogOpen) return;
+          int secondsLeft = totalSeconds;
+          Timer? timer;
+          bool closed = false;
 
-      _dialogOpen = true;
-      _lastPopupBookingDetailId = offer.bookingDetailId;
+          String mmss(int s) =>
+              '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
-      try {
-        await showDialog(
-          context: context,
-          useRootNavigator: true,
-          barrierDismissible: false,
-          barrierColor: Colors.black.withOpacity(0.55),
-          builder: (ctx) {
-            const kGold = Color(0xFFF4C847);
-            const int totalSeconds = 60;
+          String fmtDate(DateTime? dt) {
+            if (dt == null) return "-";
+            final d = dt.toLocal();
+            return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+          }
 
-            int secondsLeft = totalSeconds;
-            Timer? timer;
-            bool closed = false;
+          String fmtTime(DateTime? dt) {
+            if (dt == null) return "-";
+            final t = dt.toLocal();
+            return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+          }
 
-            String mmss(int s) =>
-                '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+          void closeDialog() {
+            if (closed) return;
+            closed = true;
+            timer?.cancel();
+            timer = null;
 
-            void closeDialog() {
-              if (closed) return;
-              closed = true;
-              timer?.cancel();
-              timer = null;
-
-              if (Navigator.of(ctx, rootNavigator: true).canPop()) {
-                Navigator.of(ctx, rootNavigator: true).pop();
-              }
+            if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+              Navigator.of(ctx, rootNavigator: true).pop();
             }
+          }
 
-            Widget infoTile({
-              required IconData icon,
-              required String label,
-              required String value,
-            }) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: kPrimary.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: kPrimary.withOpacity(0.15)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: kPrimary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(icon, color: kPrimary, size: 18),
+          Widget infoTile({
+            required IconData icon,
+            required String label,
+            required String value,
+          }) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: kPrimary.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: kPrimary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 11.5,
-                              color: kMuted,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    child: Icon(icon, color: kPrimary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11.5,
+                            color: kMuted,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            value,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 13.5,
-                              color: kTextDark,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          value,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.5,
+                            color: kTextDark,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return StatefulBuilder(
+            builder: (context, setState) {
+              timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+                if (closed) return;
+
+                if (secondsLeft <= 1) {
+                  debugPrint("⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}");
+                  closeDialog();
+                  return;
+                }
+
+                setState(() => secondsLeft--);
+              });
+
+              final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+
+              return WillPopScope(
+                onWillPop: () async => false,
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      width: MediaQuery.of(ctx).size.width * 0.88,
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 14),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return StatefulBuilder(
-              builder: (context, setState) {
-                timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
-                  if (closed) return;
-
-                  if (secondsLeft <= 1) {
-                    debugPrint("⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}");
-                    closeDialog();
-                    return;
-                  }
-
-                  setState(() => secondsLeft--);
-                });
-
-                final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
-
-                return WillPopScope(
-                  onWillPop: () async => false,
-                  child: Center(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: Container(
-                        width: MediaQuery.of(ctx).size.width * 0.88,
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 24,
-                              offset: const Offset(0, 14),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    color: kGold.withOpacity(0.25),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_active_rounded,
-                                    color: kPrimary,
-                                    size: 24,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header
+                          Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: kGold.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_active_rounded,
+                                  color: kPrimary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  "New Booking Offer",
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 16,
+                                    color: kTextDark,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text(
-                                    "New Booking Offer",
+                              ),
+                              const Icon(Icons.close_rounded, color: Colors.transparent),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Progress
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: kPrimary.withOpacity(0.10),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                secondsLeft <= 10
+                                    ? Colors.redAccent
+                                    : (secondsLeft <= 25 ? kGold : kPrimary),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Message (full)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: kPrimary.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: kPrimary.withOpacity(0.12)),
+                            ),
+                            child: Text(
+                              offer.message,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                color: kTextDark,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Estimated + Time Left
+                        /*  Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.attach_money_rounded,
+                                  label: "Estimated Cost",
+                                  value: "\$${offer.estimatedCost.toStringAsFixed(2)}",
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                                Expanded(
+                                child: infoTile(
+                                  icon: Icons.person_rounded,
+                                  label: "User Name",
+                                  value: offer.userName ?? "-",
+                                ),
+                              ),
+                              // Expanded(
+                              //   child: infoTile(
+                              //     icon: Icons.timer_outlined,
+                              //     label: "Time Left",
+                              //     value: mmss(secondsLeft),
+                              //   ),
+                              // ),
+                            ],
+                          ),*/
+                                    infoTile(
+                               icon: Icons.home_repair_service_rounded,
+                            label: "Service",
+                             value: offer.bookingService ?? "-",
+                          ),
+                            const SizedBox(height: 10),
+                          infoTile(
+                                  icon: Icons.attach_money_rounded,
+                                  label: "Estimated Cost",
+                                  value: "\$${offer.estimatedCost.toStringAsFixed(2)}",
+                                ),
+
+                          const SizedBox(height: 10),
+
+                          // Booking Date + Booking Time (separate)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.event_rounded,
+                                  label: "Booking Date",
+                                  value: fmtDate(offer.bookingTime),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.schedule_rounded,
+                                  label: "Booking Time",
+                                  value: fmtTime(offer.bookingTime),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                         // const SizedBox(height: 10),
+                          //     infoTile(
+                          //      icon: Icons.home_repair_service_rounded,
+                          //   label: "Service",
+                          //    value: offer.bookingService ?? "-",
+                          // ),
+                          //   const SizedBox(height: 10),
+                          // infoTile(
+                          //         icon: Icons.attach_money_rounded,
+                          //         label: "Estimated Cost",
+                          //         value: "\$${offer.estimatedCost.toStringAsFixed(2)}",
+                          //       ),
+
+                          // Service + User Name
+                         /* Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.home_repair_service_rounded,
+                                  label: "Service",
+                                  value: offer.bookingService ?? "-",
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.person_rounded,
+                                  label: "User Name",
+                                  value: offer.userName ?? "-",
+                                ),
+                              ),
+                            ],
+                          ),*/
+
+                          const SizedBox(height: 10),
+
+                          // Distance + Duration
+                          Row(
+                            children: [
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.route_rounded,
+                                  label: "Distance",
+                                  value: offer.distanceKm == null
+                                      ? "-"
+                                      : "${offer.distanceKm!.toStringAsFixed(2)} km",
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: infoTile(
+                                  icon: Icons.timelapse_rounded,
+                                  label: "Duration",
+                                  value: offer.bookingDuration == null
+                                      ? "-"
+                                      : "${offer.bookingDuration} hr",
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Location (full width)
+                          infoTile(
+                            icon: Icons.location_on_rounded,
+                            label: "Location",
+                            value: offer.location ?? "-",
+                          ),
+
+
+                          const SizedBox(height: 14),
+
+                          // Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    debugPrint("🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}");
+                                    closeDialog();
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: kPrimary,
+                                    side: BorderSide(color: kPrimary.withOpacity(0.35)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "Decline",
                                     style: TextStyle(
                                       fontFamily: 'Poppins',
-                                      fontSize: 16,
-                                      color: kTextDark,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    final authState =
+                                        context.read<AuthenticationBloc>().state;
+                                    final uid =
+                                        authState.userDetails?.userId.toString() ?? "";
+
+                                    debugPrint(
+                                        "🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
+
+                                    context.read<UserBookingBloc>().add(
+                                          AcceptBooking(
+                                            userId: uid,
+                                            bookingDetailId: offer.bookingDetailId,
+                                          ),
+                                        );
+
+                                    debugPrint("✅ EVENT: AcceptBooking dispatched");
+                                    closeDialog();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: kPrimary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    "Accept",
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.close_rounded, color: Colors.transparent),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 8,
-                                backgroundColor: kPrimary.withOpacity(0.10),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  secondsLeft <= 10
-                                      ? Colors.redAccent
-                                      : (secondsLeft <= 25 ? kGold : kPrimary),
-                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: kPrimary.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: kPrimary.withOpacity(0.12)),
-                              ),
-                              child: Text(
-                                offer.message,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                  color: kTextDark,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: infoTile(
-                                    icon: Icons.attach_money_rounded,
-                                    label: "Estimated",
-                                    value: "\$${offer.estimatedCost.toStringAsFixed(0)}",
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: infoTile(
-                                    icon: Icons.timer_outlined,
-                                    label: "Time Left",
-                                    value: mmss(secondsLeft),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: infoTile(
-                                    icon: Icons.my_location_outlined,
-                                    label: "Latitude",
-                                    value: offer.lat.toStringAsFixed(4),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: infoTile(
-                                    icon: Icons.my_location_outlined,
-                                    label: "Longitude",
-                                    value: offer.lng.toStringAsFixed(4),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      debugPrint("🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}");
-                                      closeDialog();
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: kPrimary,
-                                      side: BorderSide(color: kPrimary.withOpacity(0.35)),
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "Decline",
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      final authState = context.read<AuthenticationBloc>().state;
-                                      final uid = authState.userDetails?.userId.toString() ?? "";
-
-                                      debugPrint("🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
-
-                                      context.read<UserBookingBloc>().add(
-                                            AcceptBooking(
-                                              userId: uid,
-                                              bookingDetailId: offer.bookingDetailId,
-                                            ),
-                                          );
-
-                                      debugPrint("✅ EVENT: AcceptBooking dispatched");
-                                      closeDialog();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: kPrimary,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: const Text(
-                                      "Accept",
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                );
-              },
-            );
-          },
-        );
-      } catch (e) {
-        debugPrint("❌ POPUP: showDialog exception => $e");
-      } finally {
-        _dialogOpen = false;
-        _lastPopupBookingDetailId = null;
-      }
-    });
-  }
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint("❌ POPUP: showDialog exception => $e");
+    } finally {
+      _dialogOpen = false;
+      _lastPopupBookingDetailId = null;
+    }
+  });
+}
+
+
 
   @override
   void dispose() {
