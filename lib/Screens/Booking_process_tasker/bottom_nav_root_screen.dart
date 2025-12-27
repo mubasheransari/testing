@@ -325,7 +325,7 @@ class _NavItemTile extends StatelessWidget {
                     fontFamily: 'Poppins',
                     color: selected ? Colors.white : Colors.white.withOpacity(.82),
                     fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
+                  fontSize: 11.2,
                   ),
                 ),
                 const SizedBox(height: 6),
