@@ -47,7 +47,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       create: (_) => AuthenticationBloc(
         AuthRepositoryHttp(
           timeout: const Duration(seconds: 20),
-          baseUrl: 'http://192.3.3.187:85',
+          baseUrl: 'https://api.taskoon.com',//'http://192.3.3.187:85',
           endpoint: '/api/auth/forgetpassword',
         ),
       ),

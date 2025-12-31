@@ -17,8 +17,8 @@ import '../Models/services_model.dart';
 import 'package:http_parser/http_parser.dart' show MediaType;
 
 class ApiConfig {
-  static const String baseUrl = 'http://192.3.3.187:85';
-  static const String baseUrlLocation = 'http://192.3.3.187:85';
+  static const String baseUrl = 'https://api.taskoon.com';//'http://192.3.3.187:85';
+  static const String baseUrlLocation = 'https://api.taskoon.com';
   static const String userStatusEndpoint = '/api/User/status';
   static const String signupEndpoint = '/api/auth/signup';
   static const String signInEndpoint = '/api/Auth/SignIn';
@@ -34,7 +34,7 @@ class ApiConfig {
   static const String certificateSubmitEndpoint =
       '/api/services/CertificateSubmit';
   static const String userDetailsEndpoint = '/api/User/details';
-  static const String onboardingUserEndpoint = '/api/User/onboardinguser';
+  static const String onboardingUserEndpoint = '/api/user/onboardinguser';
   static const String trainingVideosEndpoint = '/api/Services/trainingvideos';
   //user booking
   static const String bookingEndpoint = '/api/booking/create';

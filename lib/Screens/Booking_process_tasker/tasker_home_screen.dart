@@ -425,7 +425,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   static const Color kMuted = Color(0xFF75748A);
   static const Color kBg = Color(0xFFF8F7FB);
 
-  static const String _baseUrl = "http://192.3.3.187:85";
+  static const String _baseUrl = "https://api.taskoon.com";//"http://192.3.3.187:85";
 
   bool available = false;
   String period = 'Week';
