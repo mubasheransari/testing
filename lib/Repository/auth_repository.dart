@@ -995,6 +995,224 @@ Future<Result<BookingCreateResponse>> createBooking({
   }
 
   @override
+Future<Result<RegistrationResponse>> onboardUser({
+  required String userId,
+  List<int> servicesId = const [], // ignored (hardcoded)
+  required NamedBytes profilePicture,
+  NamedBytes? docCertification,
+  required NamedBytes docInsurance,
+  required NamedBytes docAddressProof,
+  required NamedBytes docIdVerification,
+}) async {
+  if (userId.trim().isEmpty) {
+    return Result.fail(Failure(code: 'validation', message: 'UserId is required'));
+  }
+  if (profilePicture.bytes.isEmpty ||
+      docInsurance.bytes.isEmpty ||
+      docAddressProof.bytes.isEmpty ||
+      docIdVerification.bytes.isEmpty) {
+    return Result.fail(
+      Failure(code: 'validation', message: 'All required files must be provided'),
+    );
+  }
+
+  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.onboardingUserEndpoint}');
+
+  // ✅ HARDCODE service exactly like Postman success
+  const int hardcodedServiceId = 1;
+
+  try {
+    // ignore: avoid_print
+    print('>>> [ONBOARD] URL: $uri');
+    // ignore: avoid_print
+    print('>>> [ONBOARD] userId=$userId');
+    // ignore: avoid_print
+    print('>>> [ONBOARD] ServicesId[0]=$hardcodedServiceId (HARDCODED)');
+    // ignore: avoid_print
+    print(
+      '>>> [ONBOARD] Doc_Certification=${(docCertification == null || docCertification.bytes.isEmpty) ? 'PLACEHOLDER' : 'SET'}',
+    );
+
+    final req = http.MultipartRequest('POST', uri)
+      ..headers[HttpHeaders.acceptHeader] = 'application/json'
+      ..fields['UserId'] = userId;
+
+    // ✅ multipart list binding (ASP.NET Core)
+    req.fields['ServicesId[0]'] = hardcodedServiceId.toString();
+
+    http.MultipartFile part(String name, NamedBytes f) {
+      final mime = (f.mimeType ?? '').trim();
+      return http.MultipartFile.fromBytes(
+        name,
+        f.bytes,
+        filename: f.fileName.isEmpty ? 'upload.bin' : f.fileName,
+        contentType: mime.isNotEmpty ? MediaType.parse(mime) : null,
+      );
+    }
+
+    // required files
+    req.files.add(part('ProfilePicture', profilePicture));
+    req.files.add(part('Doc_Insurance', docInsurance));
+    req.files.add(part('Doc_Addressproof', docAddressProof));
+    req.files.add(part('Doc_Idverification', docIdVerification));
+
+    // certification mandatory => placeholder if missing
+    if (docCertification != null && docCertification.bytes.isNotEmpty) {
+      req.files.add(part('Doc_Certification', docCertification));
+    } else {
+      final tinyPng = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
+      );
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'Doc_Certification',
+          tinyPng,
+          filename: 'blank.png',
+          contentType: MediaType('image', 'png'),
+        ),
+      );
+    }
+
+    // ✅ Request summary logs
+    // ignore: avoid_print
+    print('--- [ONBOARD] FIELDS: ${req.fields}');
+    for (final f in req.files) {
+      // ignore: avoid_print
+      print('--- [ONBOARD] FILE ${f.field} | ${f.filename} | bytes=${f.length} | ct=${f.contentType}');
+    }
+
+    // ✅ Increase timeout for mobile uploads
+    // ignore: avoid_print
+    print('>>> [ONBOARD] sending multipart...');
+    final streamed = await req.send().timeout(const Duration(minutes: 3));
+    // ignore: avoid_print
+    print('>>> [ONBOARD] got response stream, reading...');
+    final res = await http.Response.fromStream(streamed);
+    // ignore: avoid_print
+    print('<<< [ONBOARD] STATUS ${res.statusCode}');
+    // ignore: avoid_print
+    print('<<< [ONBOARD] BODY ${res.body}');
+
+    return _handleSubmitResponse(res);
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+/*
+  @override
+Future<Result<RegistrationResponse>> onboardUser({
+  required String userId,
+  List<int> servicesId = const [], // will be ignored (hardcoded)
+  required NamedBytes profilePicture,
+  NamedBytes? docCertification,
+  required NamedBytes docInsurance,
+  required NamedBytes docAddressProof,
+  required NamedBytes docIdVerification,
+}) async {
+  if (userId.trim().isEmpty) {
+    return Result.fail(
+      Failure(code: 'validation', message: 'UserId is required'),
+    );
+  }
+  if (profilePicture.bytes.isEmpty ||
+      docInsurance.bytes.isEmpty ||
+      docAddressProof.bytes.isEmpty ||
+      docIdVerification.bytes.isEmpty) {
+    return Result.fail(
+      Failure(code: 'validation', message: 'All required files must be provided'),
+    );
+  }
+
+  final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.onboardingUserEndpoint}');
+
+  // ✅ HARD-CODE HERE (service not dynamic)
+  const int _hardcodedServiceId = 1; // <-- change to whatever you want
+
+  try {
+    // ignore: avoid_print
+    print('>>> ONBOARDING POST $uri');
+    // ignore: avoid_print
+    print('>>> UserId=$userId');
+    // ignore: avoid_print
+    print('>>> ServicesId (HARDCODED) = $_hardcodedServiceId');
+    // ignore: avoid_print
+    print(
+      '>>> Doc_Certification=${(docCertification == null || docCertification.bytes.isEmpty) ? 'PLACEHOLDER' : 'SET'}',
+    );
+
+    final req = http.MultipartRequest('POST', uri)
+      ..headers[HttpHeaders.acceptHeader] = 'application/json'
+      ..fields['UserId'] = userId;
+
+    // ✅ Send exactly like Postman (but correct index 0)
+    req.fields['ServicesId[0]'] = _hardcodedServiceId.toString();
+
+    // Helper
+    http.MultipartFile part(String name, NamedBytes f) {
+      final mime = (f.mimeType ?? '').trim();
+      return http.MultipartFile.fromBytes(
+        name,
+        f.bytes,
+        filename: f.fileName.isEmpty ? 'upload.bin' : f.fileName,
+        contentType: mime.isNotEmpty ? MediaType.parse(mime) : null,
+      );
+    }
+
+    // Required
+    req.files.add(part('ProfilePicture', profilePicture));
+    req.files.add(part('Doc_Insurance', docInsurance));
+    req.files.add(part('Doc_Addressproof', docAddressProof));
+    req.files.add(part('Doc_Idverification', docIdVerification));
+
+    // Certification (MANDATORY → placeholder if missing)
+    if (docCertification != null && docCertification.bytes.isNotEmpty) {
+      req.files.add(part('Doc_Certification', docCertification));
+    } else {
+      final tinyPng = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
+      );
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'Doc_Certification',
+          tinyPng,
+          filename: 'blank.png',
+          contentType: MediaType('image', 'png'),
+        ),
+      );
+    }
+
+    // ✅ Debug summary
+    // ignore: avoid_print
+    print('--- REQUEST FIELDS --- ${req.fields}');
+    for (final f in req.files) {
+      // ignore: avoid_print
+      print('--- FILE: ${f.field} | ${f.filename} | bytes=${f.length} | ct=${f.contentType}');
+    }
+
+    final streamed = await req.send().timeout(timeout);
+    final res = await http.Response.fromStream(streamed);
+
+    // ignore: avoid_print
+    print('<<< STATUS ${res.statusCode}');
+    // ignore: avoid_print
+    print('<<< BODY ${res.body}');
+
+    return _handleSubmitResponse(res);
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}*/
+
+/*
+  @override
   Future<Result<RegistrationResponse>> onboardUser({
     required String userId,
     List<int> servicesId = const [], // empty allowed (we’ll send 0)
@@ -1034,6 +1252,55 @@ Future<Result<BookingCreateResponse>> createBooking({
       );
 
       final req = http.MultipartRequest('POST', uri)
+  ..headers[HttpHeaders.acceptHeader] = 'application/json'
+  ..fields['UserId'] = userId;
+
+// ServicesId (MANDATORY)
+if (servicesId.isEmpty) {
+  req.fields['ServicesId[0]'] = '0';
+} else {
+  for (int i = 0; i < servicesId.length; i++) {
+    req.fields['ServicesId[$i]'] = servicesId[i].toString();
+  }
+}
+
+// Helper
+http.MultipartFile part(String name, NamedBytes f) {
+  final mime = (f.mimeType ?? '').trim();
+  return http.MultipartFile.fromBytes(
+    name,
+    f.bytes,
+    filename: f.fileName.isEmpty ? 'upload.bin' : f.fileName,
+    contentType: mime.isNotEmpty ? MediaType.parse(mime) : null,
+  );
+}
+
+// Required
+req.files.add(part('ProfilePicture', profilePicture));
+req.files.add(part('Doc_Insurance', docInsurance));
+req.files.add(part('Doc_Addressproof', docAddressProof));
+req.files.add(part('Doc_Idverification', docIdVerification));
+
+// Certification (MANDATORY → placeholder if missing)
+if (docCertification != null && docCertification.bytes.isNotEmpty) {
+  req.files.add(part('Doc_Certification', docCertification));
+} else {
+  final tinyPng = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
+  );
+  req.files.add(
+    http.MultipartFile.fromBytes(
+      'Doc_Certification',
+      tinyPng,
+      filename: 'blank.png',
+      contentType: MediaType('image', 'png'),
+    ),
+  );
+}
+
+
+
+  /*    final req = http.MultipartRequest('POST', uri)
         ..headers[HttpHeaders.acceptHeader] = 'application/json'
         ..headers['X-Request-For'] = '::1'
         ..fields['UserId'] = userId;
@@ -1084,7 +1351,7 @@ Future<Result<BookingCreateResponse>> createBooking({
           ),
         );
       }
-
+*/
       final streamed = await req.send().timeout(timeout);
       final res = await http.Response.fromStream(streamed);
 
@@ -1101,7 +1368,7 @@ Future<Result<BookingCreateResponse>> createBooking({
     } catch (e) {
       return Result.fail(Failure(code: 'unknown', message: e.toString()));
     }
-  }
+  }*/
 
   @override
   Future<Result<UserDetails>> fetchUserDetails({required String userId}) async {

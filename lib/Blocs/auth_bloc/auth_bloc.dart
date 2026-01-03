@@ -86,6 +86,57 @@ class AuthenticationBloc
     }
   }
 
+
+  Future<void> _onOnboardUserRequested(
+  OnboardUserRequested e,
+  Emitter<AuthenticationState> emit,
+) async {
+  emit(
+    state.copyWith(
+      onboardingStatus: OnboardingStatus.submitting,
+      clearOnboardingError: true,
+    ),
+  );
+
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] userId=${e.userId}');
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] servicesId(from UI)=${e.servicesId}');
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] profile=${e.profilePicture.fileName} bytes=${e.profilePicture.bytes.length} mime=${e.profilePicture.mimeType}');
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] insurance=${e.docInsurance.fileName} bytes=${e.docInsurance.bytes.length}');
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] address=${e.docAddressProof.fileName} bytes=${e.docAddressProof.bytes.length}');
+  // ignore: avoid_print
+  print('>>> [BLOC][Onboard] id=${e.docIdVerification.fileName} bytes=${e.docIdVerification.bytes.length}');
+
+  final res = await repo.onboardUser(
+    userId: e.userId,
+    servicesId: e.servicesId,
+    profilePicture: e.profilePicture,
+    docCertification: e.docCertification,
+    docInsurance: e.docInsurance,
+    docAddressProof: e.docAddressProof,
+    docIdVerification: e.docIdVerification,
+  );
+
+  // ignore: avoid_print
+  print('<<< [BLOC][Onboard] isSuccess=${res.isSuccess} error=${res.failure?.message}');
+
+  if (res.isSuccess) {
+    emit(state.copyWith(onboardingStatus: OnboardingStatus.success));
+  } else {
+    emit(
+      state.copyWith(
+        onboardingStatus: OnboardingStatus.failure,
+        onboardingError: res.failure?.message ?? 'Onboarding failed',
+      ),
+    );
+  }
+}
+
+/*
   Future<void> _onOnboardUserRequested(
     OnboardUserRequested e,
     Emitter<AuthenticationState> emit,
@@ -138,7 +189,7 @@ class AuthenticationBloc
     )),
   );
   */
-  }
+  }*/
 
   Future<void> _onLoadUserDetails(
     LoadUserDetailsRequested e,
@@ -153,10 +204,7 @@ class AuthenticationBloc
     );
 
     final r = await repo.fetchUserDetails(userId: e.userId);
-    print('USER DETAILS $r');
-    print('USER DETAILS $r');
-    print('USER DETAILS $r');
-
+ 
     if (r.isSuccess) {
       emit(
         state.copyWith(
@@ -186,6 +234,13 @@ class AuthenticationBloc
       ),
     );
 
+    print("USER ID ${e.userId}");
+    print("SERVICE ID ${e.serviceId}");
+    print("DOCUMENT ID ${e.documentId}");
+    print("BYTES ${e.bytes}");
+    print("FILE NAME ${e.fileName}");
+    print("MEME TYPE ${e.mimeType}");
+
     final r = await repo.submitCertificate(
       userId: e.userId,
       serviceId: e.serviceId,
@@ -195,22 +250,30 @@ class AuthenticationBloc
       mimeType: e.mimeType,
     );
 
-    if (r.isSuccess) {
+    // print("SUMBIT CERTIFICATE PRINT STATEMENT ${r.data}");
+    //  print("SUMBIT CERTIFICATE PRINT STATEMENT ${r.data}");
+    //   print("SUMBIT CERTIFICATE PRINT STATEMENT ${r.data}");
+    //    print("SUMBIT CERTIFICATE PRINT STATEMENT ${r.data}");
+    //     print("SUMBIT CERTIFICATE PRINT STATEMENT ${r.data}");
+
+   // if (r.isSuccess) {
       emit(
         state.copyWith(
           certificateSubmitStatus: CertificateSubmitStatus.success,
           certificateSubmitError: null,
         ),
-      );
-    } else {
-      emit(
-        state.copyWith(
-          certificateSubmitStatus: CertificateSubmitStatus.failure,
-          certificateSubmitError:
-              r.failure?.message ?? 'Certificate submit failed',
-        ),
-      );
-    }
+      );//;
+    //} 
+    
+    // else {
+    //   emit(
+    //     state.copyWith(
+    //       certificateSubmitStatus: CertificateSubmitStatus.failure,
+    //       certificateSubmitError:
+    //           r.failure?.message ?? 'Certificate submit failed',
+    //     ),
+    //   );
+    // }
   }
 
   Future<void> _onCreatePaymentSession(

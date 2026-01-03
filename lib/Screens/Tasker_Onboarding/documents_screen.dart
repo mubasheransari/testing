@@ -5,74 +5,12 @@ import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/named_bytes.dart';
-import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/services_group_model.dart' as ms;
 import 'package:taskoon/Screens/Tasker_Onboarding/payment_screen.dart';
-
-import '../../Models/services_group_model.dart';
-
 import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:dotted_border/dotted_border.dart';
-import 'package:file_picker/file_picker.dart';
-// lib/Screens/Tasker_Onboarding/documents_screen.dart
-import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:dotted_border/dotted_border.dart';
-
-// Use your real models (fix paths if needed)
 import '../../Models/service_document_model.dart' as md;
-import '../../Models/services_ui_model.dart' as ms;
-
-// lib/Screens/Tasker_Onboarding/documents_screen.dart
-import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// 👇 your models (update paths if needed)
-import '../../Models/service_document_model.dart' as md;
-import '../../Models/services_ui_model.dart' as ms;
-
-// 👇 your bloc (update path if needed)
-// e.g., '../../bloc/authentication_bloc.dart' or wherever your bloc lives.
-
-/// ---------- Bytes model kept in-memory ----------
-/// 
-/// 
-/// // documents_screen.dart
-import 'dart:typed_data';
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dotted_border/dotted_border.dart';
-
-import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dotted_border/dotted_border.dart';
-import 'package:file_picker/file_picker.dart';
-
-// import your aliases the same way you already do elsewhere
-// import 'path_to_service_item.dart' as ms;
-// import 'path_to_service_document.dart' as md;
-// import 'path_to_auth_bloc.dart';
-// import 'path_to_named_bytes.dart';
-// import 'path_to_payment_screen.dart';
 
 class PickedDoc {
   final String name;
@@ -109,28 +47,23 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   static const purple = Color(0xFF7841BA);
   static const softBG = Color(0xFFF9F7FF);
 
-  // General uploads (not sent here; different API likely)
   PickedDoc? profilePicture;
   PickedDoc? idDoc;
   PickedDoc? addressDoc;
   PickedDoc? insuranceDoc;
 
-  // One file per (serviceId, documentId)
-  final Map<String, PickedDoc?> _docFiles = {}; // key: '$serviceId:$documentId'
+  final Map<String, PickedDoc?> _docFiles = {};
   String _k(int sId, int dId) => '$sId:$dId';
 
-  // ---- Optional/Required rule for Professional Docs ----
-  // A Professional document is OPTIONAL if its name contains "(Pro" (case-insensitive).
   bool _isOptionalProDoc(md.ServiceDocument d) {
     final n = d.documentName.toLowerCase();
-    return n.contains('(pro'); // matches "(Pro", "(PRO)", "(Pro - Optional)", etc.
+    return n.contains('(pro');
   }
 
   bool get _allServiceCertsUploaded {
     if (widget.selectedDocs.isEmpty) return true;
 
     for (final d in widget.selectedDocs) {
-      // skip OPTIONAL "(Pro...)" documents
       if (_isOptionalProDoc(d)) continue;
 
       final v = _docFiles[_k(d.serviceId, d.documentId)];
@@ -147,7 +80,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
-  // -------- File picking (bytes) helpers --------
   static const _maxBytes = 10 * 1024 * 1024; // 10MB
   static const _exts = ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'webp'];
 
@@ -216,21 +148,25 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
+  bool get _isSubmitting =>
+    context.read<AuthenticationBloc>().state.onboardingStatus ==
+    OnboardingStatus.submitting;
+
   @override
   Widget build(BuildContext context) {
     const currentStep = 4;
     const totalSteps = 7;
     final progress = currentStep / totalSteps;
 
-    // Group docs by service
     final Map<int, List<md.ServiceDocument>> docsByService = {};
     for (final d in widget.selectedDocs) {
       docsByService.putIfAbsent(d.serviceId, () => []).add(d);
     }
 
+    
+
     return MultiBlocListener(
       listeners: [
-        // 1) Certificate upload result listener (your existing behavior)
         BlocListener<AuthenticationBloc, AuthenticationState>(
           listenWhen: (p, n) =>
               p.certificateSubmitStatus != n.certificateSubmitStatus,
@@ -249,8 +185,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               case CertificateSubmitStatus.failure:
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content: Text(state.certificateSubmitError ??
-                          'Upload failed')),
+                    content: Text(
+                      state.certificateSubmitError ?? 'Upload failed',
+                    ),
+                  ),
                 );
                 break;
               case CertificateSubmitStatus.initial:
@@ -259,8 +197,42 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           },
         ),
 
-        // 2) Onboarding submission result listener (no nav change; only snackbars)
         BlocListener<AuthenticationBloc, AuthenticationState>(
+  listenWhen: (p, n) => p.onboardingStatus != n.onboardingStatus,
+  listener: (context, s) {
+    switch (s.onboardingStatus) {
+      case OnboardingStatus.submitting:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Submitting onboarding…')),
+        );
+        break;
+
+      case OnboardingStatus.success:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Onboarding submitted ✔')),
+        );
+
+        // ✅ Navigate only when success
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => PaymentScreen()),
+        );
+        break;
+
+      case OnboardingStatus.failure:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.onboardingError ?? 'Onboarding failed')),
+        );
+        break;
+
+      case OnboardingStatus.initial:
+        break;
+    }
+  },
+),
+
+
+      /*  BlocListener<AuthenticationBloc, AuthenticationState>(
           listenWhen: (p, n) => p.onboardingStatus != n.onboardingStatus,
           listener: (context, s) {
             switch (s.onboardingStatus) {
@@ -276,14 +248,16 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 break;
               case OnboardingStatus.failure:
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(s.onboardingError ?? 'Onboarding failed')),
+                  SnackBar(
+                    content: Text(s.onboardingError ?? 'Onboarding failed'),
+                  ),
                 );
                 break;
               case OnboardingStatus.initial:
                 break;
             }
           },
-        ),
+        ),*/
       ],
       child: Scaffold(
         backgroundColor: softBG,
@@ -297,24 +271,28 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Upload Documents',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Upload Documents',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 2),
-              Text('Tasker Onboarding',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.black54)),
+              Text(
+                'Tasker Onboarding',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+              ),
             ],
           ),
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 20),
-              child: Text('$currentStep/$totalSteps',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge
-                      ?.copyWith(color: Colors.black54)),
+              child: Text(
+                '$currentStep/$totalSteps',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.black54),
+              ),
             ),
           ],
           bottom: PreferredSize(
@@ -335,28 +313,32 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text('Progress',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.black54)),
+                      Text(
+                        'Progress',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                      ),
                       const Spacer(),
-                      Text('${(progress * 100).round()}% complete',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.black54)),
+                      Text(
+                        '${(progress * 100).round()}% complete',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                      ),
                     ],
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.only(right: 14.0, left: 14.0, top: 10),
+                    padding: const EdgeInsets.only(
+                      right: 14.0,
+                      left: 14.0,
+                      top: 10,
+                    ),
                     child: Text(
                       "We need to verify your identity and qualifications. All documents are securely encrypted.",
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.black54),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                     ),
                   ),
                 ],
@@ -369,7 +351,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 220),
               children: [
-                // —— General cards (local only) ——
                 DocumentUploadCard(
                   title: 'Profile Picture',
                   subtitle: 'Recent Profile Picture',
@@ -410,15 +391,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // —— Professional Certifications (per required document) ——
                 _ProfessionalCertsSection(
-                  userId: widget.userId, // <-- for event dispatch
+                  userId: widget.userId,
                   services: widget.selectedServices,
                   docsByService: docsByService,
                   docFiles: _docFiles,
                   onPick: (serviceId, documentId, picked) {
-                    setState(() =>
-                        _docFiles[_k(serviceId, documentId)] = picked);
+                    setState(
+                      () => _docFiles[_k(serviceId, documentId)] = picked,
+                    );
                   },
                   fmtSize: _fmtBytes,
                   pickDoc: _pickDoc,
@@ -428,7 +409,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 DocumentUploadCard(
                   title: 'Insurance Documents',
                   subtitle: 'Liability insurance',
-                  requiredBadge: RequiredBadge.required, // UI only
+                  requiredBadge: RequiredBadge.required,
                   pickedFileName: insuranceDoc == null
                       ? null
                       : '${insuranceDoc!.name}  •  ${_fmtBytes(insuranceDoc!.size)}',
@@ -442,7 +423,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ],
             ),
 
-            // —— Sticky bottom bar ——
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -450,9 +430,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                        color: Color(0x1A000000),
-                        blurRadius: 20,
-                        offset: Offset(0, -6))
+                      color: Color(0x1A000000),
+                      blurRadius: 20,
+                      offset: Offset(0, -6),
+                    ),
                   ],
                 ),
                 child: SafeArea(
@@ -468,52 +449,39 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             ? purple
                             : purple.withOpacity(.4),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      onPressed: !_allServiceCertsUploaded
-                          ? null
-                          : () {
-                              // Require the 4 mandatory files before dispatch (unchanged)
-                              if (profilePicture == null ||
-                                  idDoc == null ||
-                                  addressDoc == null ||
-                                  insuranceDoc == null) {
-                                _err(
-                                    'Please upload Profile Picture, ID Verification, Address Proof and Insurance.');
-                                return;
-                              }
+                      onPressed: (!_allServiceCertsUploaded || _isSubmitting)
+    ? null
+    : () {
+        if (profilePicture == null ||
+            idDoc == null ||
+            addressDoc == null ||
+            insuranceDoc == null) {
+          _err('Please upload Profile Picture, ID Verification, Address Proof and Insurance.');
+          return;
+        }
 
-                              // Helper: PickedDoc -> NamedBytes (used by the event/repo)
-                              NamedBytes _nb(PickedDoc p) => NamedBytes(
-                                    fileName: p.name,
-                                    bytes: p.bytes,
-                                    mimeType: p.mime ??
-                                        _guessMime(p.ext) ??
-                                        'application/octet-stream',
-                                  );
+        NamedBytes _nb(PickedDoc p) => NamedBytes(
+          fileName: p.name,
+          bytes: p.bytes,
+          mimeType: p.mime ?? _guessMime(p.ext) ?? 'application/octet-stream',
+        );
 
-                              // Dispatch the onboarding event (ServicesId + Doc_Certification empty)
-                              context.read<AuthenticationBloc>().add(
-                                    OnboardUserRequested(
-                                      userId: widget.userId,
-                                      servicesId:
-                                          const <int>[], // EMPTY array (as per your flow)
-                                      profilePicture: _nb(profilePicture!),
-                                      docCertification:
-                                          null, // EMPTY (omit this part in repo)
-                                      docInsurance: _nb(insuranceDoc!),
-                                      docAddressProof: _nb(addressDoc!),
-                                      docIdVerification: _nb(idDoc!),
-                                    ),
-                                  );
+        context.read<AuthenticationBloc>().add(
+              OnboardUserRequested(
+                userId: widget.userId,
+                servicesId: const <int>[], // ignored in repo (hardcoded)
+                profilePicture: _nb(profilePicture!),
+                docCertification: null,
+                docInsurance: _nb(insuranceDoc!),
+                docAddressProof: _nb(addressDoc!),
+                docIdVerification: _nb(idDoc!),
+              ),
+            );
+      },
 
-                              // Keep your existing navigation
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => PaymentScreen()),
-                              );
-                            },
                       child: const Text(
                         'Continue',
                         style: TextStyle(
@@ -535,14 +503,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 }
 
-/* ---------------- Professional Certs (dynamic by document) ---------------- */
-
 class _ProfessionalCertsSection extends StatelessWidget {
   const _ProfessionalCertsSection({
     required this.userId,
     required this.services,
-    required this.docsByService, // serviceId -> list of docs
-    required this.docFiles, // key "$sid:$did" -> PickedDoc?
+    required this.docsByService,
+    required this.docFiles,
     required this.onPick,
     required this.fmtSize,
     required this.pickDoc,
@@ -558,7 +524,6 @@ class _ProfessionalCertsSection extends StatelessWidget {
 
   String _k(int sId, int dId) => '$sId:$dId';
 
-  // Same optional rule here (local helper)
   static bool _isOptionalName(String name) =>
       name.toLowerCase().contains('(pro');
 
@@ -574,13 +539,15 @@ class _ProfessionalCertsSection extends StatelessWidget {
           border: Border.all(color: const Color(0xFFEFEFF6)),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
+        child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             _SectionHeader(),
             SizedBox(height: 8),
-            Text('No professional certifications are required for your selections.',
-                style: TextStyle(color: Colors.black54)),
+            Text(
+              'No professional certifications are required for your selections.',
+              style: TextStyle(color: Colors.black54),
+            ),
           ],
         ),
       );
@@ -604,27 +571,21 @@ class _ProfessionalCertsSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // For each selected service, list its required/optional documents
           for (final s in services)
             if (docsByService[s.id]?.isNotEmpty ?? false) ...[
               const SizedBox(height: 8),
-              // Row(
-              //   children: const [
-              //     Icon(Icons.work_outline, color: Color(0xFF9C8CE0)),
-              //     SizedBox(width: 8),
-              //     // We keep the "Required" badge at service header as in your code
-              //   ],
-              // ),
+
               Row(
                 children: [
-                 // const SizedBox(width: 28),
-                        Icon(Icons.work_outline, color: Color(0xFF9C8CE0)), 
-                        const SizedBox(width: 10),// align text with cards
+                  const Icon(Icons.work_outline, color: Color(0xFF9C8CE0)),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       s.name,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   // const _Badge(
@@ -640,39 +601,43 @@ class _ProfessionalCertsSection extends StatelessWidget {
                 const SizedBox(height: 6),
 
                 // Decide per-document if it's required or optional based on "(Pro)" in name.
-                Builder(builder: (context) {
-                  final isOptional = _isOptionalName(d.documentName);
-                  final badge =
-                      isOptional ? RequiredBadge.optional : RequiredBadge.required;
+                Builder(
+                  builder: (context) {
+                    final isOptional = _isOptionalName(d.documentName);
+                    final badge = isOptional
+                        ? RequiredBadge.optional
+                        : RequiredBadge.required;
 
-                  return DocumentUploadCard(
-                    title: d.documentName,
-                    subtitle: 'Accepted: PDF, JPG, PNG up to 10MB',
-                    requiredBadge: badge,
-                    pickedFileName: docFiles[_k(d.serviceId, d.documentId)] == null
-                        ? null
-                        : '${docFiles[_k(d.serviceId, d.documentId)]!.name}  •  ${fmtSize(docFiles[_k(d.serviceId, d.documentId)]!.size)}',
-                    onChooseFile: () async {
-                      final picked = await pickDoc();
-                      if (picked != null) {
-                        // 1) update UI
-                        onPick(d.serviceId, d.documentId, picked);
+                    return DocumentUploadCard(
+                      title: d.documentName,
+                      subtitle: 'Accepted: PDF, JPG, PNG up to 10MB',
+                      requiredBadge: badge,
+                      pickedFileName:
+                          docFiles[_k(d.serviceId, d.documentId)] == null
+                          ? null
+                          : '${docFiles[_k(d.serviceId, d.documentId)]!.name}  •  ${fmtSize(docFiles[_k(d.serviceId, d.documentId)]!.size)}',
+                      onChooseFile: () async {
+                        final picked = await pickDoc();
+                        if (picked != null) {
+                          // 1) update UI
+                          onPick(d.serviceId, d.documentId, picked);
 
-                        // 2) dispatch upload event immediately (same behavior for optional/required)
-                        context.read<AuthenticationBloc>().add(
-                              SubmitCertificateBytesRequested(
-                                userId: userId,
-                                serviceId: d.serviceId,
-                                documentId: d.documentId,
-                                bytes: picked.bytes,
-                                fileName: picked.name,
-                                mimeType: picked.mime,
-                              ),
-                            );
-                      }
-                    },
-                  );
-                }),
+                          // 2) dispatch upload event immediately (same behavior for optional/required)
+                          context.read<AuthenticationBloc>().add(
+                            SubmitCertificateBytesRequested(
+                              userId: userId,
+                              serviceId: d.serviceId,
+                              documentId: d.documentId,
+                              bytes: picked.bytes,
+                              fileName: picked.name,
+                              mimeType: picked.mime,
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
               ],
             ],
         ],
@@ -686,16 +651,18 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: const [
-      Icon(Icons.workspace_premium_rounded, color: Color(0xFF9C8CE0)),
-      SizedBox(width: 8),
-      Text('Professional Certifications',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-    ]);
+    return const Row(
+      children: [
+        Icon(Icons.workspace_premium_rounded, color: Color(0xFF9C8CE0)),
+        SizedBox(width: 8),
+        Text(
+          'Professional Certifications',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
-
-/* ---------------- Reusable Cards ---------------- */
 
 enum RequiredBadge { required, optional, none }
 
@@ -717,7 +684,6 @@ class DocumentUploadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Colors for the badge states
     const red = Color(0xFFFF4D4F);
     const redBg = Color(0xFFFFE7E7);
     const green = Color(0xFF16A34A);
@@ -747,9 +713,13 @@ class DocumentUploadCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700)),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               if (requiredBadge != RequiredBadge.none)
                 _Badge(
@@ -760,7 +730,10 @@ class DocumentUploadCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(subtitle, style: TextStyle(color: Colors.black.withOpacity(.65))),
+          Text(
+            subtitle,
+            style: TextStyle(color: Colors.black.withOpacity(.65)),
+          ),
           const SizedBox(height: 14),
           DottedBorder(
             color: const Color(0xFFE1E1EA),
@@ -806,11 +779,18 @@ class DocumentUploadCard extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 6),
-                      const Text('PDF, JPG, PNG up to 10MB',
-                          style: TextStyle(
-                              color: Color(0xFF667085), fontSize: 12)),
+                      const Text(
+                        'PDF, JPG, PNG up to 10MB',
+                        style: TextStyle(
+                          color: Color(0xFF667085),
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 14),
-                      _GhostButton(text: 'Choose File', onPressed: onChooseFile),
+                      _GhostButton(
+                        text: 'Choose File',
+                        onPressed: onChooseFile,
+                      ),
                     ],
                   ),
                 ),
@@ -839,12 +819,19 @@ class IdentityVerificationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: const [
-            Icon(CupertinoIcons.shield_lefthalf_fill, color: Color(0xFF9C8CE0)),
-            SizedBox(width: 8),
-            Text('Identity Verification',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ]),
+          const Row(
+            children: [
+              Icon(
+                CupertinoIcons.shield_lefthalf_fill,
+                color: Color(0xFF9C8CE0),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Identity Verification',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Text(
             "We need to verify your identity and qualifications. All documents are securely encrypted.",
@@ -858,14 +845,15 @@ class IdentityVerificationCard extends StatelessWidget {
               border: Border.all(color: const Color(0xFFF0F2F7)),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              children: const [
+            child: const Row(
+              children: [
                 Text('Status:', style: TextStyle(fontWeight: FontWeight.w700)),
                 SizedBox(width: 8),
                 _Badge(
-                    text: 'Pending',
-                    color: Color(0xFF6B7280),
-                    bg: Color(0xFFF2F4F7)),
+                  text: 'Pending',
+                  color: Color(0xFF6B7280),
+                  bg: Color(0xFFF2F4F7),
+                ),
               ],
             ),
           ),
@@ -885,11 +873,18 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(text,
-          style: TextStyle(
-              color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -906,8 +901,7 @@ class _GhostButton extends StatelessWidget {
         side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
         backgroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
       onPressed: onPressed,
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -915,8 +909,6 @@ class _GhostButton extends StatelessWidget {
   }
 }
 
-// tiny extension
 extension _LastOrNull<T> on List<T> {
   T? get lastOrNull => isEmpty ? null : last;
 }
-
