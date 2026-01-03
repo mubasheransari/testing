@@ -502,7 +502,13 @@ class _SplashScreenState extends State<SplashScreen>
                           scale: _logoScale,
                           child: FadeTransition(
                             opacity: _logoOpacity,
-                            child: _LogoCard(
+                            child: Image.asset(
+                                      'assets/taskoon_logo.png',
+                                      height: 200,
+                                      width: 200,
+                                    ),
+                            
+                         /*   _LogoCard(
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(18),
                                 child: Container(
@@ -518,7 +524,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ),
                               ),
-                            ),
+                            ),*/
                           ),
                         ),
 
