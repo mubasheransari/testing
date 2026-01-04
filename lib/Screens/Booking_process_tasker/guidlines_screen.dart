@@ -3,140 +3,338 @@ import 'package:flutter/material.dart';
 class GuidelinesScreen extends StatelessWidget {
   const GuidelinesScreen({super.key});
 
-  // App colors
+  // Theme
   static const Color kPrimary = Color(0xFF5C2E91);
-  static const Color kPrimaryDark = Color(0xFF411C6E);
-  static const Color kCardBorder = Color(0xFFE8E2F5);
-  static const Color kCardShadow = Color(0x1A000000); // ~10% black
+  static const Color kBg = Color(0xFFF7F6FB);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0F0F12) : const Color(0xFFF8F7FB);
-
     return Scaffold(
-      backgroundColor: bg,
-      // Modern rounded app bar
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(72),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: kCardShadow,
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-                border: Border.all(color: kCardBorder),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.arrow_back, color: kPrimary),
-                  ),
-                  const SizedBox(width: 2),
-                  const Text(
-                    'Guidelines',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: kPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      backgroundColor: kBg,
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _GlassCard(
-              child: Text(
-                "Welcome to Taskoon! To ensure a smooth and trustworthy experience for everyone, "
-                "we ask all users and taskers to follow these basic guidelines.\n\n"
-                "Booking & Communication — Always provide clear and accurate task details before "
-                "confirming a booking. Communicate promptly and respectfully through the Taskoon platform.\n\n"
-                "Service Execution — Taskers should arrive on time and complete tasks as agreed. "
-                "Users should approve check-ins and check-outs on time to avoid billing issues.\n\n"
-                "Report any safety concerns, issues, or misconduct immediately through the help center.",
-                style: TextStyle(
-                  fontSize: 15.5,
-                  height: 1.45,
-                  color: Colors.grey.shade800,
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _HeaderCard(
+                title: 'Guidelines',
+                left: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimary),
+                  onPressed: () => Navigator.maybePop(context),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
 
-            // Table title (optional)
-            const Text(
-              'Activity overview',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: kPrimary,
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _WhiteCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 34,
+                                  width: 34,
+                                  decoration: BoxDecoration(
+                                    color: kPrimary.withOpacity(.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.info_outline_rounded,
+                                      color: kPrimary, size: 18),
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Read this to avoid issues',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 14.5,
+                                      color: Color(0xFF3E1E69),
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            Text(
+                              "Welcome to Taskoon! To keep the platform safe and trustworthy for everyone, "
+                              "please follow these guidelines.\n",
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12.8,
+                                height: 1.45,
+                                color: const Color(0xFF75748A).withOpacity(.95),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+
+                            const _GuidelineItem(
+                              title: 'Booking & Communication',
+                              body:
+                                  'Provide clear task details before confirming. Communicate promptly and respectfully inside Taskoon.',
+                              icon: Icons.chat_bubble_outline_rounded,
+                            ),
+                            const SizedBox(height: 10),
+                            const _GuidelineItem(
+                              title: 'Service Execution',
+                              body:
+                                  'Taskers should arrive on time and complete work as agreed. Users should approve check-in/check-out on time.',
+                              icon: Icons.handyman_rounded,
+                            ),
+                            const SizedBox(height: 10),
+                            const _GuidelineItem(
+                              title: 'Safety & Support',
+                              body:
+                                  'Report any safety concerns or misconduct immediately through the help center.',
+                              icon: Icons.shield_outlined,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(
+                          height: 30,
+                          width: 30,
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.table_chart_rounded,
+                              color: kPrimary, size: 16),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Activity overview',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF3E1E69),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ✅ Modern responsive table card
+                    _WhiteCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _RoundedTable(
+                          headers: const ['ACTIVITY', 'TIME', 'NUMBER OF TASKERS'],
+                          rows: const [
+                            ['—', '—', '—'],
+                            ['—', '—', '—'],
+                            ['—', '—', '—'],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ✅ Small hint pill
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(.08),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: kPrimary.withOpacity(.14)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.lightbulb_outline_rounded, size: 16, color: kPrimary),
+                            SizedBox(width: 8),
+                            Text(
+                              'Tip: Use Support if any issue happens.',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                color: kPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 90),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-
-            // Pretty rounded table card
-            _RoundedTable(
-              headers: const ['ACTIVITY', 'TIME', 'NUMBER OF\nTASKERS'],
-              rows: const [
-                ['—', '—', '—'],
-                ['—', '—', '—'],
-                ['—', '—', '—'],
-              ],
-            ),
-            const SizedBox(height: 40),
           ],
         ),
       ),
 
-      // If you already have a global bottom bar, replace with your widget.
-      bottomNavigationBar: const _GlassBottomBar(currentIndex: 3),
+
     );
   }
 }
 
-/* ------------------------------ Building blocks ----------------------------- */
 
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
+class _HeaderCard extends StatelessWidget {
+  const _HeaderCard({required this.title, required this.left, this.right});
+
+  final String title;
+  final Widget left;
+  final Widget? right;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GuidelinesScreen.kPrimary.withOpacity(.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          left,
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                color: Color(0xFF3E1E69),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          if (right != null) right!,
+          const SizedBox(width: 6),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  const _WhiteCard({required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: GuidelinesScreen.kCardBorder),
-        boxShadow: const [
-          BoxShadow(color: GuidelinesScreen.kCardShadow, blurRadius: 18, offset: Offset(0, 8)),
+        border: Border.all(color: GuidelinesScreen.kPrimary.withOpacity(.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.02),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: child,
     );
   }
 }
+
+/* ============================ CONTENT WIDGETS ============================ */
+
+class _GuidelineItem extends StatelessWidget {
+  const _GuidelineItem({
+    required this.title,
+    required this.body,
+    required this.icon,
+  });
+
+  final String title;
+  final String body;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: GuidelinesScreen.kPrimary.withOpacity(.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: GuidelinesScreen.kPrimary.withOpacity(.10)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: GuidelinesScreen.kPrimary.withOpacity(.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: GuidelinesScreen.kPrimary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13.5,
+                    color: Color(0xFF3E1E69),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12.3,
+                    height: 1.35,
+                    color: const Color(0xFF75748A).withOpacity(.95),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ============================ RESPONSIVE TABLE ============================ */
 
 class _RoundedTable extends StatelessWidget {
   const _RoundedTable({
@@ -149,154 +347,91 @@ class _RoundedTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = GuidelinesScreen.kCardBorder;
+    return LayoutBuilder(
+      builder: (_, c) {
+        final w = c.maxWidth;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: GuidelinesScreen.kCardShadow, blurRadius: 18, offset: Offset(0, 8)),
-          ],
-        ),
-        child: Table(
-          columnWidths: const {
-            0: FlexColumnWidth(1.3),
-            1: FlexColumnWidth(1.0),
-            2: FlexColumnWidth(1.2),
-          },
-          border: TableBorder.symmetric(
-            inside: BorderSide(color: borderColor),
-          ),
-          children: [
-            TableRow(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4EEFB),
-              ),
-              children: headers
-                  .map((h) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        alignment: Alignment.center,
-                        child: Text(
-                          h,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: GuidelinesScreen.kPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ))
-                  .toList(),
+        // ✅ Prevent overflow on small widths
+        // Use tighter padding if the card is narrow
+        final cellHPad = w < 340 ? 8.0 : 12.0;
+        final headStyle = TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w900,
+          fontSize: w < 340 ? 11.0 : 12.0,
+          color: GuidelinesScreen.kPrimary,
+        );
+
+        final cellStyle = TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w700,
+          fontSize: w < 340 ? 12.0 : 13.0,
+          color: const Color(0xFF3E1E69),
+        );
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: GuidelinesScreen.kPrimary.withOpacity(.10)),
             ),
-            for (final row in rows)
-              TableRow(
-                children: row
-                    .map(
-                      (cell) => Container(
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
-                        child: Text(
-                          cell,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            color: Colors.grey.shade800,
-                            fontWeight: FontWeight.w600,
+            child: Table(
+              columnWidths: const {
+                0: FlexColumnWidth(1.25),
+                1: FlexColumnWidth(0.85),
+                2: FlexColumnWidth(1.15),
+              },
+              border: TableBorder.symmetric(
+                inside: BorderSide(color: GuidelinesScreen.kPrimary.withOpacity(.10)),
+              ),
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: GuidelinesScreen.kPrimary.withOpacity(.06),
+                  ),
+                  children: headers
+                      .map(
+                        (h) => Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: cellHPad,
+                            vertical: 12,
+                          ),
+                          child: Text(
+                            h,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: headStyle,
                           ),
                         ),
-                      ),
-                    )
-                    .toList(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/* -------------------------- Glassy Bottom Navigation ------------------------- */
-
-class _GlassBottomBar extends StatelessWidget {
-  const _GlassBottomBar({required this.currentIndex});
-  final int currentIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-        child: Container(
-          height: 76,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: GuidelinesScreen.kCardBorder),
-            boxShadow: const [
-              BoxShadow(color: GuidelinesScreen.kCardShadow, blurRadius: 22, offset: Offset(0, 10)),
-            ],
+                      )
+                      .toList(),
+                ),
+                for (final row in rows)
+                  TableRow(
+                    children: row
+                        .map(
+                          (cell) => Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: cellHPad,
+                              vertical: 16,
+                            ),
+                            child: Text(
+                              cell,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: cellStyle,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: const [
-              _NavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
-              _NavItem(icon: Icons.attach_money_rounded, label: 'Earning', index: 1),
-              _NavItem(icon: Icons.article_rounded, label: 'Tasks', index: 2),
-              _NavItem(icon: Icons.menu_rounded, label: 'More', index: 3, selected: true),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.index,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final int index;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? GuidelinesScreen.kPrimary : Colors.black87;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        // TODO: Navigate to your tab screens here
-        // e.g., context.read<AppNav>().go(index);
+        );
       },
-      child: SizedBox(
-        width: 76,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: color,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
