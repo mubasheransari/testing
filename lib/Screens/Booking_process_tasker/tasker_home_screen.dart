@@ -8,8 +8,6 @@ import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'dart:convert';
 import 'package:signalr_netcore/signalr_client.dart';
 
-
-
 class _Badge {
   final String label;
   final IconData icon;
@@ -78,42 +76,45 @@ class TaskerBookingOffer {
     this.type,
     this.date,
   });
-Map<String, String> toDisplayMap() {
-  String fmtDate(DateTime? dt) {
-    if (dt == null) return "";
-    final d = dt.toLocal();
-    return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  Map<String, String> toDisplayMap() {
+    String fmtDate(DateTime? dt) {
+      if (dt == null) return "";
+      final d = dt.toLocal();
+      return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+    }
+
+    String fmtTime(DateTime? dt) {
+      if (dt == null) return "";
+      final t = dt.toLocal();
+      return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+    }
+
+    final map = <String, String>{
+      "Service": bookingService ?? "",
+      "User Name": userName ?? "",
+      "Distance": distanceKm == null
+          ? ""
+          : "${distanceKm!.toStringAsFixed(2)} km",
+      "Location": location ?? "",
+      "Estimated Cost": estimatedCost == 0
+          ? ""
+          : "\$${estimatedCost.toStringAsFixed(2)}",
+      "Duration": bookingDuration == null ? "" : "${bookingDuration} hr",
+
+      // booking date/time separately (from bookingTime)
+      "Booking Date": fmtDate(bookingTime),
+      "Booking Time": fmtTime(bookingTime),
+
+      // top-level date (if you also want it)
+      "Notification Date": (date ?? "").isEmpty ? "" : date!,
+      "Type": type ?? "",
+
+      "Message": message,
+    };
+
+    map.removeWhere((k, v) => v.trim().isEmpty);
+    return map;
   }
-
-  String fmtTime(DateTime? dt) {
-    if (dt == null) return "";
-    final t = dt.toLocal();
-    return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-  }
-
-  final map = <String, String>{
-    "Service": bookingService ?? "",
-    "User Name": userName ?? "",
-    "Distance": distanceKm == null ? "" : "${distanceKm!.toStringAsFixed(2)} km",
-    "Location": location ?? "",
-    "Estimated Cost": estimatedCost == 0 ? "" : "\$${estimatedCost.toStringAsFixed(2)}",
-    "Duration": bookingDuration == null ? "" : "${bookingDuration} hr",
-
-    // booking date/time separately (from bookingTime)
-    "Booking Date": fmtDate(bookingTime),
-    "Booking Time": fmtTime(bookingTime),
-
-    // top-level date (if you also want it)
-    "Notification Date": (date ?? "").isEmpty ? "" : date!,
-    "Type": type ?? "",
-
-    "Message": message,
-  };
-
-  map.removeWhere((k, v) => v.trim().isEmpty);
-  return map;
-}
-
 
   static TaskerBookingOffer? tryParse(dynamic payload) {
     try {
@@ -144,11 +145,12 @@ Map<String, String> toDisplayMap() {
       if (dataAny is Map) data = Map<String, dynamic>.from(dataAny);
 
       // bookingDetailId (support multiple casings / old placements)
-      final bookingDetailId = (data?['bookingDetailId'] ??
-              data?['BookingDetailId'] ??
-              map['bookingDetailId'] ??
-              map['BookingDetailId'])
-          ?.toString();
+      final bookingDetailId =
+          (data?['bookingDetailId'] ??
+                  data?['BookingDetailId'] ??
+                  map['bookingDetailId'] ??
+                  map['BookingDetailId'])
+              ?.toString();
 
       if (bookingDetailId == null || bookingDetailId.isEmpty) {
         debugPrint("❌ tryParse: bookingDetailId missing. keys=${map.keys}");
@@ -156,9 +158,11 @@ Map<String, String> toDisplayMap() {
       }
 
       final lat = _toDouble(
-          data?['lat'] ?? data?['Lat'] ?? map['lat'] ?? map['Lat'] ?? 0);
+        data?['lat'] ?? data?['Lat'] ?? map['lat'] ?? map['Lat'] ?? 0,
+      );
       final lng = _toDouble(
-          data?['lng'] ?? data?['Lng'] ?? map['lng'] ?? map['Lng'] ?? 0);
+        data?['lng'] ?? data?['Lng'] ?? map['lng'] ?? map['Lng'] ?? 0,
+      );
 
       final estimatedCost = _toDouble(
         data?['estimatedCost'] ??
@@ -171,8 +175,7 @@ Map<String, String> toDisplayMap() {
       // ✅ new fields parsing
       final bookingService =
           (data?['bookingService'] ?? data?['BookingService'])?.toString();
-      final userName =
-          (data?['userName'] ?? data?['UserName'])?.toString();
+      final userName = (data?['userName'] ?? data?['UserName'])?.toString();
 
       final bookingDuration = _toInt(
         data?['bookingDuration'] ?? data?['BookingDuration'],
@@ -240,7 +243,6 @@ Map<String, String> toDisplayMap() {
   }
 }
 
-
 class TaskerDispatchHubService {
   HubConnection? _conn;
 
@@ -258,10 +260,7 @@ class TaskerDispatchHubService {
 
   HubConnectionState? get state => _conn?.state;
 
-  void configure({
-    required String baseUrl,
-    required String userId,
-  }) {
+  void configure({required String baseUrl, required String userId}) {
     final changed = (_baseUrl != baseUrl) || (_userId != userId);
     _baseUrl = baseUrl;
     _userId = userId;
@@ -321,7 +320,9 @@ class TaskerDispatchHubService {
         _handlersAttached = true;
       }
 
-      debugPrint("🔌 HUB(SVC): start... url=$url state(before)=${_conn!.state}");
+      debugPrint(
+        "🔌 HUB(SVC): start... url=$url state(before)=${_conn!.state}",
+      );
 
       // Reset if in weird state
       if (_conn!.state != HubConnectionState.Disconnected) {
@@ -425,7 +426,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   static const Color kMuted = Color(0xFF75748A);
   static const Color kBg = Color(0xFFF8F7FB);
 
-  static const String _baseUrl = "https://api.taskoon.com";//"http://192.3.3.187:85";
+  static const String _baseUrl =
+      "https://api.taskoon.com"; //"http://192.3.3.187:85";
 
   bool available = false;
   String period = 'Week';
@@ -486,11 +488,21 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   int monthlyEarning = 3280;
 
   final List<_Task> upcoming = const [
-    _Task(title: 'Furniture assembly', date: 'Apr 24', time: '10:30', location: 'East Perth'),
+    _Task(
+      title: 'Furniture assembly',
+      date: 'Apr 24',
+      time: '10:30',
+      location: 'East Perth',
+    ),
   ];
 
   final List<_Task> current = const [
-    _Task(title: 'TV wall mount', date: 'Apr 24', time: '09:00', location: 'Perth CBD'),
+    _Task(
+      title: 'TV wall mount',
+      date: 'Apr 24',
+      time: '09:00',
+      location: 'Perth CBD',
+    ),
   ];
 
   String _selectedChip = 'All';
@@ -563,12 +575,14 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
     _hubEnsuring = true;
     try {
       debugPrint(
-          "🔌 TASKER HUB: ensureConnected... reason=$reason isConnected(before)=${_hub.isConnected} state=${_hub.state}");
+        "🔌 TASKER HUB: ensureConnected... reason=$reason isConnected(before)=${_hub.isConnected} state=${_hub.state}",
+      );
 
       await _hub.ensureConnected();
 
       debugPrint(
-          "✅ TASKER HUB: ensureConnected done. isConnected=${_hub.isConnected} state=${_hub.state}");
+        "✅ TASKER HUB: ensureConnected done. isConnected=${_hub.isConnected} state=${_hub.state}",
+      );
 
       if (_hub.isConnected) _attempt = 0;
     } catch (e) {
@@ -598,7 +612,8 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
       final wait = _nextBackoff();
 
       debugPrint(
-          "🛡️ TASKER HUB WATCHDOG: disconnected -> reconnecting attempt=$_attempt in ${wait.inSeconds}s");
+        "🛡️ TASKER HUB WATCHDOG: disconnected -> reconnecting attempt=$_attempt in ${wait.inSeconds}s",
+      );
 
       // Delay per backoff before attempting (so you don't spam the server)
       await Future.delayed(wait);
@@ -621,7 +636,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
 
         // Popup only when online (same as before)
         if (!available) {
-          debugPrint("⚠️ TASKER HUB: offer received but available=false (no popup)");
+          debugPrint(
+            "⚠️ TASKER HUB: offer received but available=false (no popup)",
+          );
           return;
         }
 
@@ -631,7 +648,9 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
           return;
         }
 
-        debugPrint("✅ TASKER HUB: offer parsed bookingDetailId=${offer.bookingDetailId}");
+        debugPrint(
+          "✅ TASKER HUB: offer parsed bookingDetailId=${offer.bookingDetailId}",
+        );
         _showBookingPopup(offer);
       },
       onError: (e) => debugPrint("❌ TASKER HUB stream error => $e"),
@@ -684,18 +703,26 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
     debugPrint("📍 LOCATION: sending => userId=$userId lat=$lat lng=$lng");
 
     context.read<UserBookingBloc>().add(
-          UpdateUserLocationRequested(userId: userId, latitude: lat, longitude: lng),
-        );
+      UpdateUserLocationRequested(
+        userId: userId,
+        latitude: lat,
+        longitude: lng,
+      ),
+    );
     debugPrint("✅ EVENT: UpdateUserLocationRequested dispatched");
 
-    context.read<UserBookingBloc>().add(ChangeAvailabilityStatus(userId: userId));
+    context.read<UserBookingBloc>().add(
+      ChangeAvailabilityStatus(userId: userId),
+    );
     debugPrint("✅ EVENT: ChangeAvailabilityStatus dispatched");
   }
 
   void _startLocationUpdates() {
     if (!_restored) return;
 
-    debugPrint("⏱️ LOCATION TIMER: start interval=${_locationInterval.inSeconds}s");
+    debugPrint(
+      "⏱️ LOCATION TIMER: start interval=${_locationInterval.inSeconds}s",
+    );
 
     _dispatchLocationUpdateToApi();
     _locationTimer?.cancel();
@@ -711,402 +738,424 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
     _locationTimer = null;
   }
 
-  
-
-void _showBookingPopup(TaskerBookingOffer offer) {
-  if (!mounted) return;
-
-  if (_dialogOpen) {
-    debugPrint("⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}");
-    return;
-  }
-
-  if (_lastPopupBookingDetailId == offer.bookingDetailId) {
-    debugPrint("⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}");
-    return;
-  }
-
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
+  void _showBookingPopup(TaskerBookingOffer offer) {
     if (!mounted) return;
-    if (_dialogOpen) return;
 
-    _dialogOpen = true;
-    _lastPopupBookingDetailId = offer.bookingDetailId;
+    if (_dialogOpen) {
+      debugPrint(
+        "⚠️ POPUP: already open, skipping booking=${offer.bookingDetailId}",
+      );
+      return;
+    }
 
-    try {
-      await showDialog(
-        context: context,
-        useRootNavigator: true,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withOpacity(0.55),
-        builder: (ctx) {
-          const kGold = Color(0xFFF4C847);
-          const int totalSeconds = 60;
+    if (_lastPopupBookingDetailId == offer.bookingDetailId) {
+      debugPrint(
+        "⚠️ POPUP: same booking received again, skipping booking=${offer.bookingDetailId}",
+      );
+      return;
+    }
 
-          int secondsLeft = totalSeconds;
-          Timer? timer;
-          bool closed = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (_dialogOpen) return;
 
-          String mmss(int s) =>
-              '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
+      _dialogOpen = true;
+      _lastPopupBookingDetailId = offer.bookingDetailId;
 
-          String fmtDate(DateTime? dt) {
-            if (dt == null) return "-";
-            final d = dt.toLocal();
-            return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-          }
+      try {
+        await showDialog(
+          context: context,
+          useRootNavigator: true,
+          barrierDismissible: false,
+          barrierColor: Colors.black.withOpacity(0.55),
+          builder: (ctx) {
+            const kGold = Color(0xFFF4C847);
+            const int totalSeconds = 60;
 
-          String fmtTime(DateTime? dt) {
-            if (dt == null) return "-";
-            final t = dt.toLocal();
-            return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-          }
+            int secondsLeft = totalSeconds;
+            Timer? timer;
+            bool closed = false;
 
-          void closeDialog() {
-            if (closed) return;
-            closed = true;
-            timer?.cancel();
-            timer = null;
+            String mmss(int s) =>
+                '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
-            if (Navigator.of(ctx, rootNavigator: true).canPop()) {
-              Navigator.of(ctx, rootNavigator: true).pop();
+            String fmtDate(DateTime? dt) {
+              if (dt == null) return "-";
+              final d = dt.toLocal();
+              return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
             }
-          }
 
-          Widget infoTile({
-            required IconData icon,
-            required String label,
-            required String value,
-          }) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: kPrimary.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kPrimary.withOpacity(0.15)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: kPrimary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: kPrimary, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11.5,
-                            color: kMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          value,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13.5,
-                            color: kTextDark,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+            String fmtTime(DateTime? dt) {
+              if (dt == null) return "-";
+              final t = dt.toLocal();
+              return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+            }
 
-          return StatefulBuilder(
-            builder: (context, setState) {
-              timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
-                if (closed) return;
+            void closeDialog() {
+              if (closed) return;
+              closed = true;
+              timer?.cancel();
+              timer = null;
 
-                if (secondsLeft <= 1) {
-                  debugPrint("⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}");
-                  closeDialog();
-                  return;
-                }
+              if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+                Navigator.of(ctx, rootNavigator: true).pop();
+              }
+            }
 
-                setState(() => secondsLeft--);
-              });
-
-              final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
-
-              return WillPopScope(
-                onWillPop: () async => false,
-                child: Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      width: MediaQuery.of(ctx).size.width * 0.88,
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      padding: const EdgeInsets.all(16),
+            Widget infoTile({
+              required IconData icon,
+              required String label,
+              required String value,
+            }) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: kPrimary.withOpacity(0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
-                            blurRadius: 24,
-                            offset: const Offset(0, 14),
+                        color: kPrimary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: kPrimary, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11.5,
+                              color: kMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            value,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13.5,
+                              color: kTextDark,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header
-                          Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: kGold.withOpacity(0.25),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_active_rounded,
-                                  color: kPrimary,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  "New Booking Offer",
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 16,
-                                    color: kTextDark,
-                                    fontWeight: FontWeight.w800,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return StatefulBuilder(
+              builder: (context, setState) {
+                timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+                  if (closed) return;
+
+                  if (secondsLeft <= 1) {
+                    debugPrint(
+                      "⏳ POPUP: auto-timeout booking=${offer.bookingDetailId}",
+                    );
+                    closeDialog();
+                    return;
+                  }
+
+                  setState(() => secondsLeft--);
+                });
+
+                final progress = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+
+                return WillPopScope(
+                  onWillPop: () async => false,
+                  child: Center(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        width: MediaQuery.of(ctx).size.width * 0.88,
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 24,
+                              offset: const Offset(0, 14),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Header
+                            Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: kGold.withOpacity(0.25),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_active_rounded,
+                                    color: kPrimary,
+                                    size: 24,
                                   ),
                                 ),
-                              ),
-                              const Icon(Icons.close_rounded, color: Colors.transparent),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // Progress
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 8,
-                              backgroundColor: kPrimary.withOpacity(0.10),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                secondsLeft <= 10
-                                    ? Colors.redAccent
-                                    : (secondsLeft <= 25 ? kGold : kPrimary),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Message (full)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: kPrimary.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: kPrimary.withOpacity(0.12)),
-                            ),
-                            child: Text(
-                              offer.message,
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                color: kTextDark,
-                                fontWeight: FontWeight.w600,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                     
-                                    infoTile(
-                               icon: Icons.home_repair_service_rounded,
-                            label: "Service",
-                             value: offer.bookingService ?? "-",
-                          ),
-                            const SizedBox(height: 10),
-                          infoTile(
-                                  icon: Icons.attach_money_rounded,
-                                  label: "Estimated Cost",
-                                  value: "\$${offer.estimatedCost.toStringAsFixed(2)}",
-                                ),
-
-                          const SizedBox(height: 10),
-
-                          // Booking Date + Booking Time (separate)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.event_rounded,
-                                  label: "Booking Date",
-                                  value: fmtDate(offer.bookingTime),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.schedule_rounded,
-                                  label: "Booking Time",
-                                  value: fmtTime(offer.bookingTime),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                   
-
-                          const SizedBox(height: 10),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.route_rounded,
-                                  label: "Distance",
-                                  value: offer.distanceKm == null
-                                      ? "-"
-                                      : "${offer.distanceKm!.toStringAsFixed(2)} km",
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: infoTile(
-                                  icon: Icons.timelapse_rounded,
-                                  label: "Duration",
-                                  value: offer.bookingDuration == null
-                                      ? "-"
-                                      : "${offer.bookingDuration} hr",
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // Location (full width)
-                          infoTile(
-                            icon: Icons.location_on_rounded,
-                            label: "Location",
-                            value: offer.location ?? "-",
-                          ),
-
-
-                          const SizedBox(height: 14),
-
-                          // Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    debugPrint("🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}");
-                                    closeDialog();
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: kPrimary,
-                                    side: BorderSide(color: kPrimary.withOpacity(0.35)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "Decline",
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    "New Booking Offer",
                                     style: TextStyle(
                                       fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    final authState =
-                                        context.read<AuthenticationBloc>().state;
-                                    final uid =
-                                        authState.userDetails?.userId.toString() ?? "";
-
-                                    debugPrint(
-                                        "🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid");
-
-                                    context.read<UserBookingBloc>().add(
-                                          AcceptBooking(
-                                            userId: uid,
-                                            bookingDetailId: offer.bookingDetailId,
-                                          ),
-                                        );
-
-                                    debugPrint("✅ EVENT: AcceptBooking dispatched");
-                                    closeDialog();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: kPrimary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: const Text(
-                                    "Accept",
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
+                                      fontSize: 16,
+                                      color: kTextDark,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
+                                const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.transparent,
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // Progress
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 8,
+                                backgroundColor: kPrimary.withOpacity(0.10),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  secondsLeft <= 10
+                                      ? Colors.redAccent
+                                      : (secondsLeft <= 25 ? kGold : kPrimary),
+                                ),
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Message (full)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kPrimary.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: kPrimary.withOpacity(0.12),
+                                ),
+                              ),
+                              child: Text(
+                                offer.message,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13,
+                                  color: kTextDark,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            infoTile(
+                              icon: Icons.home_repair_service_rounded,
+                              label: "Service",
+                              value: offer.bookingService ?? "-",
+                            ),
+                            const SizedBox(height: 10),
+                            infoTile(
+                              icon: Icons.attach_money_rounded,
+                              label: "Estimated Cost",
+                              value:
+                                  "\$${offer.estimatedCost.toStringAsFixed(2)}",
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // Booking Date + Booking Time (separate)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.event_rounded,
+                                    label: "Booking Date",
+                                    value: fmtDate(offer.bookingTime),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.schedule_rounded,
+                                    label: "Booking Time",
+                                    value: fmtTime(offer.bookingTime),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.route_rounded,
+                                    label: "Distance",
+                                    value: offer.distanceKm == null
+                                        ? "-"
+                                        : "${offer.distanceKm!.toStringAsFixed(2)} km",
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: infoTile(
+                                    icon: Icons.timelapse_rounded,
+                                    label: "Duration",
+                                    value: offer.bookingDuration == null
+                                        ? "-"
+                                        : "${offer.bookingDuration} hr",
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // Location (full width)
+                            infoTile(
+                              icon: Icons.location_on_rounded,
+                              label: "Location",
+                              value: offer.location ?? "-",
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      debugPrint(
+                                        "🟠 POPUP: Decline pressed booking=${offer.bookingDetailId}",
+                                      );
+                                      closeDialog();
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: kPrimary,
+                                      side: BorderSide(
+                                        color: kPrimary.withOpacity(0.35),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Decline",
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      final authState = context
+                                          .read<AuthenticationBloc>()
+                                          .state;
+                                      final uid =
+                                          authState.userDetails?.userId
+                                              .toString() ??
+                                          "";
+
+                                      debugPrint(
+                                        "🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid",
+                                      );
+
+                                      context.read<UserBookingBloc>().add(
+                                        AcceptBooking(
+                                          userId: uid,
+                                          bookingDetailId:
+                                              offer.bookingDetailId,
+                                        ),
+                                      );
+
+                                      debugPrint(
+                                        "✅ EVENT: AcceptBooking dispatched",
+                                      );
+                                      closeDialog();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text(
+                                      "Accept",
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    } catch (e) {
-      debugPrint("❌ POPUP: showDialog exception => $e");
-    } finally {
-      _dialogOpen = false;
-      _lastPopupBookingDetailId = null;
-    }
-  });
-}
-
-
+                );
+              },
+            );
+          },
+        );
+      } catch (e) {
+        debugPrint("❌ POPUP: showDialog exception => $e");
+      } finally {
+        _dialogOpen = false;
+        _lastPopupBookingDetailId = null;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -1133,8 +1182,8 @@ void _showBookingPopup(TaskerBookingOffer offer) {
     final filteredTasks = _selectedChip == 'Upcoming'
         ? upcoming
         : _selectedChip == 'Current'
-            ? current
-            : [...current, ...upcoming];
+        ? current
+        : [...current, ...upcoming];
 
     return Scaffold(
       backgroundColor: kBg,
@@ -1205,367 +1254,134 @@ void _showBookingPopup(TaskerBookingOffer offer) {
             children: [
               const SizedBox(height: 14),
               _InfoCard(
-                icon: available ? Icons.wifi_tethering_rounded : Icons.wifi_off_rounded,
+                icon: available
+                    ? Icons.wifi_tethering_rounded
+                    : Icons.wifi_off_rounded,
                 text: available
                     ? 'You are online. New offers can arrive anytime.'
                     : 'You are offline. Turn on availability to receive offers.',
               ),
               const SizedBox(height: 14),
               SizedBox(
-  height: 289, // ✅ set as you like (same height for both cards)
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-  child: _WhiteCard(
-    child: Padding(
-      padding: const EdgeInsets.all(12), // ✅ little more breathable
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top small label
-          const Text(
-            'Tasker',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 12,
-              color: Color(0xFF75748A),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Avatar + Name
-          Row(
-            children: [
-              _AvatarRing(url: _avatarUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                height: 289,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      _title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF3E1E69),
-                        fontSize: 16.5,
-                        height: 1.15,
+                    Expanded(
+                      child: _WhiteCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Top small label
+                              const Text(
+                                'Tasker',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12,
+                                  color: Color(0xFF75748A),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Avatar + Name
+                              Row(
+                                children: [
+                                  _AvatarRing(url: _avatarUrl),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontFamily: 'Poppins',
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF3E1E69),
+                                            fontSize: 16.5,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 23),
+
+                              const Row(
+                                children: [
+                                  Expanded(
+                                    child: _MiniInfoChip(
+                                      icon: Icons.star_rounded,
+                                      label: 'Rating',
+                                      value: '4.9',
+                                      bg: Color(0xFFFFF4E8),
+                                      fg: Color(0xFFEE8A41),
+                                    ),
+                                  ),
+                                  // SizedBox(width: 10),
+                                  // Expanded(
+                                  //   child: _MiniInfoChip(
+                                  //     icon: Icons.task_alt_rounded,
+                                  //     label: 'Jobs',
+                                  //     value: '120+',
+                                  //     bg: Color(0xFFEFF8F4),
+                                  //     fg: Color(0xFF1E8E66),
+                                  //   ),
+                                  // ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              const _VerificationRow(
+                                items: [
+                                  VerificationItem(
+                                    label: 'ID Verified',
+                                    icon: Icons.badge_outlined,
+                                    bg: Color(0xFFEFF8F4),
+                                    fg: Color(0xFF1E8E66),
+                                  ),
+                                  VerificationItem(
+                                    label: 'Police Verified',
+                                    icon: Icons.verified_user_outlined,
+                                    bg: Color(0xFFF3EEFF),
+                                    fg: Color(0xFF5C2E91),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    // const SizedBox(height: 4),
-                    // Text(
-                    //   'Available for bookings', // ✅ UI only (no data change)
-                    //   maxLines: 1,
-                    //   overflow: TextOverflow.ellipsis,
-                    //   style: TextStyle(
-                    //     fontFamily: 'Poppins',
-                    //     fontSize: 12,
-                    //     fontWeight: FontWeight.w600,
-                    //     color: const Color(0xFF5C2E91).withOpacity(.75),
-                    //   ),
-                    // ),
-                  ],
-                ),
-              ),
-            ],
-          ),
 
-          const SizedBox(height: 23),
-
-          // ✅ Mini stats row (UI only, fills space nicely)
-          Row(
-            children: const [
-              Expanded(
-                child: _MiniInfoChip(
-                  icon: Icons.star_rounded,
-                  label: 'Rating',
-                  value: '4.9',
-                  bg: Color(0xFFFFF4E8),
-                  fg: Color(0xFFEE8A41),
-                ),
-              ),
-             // SizedBox(width: 10),
-              // Expanded(
-              //   child: _MiniInfoChip(
-              //     icon: Icons.task_alt_rounded,
-              //     label: 'Jobs',
-              //     value: '120+',
-              //     bg: Color(0xFFEFF8F4),
-              //     fg: Color(0xFF1E8E66),
-              //   ),
-              // ),
-            ],
-          ),
-
-           const SizedBox(height: 10),
-
-          // const _MiniInfoChip(
-          //   icon: Icons.flash_on_rounded,
-          //   label: 'Response',
-          //   value: 'Fast',
-          //   bg: Color(0xFFF3EEFF),
-          //   fg: Color(0xFF5C2E91),
-          //   fullWidth: true,
-          // ),
-
-         // const Spacer(), // ✅ pushes verifications to bottom (no blank look)
-
-          // ✅ Modern verification pills
-          const _VerificationRow(
-            items: [
-              VerificationItem(
-                label: 'ID Verified',
-                icon: Icons.badge_outlined,
-                bg: Color(0xFFEFF8F4),
-                fg: Color(0xFF1E8E66),
-              ),
-              VerificationItem(
-                label: 'Police Verified',
-                icon: Icons.verified_user_outlined,
-                bg: Color(0xFFF3EEFF),
-                fg: Color(0xFF5C2E91),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-      // Expanded(
-      //   child: _WhiteCard(
-      //     child: Padding(
-      //       padding: const EdgeInsets.all(6),
-      //       child: Column(
-      //         crossAxisAlignment: CrossAxisAlignment.start,
-      //         children: [
-      //           const Text(
-      //             'Tasker',
-      //             style: TextStyle(
-      //               fontFamily: 'Poppins',
-      //               fontSize: 12,
-      //               color: Color(0xFF75748A),
-      //               fontWeight: FontWeight.w600,
-      //             ),
-      //           ),
-      //           const SizedBox(height: 10),
-      //           Row(
-      //             children: [
-      //               _AvatarRing(url: _avatarUrl),
-      //               const SizedBox(width: 12),
-      //               Expanded(
-      //                 child: Text(
-      //                   _title,
-      //                   maxLines: 2,
-      //                   overflow: TextOverflow.ellipsis,
-      //                   style: const TextStyle(
-      //                     fontFamily: 'Poppins',
-      //                     fontWeight: FontWeight.w900,
-      //                     color: Color(0xFF3E1E69),
-      //                     fontSize: 16.5,
-      //                     height: 1.15,
-      //                   ),
-      //                 ),
-      //               ),
-      //             ],
-      //           ),
-      //           const SizedBox(height: 12),
-
-      //           // ✅ Modern verification pills
-      //           const _VerificationRow(
-      //             items: [
-      //               VerificationItem(
-      //                 label: 'ID Verified',
-      //                 icon: Icons.badge_outlined,
-      //                 bg: Color(0xFFEFF8F4),
-      //                 fg: Color(0xFF1E8E66),
-      //               ),
-      //               VerificationItem(
-      //                 label: 'Police Verified',
-      //                 icon: Icons.verified_user_outlined,
-      //                 bg: Color(0xFFF3EEFF),
-      //                 fg: Color(0xFF5C2E91),
-      //               ),
-      //             ],
-      //           ),
-
-      //         ],
-      //       ),
-      //     ),
-      //   ),
-      // ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: _WhiteCard(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: _EarningsCard(
-              period: period,
-              amount: earnings,
-              onChange: (p) => setState(() => period = p),
-            ),
-          ),
-        ),
-      ),
-    ],
-  ),
-),
-
-/*IntrinsicHeight(
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch, // ✅ make children stretch
-    children: [
-      Expanded(
-        child: _WhiteCard(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tasker',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: Color(0xFF75748A),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                Row(
-                  children: [
-                    _AvatarRing(url: _avatarUrl),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        _title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF3E1E69),
-                          fontSize: 16.5,
-                          height: 1.15,
+                      child: _WhiteCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: _EarningsCard(
+                            period: period,
+                            amount: earnings,
+                            onChange: (p) => setState(() => period = p),
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
+              ),
 
-                const SizedBox(height: 12),
-
-                // ✅ Modern verification pills (ID + Police)
-                const _VerificationRow(
-                  items: [
-                    VerificationItem(
-                      label: 'ID Verified',
-                      icon: Icons.badge_outlined,
-                      bg: Color(0xFFEFF8F4),
-                      fg: Color(0xFF1E8E66),
-                    ),
-                    VerificationItem(
-                      label: 'Police Verified',
-                      icon: Icons.verified_user_outlined,
-                      bg: Color(0xFFF3EEFF),
-                      fg: Color(0xFF5C2E91),
-                    ),
-                  ],
-                ),
-
-              //  const SizedBox(height: 12),
-
-                // ✅ Your badges also in modern container
-              /*  Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5C2E91).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: const Color(0xFF5C2E91).withOpacity(0.15),
-                    ),
-                  ),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _badges
-                        .map(
-                          (b) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: b.bg,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(b.icon, size: 16, color: b.fg),
-                                const SizedBox(width: 6),
-                                Text(
-                                  b.label,
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 11.5,
-                                    color: b.fg,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-
-           const Spacer(),*/ // ✅ helps equalize height nicely
-              ],
-            ),
-          ),
-        ),
-      ),
-
-      const SizedBox(width: 12),
-
-      Expanded(
-        child: _WhiteCard(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _EarningsCard(
-                  period: period,
-                  amount: earnings,
-                  onChange: (p) => setState(() => period = p),
-                ),
-                const Spacer(), // ✅ keep it same height with left
-              ],
-            ),
-          ),
-        ),
-      ),
-    ],
-  ),
-),*/
-
-
-              // _WhiteCard(
-              //   child: _EarningsCard(
-              //     period: period,
-              //     amount: earnings,
-              //     onChange: (p) => setState(() => period = p),
-              //   ),
-              // ),
               const SizedBox(height: 12),
               _WhiteCard(
                 child: _KpiRow(
@@ -1597,7 +1413,9 @@ void _showBookingPopup(TaskerBookingOffer offer) {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _selectedChip == 'All' ? 'Recent activity' : '$_selectedChip tasks',
+                      _selectedChip == 'All'
+                          ? 'Recent activity'
+                          : '$_selectedChip tasks',
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14.5,
@@ -1607,14 +1425,20 @@ void _showBookingPopup(TaskerBookingOffer offer) {
                     ),
                     const SizedBox(height: 10),
                     if (filteredTasks.isEmpty)
-                      const _EmptyState(text: 'No tasks yet. Turn on availability to get offers.')
+                      const _EmptyState(
+                        text:
+                            'No tasks yet. Turn on availability to get offers.',
+                      )
                     else
                       Column(
                         children: [
                           for (int i = 0; i < filteredTasks.length; i++) ...[
                             _TaskTile(task: filteredTasks[i]),
                             if (i != filteredTasks.length - 1)
-                              Divider(height: 18, color: Colors.grey.withOpacity(0.18)),
+                              Divider(
+                                height: 18,
+                                color: Colors.grey.withOpacity(0.18),
+                              ),
                           ],
                         ],
                       ),
@@ -1623,172 +1447,117 @@ void _showBookingPopup(TaskerBookingOffer offer) {
               ),
               const SizedBox(height: 18),
               _WhiteCard(
-                child: // ✅ Header row redesigned to look like the Earnings card style
-// (same data/logic, only UI changed)
-
-Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    const Text(
-      'Tasker',
-      style: TextStyle(
-        fontFamily: 'Poppins',
-        fontSize: 12,
-        color: Color(0xFF75748A),
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    const SizedBox(height: 10),
-
-    // Title + Avatar in same "card-like" vibe
-    Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF8B59C6), Color(0xFF5C2E91)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: Colors.white,
-            child: CircleAvatar(
-              radius: 22,
-              backgroundImage: NetworkImage(_avatarUrl),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            _title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF3E1E69),
-              fontSize: 16.5,
-              height: 1.15,
-            ),
-          ),
-        ),
-      ],
-    ),
-
-    const SizedBox(height: 12),
-
-    // ✅ Pills container exactly like Earnings card selector
-    Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5C2E91).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF5C2E91).withOpacity(0.15)),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _badges
-            .map(
-              (b) => InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: () {
-                  // ✅ keep same behavior as before (no logic change)
-                  // (if your badges had no tap, this does nothing)
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: b.bg, // ✅ same badge colors as your existing data
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(b.icon, size: 16, color: b.fg),
-                      const SizedBox(width: 6),
-                      Text(
-                        b.label,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11.5,
-                          color: b.fg,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    ),
-  ],
-),
-
-                
-              /*  Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(radius: 24, backgroundImage: NetworkImage(_avatarUrl)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _title,
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w800,
-                              color: kTextDark,
-                              fontSize: 14.5,
+                    const Text(
+                      'Tasker',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12,
+                        color: Color(0xFF75748A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Title + Avatar in same "card-like" vibe
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF8B59C6), Color(0xFF5C2E91)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _badges
-                                .map(
-                                  (b) => Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: b.bg,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(b.icon, size: 16, color: b.fg),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          b.label,
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 11.5,
-                                            color: b.fg,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                          child: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.white,
+                            child: CircleAvatar(
+                              radius: 22,
+                              backgroundImage: NetworkImage(_avatarUrl),
+                            ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF3E1E69),
+                              fontSize: 16.5,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5C2E91).withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: const Color(0xFF5C2E91).withOpacity(0.15),
+                        ),
+                      ),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _badges
+                            .map(
+                              (b) => InkWell(
+                                borderRadius: BorderRadius.circular(999),
+                                onTap: () {
+                                  // ✅ keep same behavior as before (no logic change)
+                                  // (if your badges had no tap, this does nothing)
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: b
+                                        .bg, // ✅ same badge colors as your existing data
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(b.icon, size: 16, color: b.fg),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        b.label,
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 11.5,
+                                          color: b.fg,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
                   ],
-                ),*/
+                ),
               ),
             ],
           ),
@@ -1798,9 +1567,6 @@ Column(
   }
 }
 
-/// ===============================================================
-/// UI WIDGETS (OLD UI kept)
-/// ===============================================================
 class _MiniInfoChip extends StatelessWidget {
   const _MiniInfoChip({
     required this.icon,
@@ -1832,18 +1598,18 @@ class _MiniInfoChip extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: fg),
           const SizedBox(width: 8),
-           Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: fg.withOpacity(.9),
-              ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: fg.withOpacity(.9),
             ),
-         
+          ),
+
           const SizedBox(width: 22),
           Text(
             value,
@@ -1859,6 +1625,7 @@ class _MiniInfoChip extends StatelessWidget {
     );
   }
 }
+
 class _AvatarRing extends StatelessWidget {
   const _AvatarRing({required this.url});
   final String url;
@@ -1878,10 +1645,7 @@ class _AvatarRing extends StatelessWidget {
       child: CircleAvatar(
         radius: 24,
         backgroundColor: Colors.white,
-        child: CircleAvatar(
-          radius: 22,
-          backgroundImage: NetworkImage(url),
-        ),
+        child: CircleAvatar(radius: 22, backgroundImage: NetworkImage(url)),
       ),
     );
   }
@@ -1948,7 +1712,6 @@ class _VerificationPill extends StatelessWidget {
   }
 }
 
-
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.icon, required this.text});
 
@@ -1969,7 +1732,7 @@ class _InfoCard extends StatelessWidget {
             color: Colors.black.withOpacity(.03),
             blurRadius: 14,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
       ),
       padding: const EdgeInsets.all(14),
@@ -2058,7 +1821,9 @@ class _ChipsRow extends StatelessWidget {
               decoration: BoxDecoration(
                 color: sel ? kPrimary : Colors.white,
                 borderRadius: BorderRadius.circular(999),
-                border: sel ? null : Border.all(color: kPrimary.withOpacity(.3)),
+                border: sel
+                    ? null
+                    : Border.all(color: kPrimary.withOpacity(.3)),
               ),
               child: Text(
                 label,
@@ -2077,8 +1842,6 @@ class _ChipsRow extends StatelessWidget {
   }
 }
 
-
-
 class _EarningsCard extends StatelessWidget {
   const _EarningsCard({
     required this.period,
@@ -2096,18 +1859,19 @@ class _EarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ no awkward blank space
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // ---------- TOP ----------
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top label
-            Row(
+            const Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.account_balance_wallet_outlined,
-                    size: 16, color: Color(0xFF75748A)),
+              children: [
+                Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 16,
+                  color: Color(0xFF75748A),
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Earnings',
@@ -2144,18 +1908,23 @@ class _EarningsCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: kPrimary.withOpacity(.08),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: kPrimary.withOpacity(.16)),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.trending_up_rounded,
-                          size: 16, color: kPrimary),
+                    children: [
+                      Icon(
+                        Icons.trending_up_rounded,
+                        size: 16,
+                        color: kPrimary,
+                      ),
                       SizedBox(width: 5),
                       Text(
                         'Live',
@@ -2185,12 +1954,10 @@ class _EarningsCard extends StatelessWidget {
             ),
           ],
         ),
-        
 
-        // ---------- MIDDLE (optional but looks good; no blank gap) ----------
-        Column(
+        const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             _MiniLineStat(
               label: 'Completed',
               value: '12',
@@ -2206,9 +1973,8 @@ class _EarningsCard extends StatelessWidget {
             ),
           ],
         ),
-             const SizedBox(height: 6),
+        const SizedBox(height: 6),
 
-        // ---------- BOTTOM ----------
         Align(
           alignment: Alignment.centerLeft,
           child: Container(
@@ -2295,11 +2061,12 @@ class _MiniLineStat extends StatelessWidget {
   }
 }
 
-
-
-
 class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.selected, required this.onTap});
+  const _Pill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -2351,9 +2118,21 @@ class _KpiRow extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _KpiTile(icon: Icons.star_rate_rounded, title: rating.toStringAsFixed(1), sub: '$reviews reviews'),
-        _KpiTile(icon: Icons.bolt_rounded, title: '$acceptance%', sub: 'acceptance'),
-        _KpiTile(icon: Icons.check_circle_rounded, title: '$completion%', sub: 'completion'),
+        _KpiTile(
+          icon: Icons.star_rate_rounded,
+          title: rating.toStringAsFixed(1),
+          sub: '$reviews reviews',
+        ),
+        _KpiTile(
+          icon: Icons.bolt_rounded,
+          title: '$acceptance%',
+          sub: 'acceptance',
+        ),
+        _KpiTile(
+          icon: Icons.check_circle_rounded,
+          title: '$completion%',
+          sub: 'completion',
+        ),
       ],
     );
   }
@@ -2441,21 +2220,51 @@ class _TaskTile extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF75748A)),
+            const Icon(
+              Icons.calendar_month_rounded,
+              size: 16,
+              color: Color(0xFF75748A),
+            ),
             const SizedBox(width: 6),
-            Text(task.date, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(
+              task.date,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: Color(0xFF75748A),
+              ),
+            ),
             const SizedBox(width: 14),
-            const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF75748A)),
+            const Icon(
+              Icons.schedule_rounded,
+              size: 16,
+              color: Color(0xFF75748A),
+            ),
             const SizedBox(width: 6),
-            Text(task.time, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A))),
+            Text(
+              task.time,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: Color(0xFF75748A),
+              ),
+            ),
             const SizedBox(width: 14),
-            const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF75748A)),
+            const Icon(
+              Icons.location_on_outlined,
+              size: 16,
+              color: Color(0xFF75748A),
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 task.location,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Color(0xFF75748A)),
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: Color(0xFF75748A),
+                ),
               ),
             ),
           ],
