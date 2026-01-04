@@ -997,7 +997,7 @@ Future<Result<BookingCreateResponse>> createBooking({
   @override
 Future<Result<RegistrationResponse>> onboardUser({
   required String userId,
-  List<int> servicesId = const [], // ignored (hardcoded)
+  List<int> servicesId = const [], 
   required NamedBytes profilePicture,
   NamedBytes? docCertification,
   required NamedBytes docInsurance,

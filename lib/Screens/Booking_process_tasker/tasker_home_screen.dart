@@ -1211,13 +1211,361 @@ void _showBookingPopup(TaskerBookingOffer offer) {
                     : 'You are offline. Turn on availability to receive offers.',
               ),
               const SizedBox(height: 14),
-              _WhiteCard(
-                child: _EarningsCard(
+              SizedBox(
+  height: 289, // ✅ set as you like (same height for both cards)
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Expanded(
+  child: _WhiteCard(
+    child: Padding(
+      padding: const EdgeInsets.all(12), // ✅ little more breathable
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top small label
+          const Text(
+            'Tasker',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              color: Color(0xFF75748A),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Avatar + Name
+          Row(
+            children: [
+              _AvatarRing(url: _avatarUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF3E1E69),
+                        fontSize: 16.5,
+                        height: 1.15,
+                      ),
+                    ),
+                    // const SizedBox(height: 4),
+                    // Text(
+                    //   'Available for bookings', // ✅ UI only (no data change)
+                    //   maxLines: 1,
+                    //   overflow: TextOverflow.ellipsis,
+                    //   style: TextStyle(
+                    //     fontFamily: 'Poppins',
+                    //     fontSize: 12,
+                    //     fontWeight: FontWeight.w600,
+                    //     color: const Color(0xFF5C2E91).withOpacity(.75),
+                    //   ),
+                    // ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 23),
+
+          // ✅ Mini stats row (UI only, fills space nicely)
+          Row(
+            children: const [
+              Expanded(
+                child: _MiniInfoChip(
+                  icon: Icons.star_rounded,
+                  label: 'Rating',
+                  value: '4.9',
+                  bg: Color(0xFFFFF4E8),
+                  fg: Color(0xFFEE8A41),
+                ),
+              ),
+             // SizedBox(width: 10),
+              // Expanded(
+              //   child: _MiniInfoChip(
+              //     icon: Icons.task_alt_rounded,
+              //     label: 'Jobs',
+              //     value: '120+',
+              //     bg: Color(0xFFEFF8F4),
+              //     fg: Color(0xFF1E8E66),
+              //   ),
+              // ),
+            ],
+          ),
+
+           const SizedBox(height: 10),
+
+          // const _MiniInfoChip(
+          //   icon: Icons.flash_on_rounded,
+          //   label: 'Response',
+          //   value: 'Fast',
+          //   bg: Color(0xFFF3EEFF),
+          //   fg: Color(0xFF5C2E91),
+          //   fullWidth: true,
+          // ),
+
+         // const Spacer(), // ✅ pushes verifications to bottom (no blank look)
+
+          // ✅ Modern verification pills
+          const _VerificationRow(
+            items: [
+              VerificationItem(
+                label: 'ID Verified',
+                icon: Icons.badge_outlined,
+                bg: Color(0xFFEFF8F4),
+                fg: Color(0xFF1E8E66),
+              ),
+              VerificationItem(
+                label: 'Police Verified',
+                icon: Icons.verified_user_outlined,
+                bg: Color(0xFFF3EEFF),
+                fg: Color(0xFF5C2E91),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  ),
+),
+      // Expanded(
+      //   child: _WhiteCard(
+      //     child: Padding(
+      //       padding: const EdgeInsets.all(6),
+      //       child: Column(
+      //         crossAxisAlignment: CrossAxisAlignment.start,
+      //         children: [
+      //           const Text(
+      //             'Tasker',
+      //             style: TextStyle(
+      //               fontFamily: 'Poppins',
+      //               fontSize: 12,
+      //               color: Color(0xFF75748A),
+      //               fontWeight: FontWeight.w600,
+      //             ),
+      //           ),
+      //           const SizedBox(height: 10),
+      //           Row(
+      //             children: [
+      //               _AvatarRing(url: _avatarUrl),
+      //               const SizedBox(width: 12),
+      //               Expanded(
+      //                 child: Text(
+      //                   _title,
+      //                   maxLines: 2,
+      //                   overflow: TextOverflow.ellipsis,
+      //                   style: const TextStyle(
+      //                     fontFamily: 'Poppins',
+      //                     fontWeight: FontWeight.w900,
+      //                     color: Color(0xFF3E1E69),
+      //                     fontSize: 16.5,
+      //                     height: 1.15,
+      //                   ),
+      //                 ),
+      //               ),
+      //             ],
+      //           ),
+      //           const SizedBox(height: 12),
+
+      //           // ✅ Modern verification pills
+      //           const _VerificationRow(
+      //             items: [
+      //               VerificationItem(
+      //                 label: 'ID Verified',
+      //                 icon: Icons.badge_outlined,
+      //                 bg: Color(0xFFEFF8F4),
+      //                 fg: Color(0xFF1E8E66),
+      //               ),
+      //               VerificationItem(
+      //                 label: 'Police Verified',
+      //                 icon: Icons.verified_user_outlined,
+      //                 bg: Color(0xFFF3EEFF),
+      //                 fg: Color(0xFF5C2E91),
+      //               ),
+      //             ],
+      //           ),
+
+      //         ],
+      //       ),
+      //     ),
+      //   ),
+      // ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _WhiteCard(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: _EarningsCard(
+              period: period,
+              amount: earnings,
+              onChange: (p) => setState(() => period = p),
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+/*IntrinsicHeight(
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.stretch, // ✅ make children stretch
+    children: [
+      Expanded(
+        child: _WhiteCard(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tasker',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: Color(0xFF75748A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    _AvatarRing(url: _avatarUrl),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF3E1E69),
+                          fontSize: 16.5,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // ✅ Modern verification pills (ID + Police)
+                const _VerificationRow(
+                  items: [
+                    VerificationItem(
+                      label: 'ID Verified',
+                      icon: Icons.badge_outlined,
+                      bg: Color(0xFFEFF8F4),
+                      fg: Color(0xFF1E8E66),
+                    ),
+                    VerificationItem(
+                      label: 'Police Verified',
+                      icon: Icons.verified_user_outlined,
+                      bg: Color(0xFFF3EEFF),
+                      fg: Color(0xFF5C2E91),
+                    ),
+                  ],
+                ),
+
+              //  const SizedBox(height: 12),
+
+                // ✅ Your badges also in modern container
+              /*  Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5C2E91).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: const Color(0xFF5C2E91).withOpacity(0.15),
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _badges
+                        .map(
+                          (b) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: b.bg,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(b.icon, size: 16, color: b.fg),
+                                const SizedBox(width: 6),
+                                Text(
+                                  b.label,
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 11.5,
+                                    color: b.fg,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+
+           const Spacer(),*/ // ✅ helps equalize height nicely
+              ],
+            ),
+          ),
+        ),
+      ),
+
+      const SizedBox(width: 12),
+
+      Expanded(
+        child: _WhiteCard(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _EarningsCard(
                   period: period,
                   amount: earnings,
                   onChange: (p) => setState(() => period = p),
                 ),
-              ),
+                const Spacer(), // ✅ keep it same height with left
+              ],
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),*/
+
+
+              // _WhiteCard(
+              //   child: _EarningsCard(
+              //     period: period,
+              //     amount: earnings,
+              //     onChange: (p) => setState(() => period = p),
+              //   ),
+              // ),
               const SizedBox(height: 12),
               _WhiteCard(
                 child: _KpiRow(
@@ -1275,7 +1623,119 @@ void _showBookingPopup(TaskerBookingOffer offer) {
               ),
               const SizedBox(height: 18),
               _WhiteCard(
-                child: Row(
+                child: // ✅ Header row redesigned to look like the Earnings card style
+// (same data/logic, only UI changed)
+
+Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    const Text(
+      'Tasker',
+      style: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 12,
+        color: Color(0xFF75748A),
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    const SizedBox(height: 10),
+
+    // Title + Avatar in same "card-like" vibe
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8B59C6), Color(0xFF5C2E91)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.white,
+            child: CircleAvatar(
+              radius: 22,
+              backgroundImage: NetworkImage(_avatarUrl),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            _title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF3E1E69),
+              fontSize: 16.5,
+              height: 1.15,
+            ),
+          ),
+        ),
+      ],
+    ),
+
+    const SizedBox(height: 12),
+
+    // ✅ Pills container exactly like Earnings card selector
+    Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5C2E91).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFF5C2E91).withOpacity(0.15)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _badges
+            .map(
+              (b) => InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () {
+                  // ✅ keep same behavior as before (no logic change)
+                  // (if your badges had no tap, this does nothing)
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: b.bg, // ✅ same badge colors as your existing data
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(b.icon, size: 16, color: b.fg),
+                      const SizedBox(width: 6),
+                      Text(
+                        b.label,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11.5,
+                          color: b.fg,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    ),
+  ],
+),
+
+                
+              /*  Row(
                   children: [
                     CircleAvatar(radius: 24, backgroundImage: NetworkImage(_avatarUrl)),
                     const SizedBox(width: 12),
@@ -1328,7 +1788,7 @@ void _showBookingPopup(TaskerBookingOffer offer) {
                       ),
                     ),
                   ],
-                ),
+                ),*/
               ),
             ],
           ),
@@ -1341,6 +1801,153 @@ void _showBookingPopup(TaskerBookingOffer offer) {
 /// ===============================================================
 /// UI WIDGETS (OLD UI kept)
 /// ===============================================================
+class _MiniInfoChip extends StatelessWidget {
+  const _MiniInfoChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.bg,
+    required this.fg,
+    this.fullWidth = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color bg;
+  final Color fg;
+  final bool fullWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: fg.withOpacity(.16)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 8),
+           Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: fg.withOpacity(.9),
+              ),
+            ),
+         
+          const SizedBox(width: 22),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _AvatarRing extends StatelessWidget {
+  const _AvatarRing({required this.url});
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [Color(0xFF8B59C6), Color(0xFF5C2E91)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.white,
+        child: CircleAvatar(
+          radius: 22,
+          backgroundImage: NetworkImage(url),
+        ),
+      ),
+    );
+  }
+}
+
+class VerificationItem {
+  final String label;
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+
+  const VerificationItem({
+    required this.label,
+    required this.icon,
+    required this.bg,
+    required this.fg,
+  });
+}
+
+class _VerificationRow extends StatelessWidget {
+  const _VerificationRow({required this.items});
+  final List<VerificationItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items.map((v) => _VerificationPill(item: v)).toList(),
+    );
+  }
+}
+
+class _VerificationPill extends StatelessWidget {
+  const _VerificationPill({required this.item});
+  final VerificationItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+      decoration: BoxDecoration(
+        color: item.bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: item.fg.withOpacity(.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(item.icon, size: 16, color: item.fg),
+          const SizedBox(width: 6),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 11.8,
+              fontWeight: FontWeight.w800,
+              color: item.fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.icon, required this.text});
@@ -1470,6 +2077,8 @@ class _ChipsRow extends StatelessWidget {
   }
 }
 
+
+
 class _EarningsCard extends StatelessWidget {
   const _EarningsCard({
     required this.period,
@@ -1487,56 +2096,207 @@ class _EarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ no awkward blank space
       children: [
-        const Text(
-          'Earnings',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 12,
-            color: Color(0xFF75748A),
-            fontWeight: FontWeight.w600,
-          ),
+        // ---------- TOP ----------
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top label
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.account_balance_wallet_outlined,
+                    size: 16, color: Color(0xFF75748A)),
+                SizedBox(width: 6),
+                Text(
+                  'Earnings',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: Color(0xFF75748A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Amount + Live pill
+            Row(
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "\$${amount.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 28,
+                        color: Color(0xFF3E1E69),
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(.08),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: kPrimary.withOpacity(.16)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.trending_up_rounded,
+                          size: 16, color: kPrimary),
+                      SizedBox(width: 5),
+                      Text(
+                        'Live',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: kPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              'per ${period.toLowerCase()}',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: Color(0xFF75748A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
-        Text(
-          "\$${amount.toStringAsFixed(0)}",
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 24,
-            color: Color(0xFF3E1E69),
-            fontWeight: FontWeight.w900,
-          ),
+        
+
+        // ---------- MIDDLE (optional but looks good; no blank gap) ----------
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _MiniLineStat(
+              label: 'Completed',
+              value: '12',
+              icon: Icons.check_circle_outline_rounded,
+              fg: Color(0xFF1E8E66),
+            ),
+            SizedBox(height: 10),
+            _MiniLineStat(
+              label: 'Pending',
+              value: '3',
+              icon: Icons.hourglass_bottom_rounded,
+              fg: Color(0xFFEE8A41),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          'per ${period.toLowerCase()}',
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 12,
-            color: Color(0xFF75748A),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: kPrimary.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: kPrimary.withOpacity(0.15)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _Pill(label: 'Week', selected: period == 'Week', onTap: () => onChange('Week')),
-              _Pill(label: 'Month', selected: period == 'Month', onTap: () => onChange('Month')),
-            ],
+             const SizedBox(height: 6),
+
+        // ---------- BOTTOM ----------
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: kPrimary.withOpacity(0.15)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Pill(
+                  label: 'Week',
+                  selected: period == 'Week',
+                  onTap: () => onChange('Week'),
+                ),
+                _Pill(
+                  label: 'Month',
+                  selected: period == 'Month',
+                  onTap: () => onChange('Month'),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 }
+
+class _MiniLineStat extends StatelessWidget {
+  const _MiniLineStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.fg,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: fg.withOpacity(.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: fg.withOpacity(.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: fg.withOpacity(.95),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
 
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.selected, required this.onTap});
