@@ -1033,7 +1033,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Scaffold(
               body: Stack(
                 children: [
-                  const _LoginBackground(primary: primary),
+                 // const _LoginBackground(primary: primary),
                   SafeArea(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
@@ -1053,7 +1053,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       'Welcome back 👋',
                                       style: TextStyle(
                                         fontFamily: 'Poppins',
-                                        color: Colors.white,
+                                        color: Colors.black,
                                         fontSize: 28,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: .2,
@@ -1064,7 +1064,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       'Sign in to continue to your account.',
                                       style: TextStyle(
                                         fontFamily: 'Poppins',
-                                        color: Colors.white70,
+                                        color: Colors.grey,
                                         fontSize: 14.5,
                                         height: 1.3,
                                       ),
