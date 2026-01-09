@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Routes/routes.dart';
+import 'package:taskoon/Screens/Authentication/login_screen.dart';
 
 
 
@@ -20,10 +21,14 @@ class GlobalSignOut {
 
     if (!context.mounted) return;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      Routes.login,
-      (_) => false,
-    );
+    // Navigator.of(context).pushNamedAndRemoveUntil(
+    //   Routes.login,
+    //   (_) => false,
+    // );
+    Navigator.of(context).pushAndRemoveUntil(
+  MaterialPageRoute(builder: (context) => LoginScreen()), // Replace LoginScreen() with your actual login widget
+  (_) => false,
+);
   }
 }
 

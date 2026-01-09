@@ -8,6 +8,16 @@ import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'dart:convert';
 import 'package:signalr_netcore/signalr_client.dart';
 
+  final box = GetStorage();
+      var userId=     box.read('userId');
+                var name = box.read("name");
+
+
+   const Color kPrimary = Color(0xFF5C2E91);
+   const Color kTextDark = Color(0xFF3E1E69);
+   const Color kMuted = Color(0xFF75748A);
+   const Color kBg = Color(0xFFF8F7FB);
+
 class _Badge {
   final String label;
   final IconData icon;
@@ -47,7 +57,7 @@ class TaskerBookingOffer {
   // ✅ new fields
   final String? bookingService;
   final String? userName;
-  final int? bookingDuration; // hours (based on your sample)
+  final int? bookingDuration; 
   final DateTime? bookingTime;
   final double? distanceKm;
   final String? location;
@@ -55,7 +65,7 @@ class TaskerBookingOffer {
   // existing
   final String message;
   final String? type;
-  final String? date; // raw string from server
+  final String? date; 
 
   TaskerBookingOffer({
     required this.bookingDetailId,
@@ -242,7 +252,249 @@ class TaskerBookingOffer {
     return DateTime.tryParse(s);
   }
 }
+class TaskerDispatchHubService {
+  HubConnection? _conn;
 
+  String? _baseUrl;
+  String? _userId;
+
+  Completer<void>? _startCompleter;
+  bool _handlersAttached = false;
+
+  final _notifCtrl = StreamController<dynamic>.broadcast();
+  Stream<dynamic> get notifications => _notifCtrl.stream;
+
+  bool get isConnected =>
+      _conn != null && _conn!.state == HubConnectionState.Connected;
+
+  HubConnectionState? get state => _conn?.state;
+
+  // ✅ ADDED: logs only (no functional change)
+  void logStatus([String tag = "STATUS"]) {
+    debugPrint(
+      "🟣 HUB($tag): connected=$isConnected state=${_conn?.state} "
+      "baseUrl=${_baseUrl ?? '-'} userId=${(_userId?.isNotEmpty == true) ? _userId : '-'}",
+    );
+  }
+
+  void configure({required String baseUrl, required String userId}) {
+    final changed = (_baseUrl != baseUrl) || (_userId != userId);
+    _baseUrl = baseUrl;
+    _userId = userId;
+
+    // ✅ ADDED: log only
+    logStatus("CONFIG");
+
+    if (changed) {
+      debugPrint("🧩 HUB(SVC): config changed -> rebuilding");
+      _handlersAttached = false;
+      _disposeConnectionOnly();
+    }
+  }
+
+  Future<void> ensureConnected() async {
+    if (_baseUrl == null || _userId == null || _userId!.isEmpty) {
+      throw Exception("HUB(SVC): configure(baseUrl,userId) first");
+    }
+
+    // ✅ ADDED: log only
+    logStatus("ENSURE_ENTER");
+
+    if (isConnected) {
+      // ✅ ADDED: log only
+      logStatus("ENSURE_ALREADY_CONNECTED");
+      return;
+    }
+
+    // If already starting, wait
+    if (_startCompleter != null) {
+      // ✅ ADDED: log only
+      logStatus("ENSURE_WAIT_EXISTING_START");
+      await _startCompleter!.future;
+      // ✅ ADDED: log only
+      logStatus("ENSURE_AFTER_WAIT");
+      return;
+    }
+
+    _startCompleter = Completer<void>();
+    try {
+      await _startInternal();
+    } finally {
+      _startCompleter?.complete();
+      _startCompleter = null;
+
+      // ✅ ADDED: log only
+      logStatus("ENSURE_EXIT");
+    }
+  }
+
+  Future<void> _startInternal() async {
+    final baseUrl = _baseUrl!;
+    final userId = _userId!;
+    final url = "$baseUrl/hubs/dispatch?userId=$userId";
+
+    try {
+      if (_conn == null) {
+        debugPrint("🧩 HUB(SVC): building connection...");
+      }
+
+      _conn ??= HubConnectionBuilder()
+          .withUrl(
+            url,
+            options: HttpConnectionOptions(
+              // ✅ same as your code (NO change)
+              transport: HttpTransportType.LongPolling,
+              // accessTokenFactory: () async => "token",
+            ),
+          )
+          .withAutomaticReconnect()
+          .build();
+
+      _wireLifecycle(_conn!);
+
+      if (!_handlersAttached) {
+        _registerHandlers(_conn!);
+        _handlersAttached = true;
+
+        // ✅ ADDED: log only
+        debugPrint("🧩 HUB(SVC): handlers attached");
+      }
+
+      debugPrint(
+        "🔌 HUB(SVC): start... url=$url state(before)=${_conn!.state}",
+      );
+
+      // ✅ ADDED: log only
+      logStatus("START_BEFORE_STOP_CHECK");
+
+      // Reset if in weird state
+      if (_conn!.state != HubConnectionState.Disconnected) {
+        try {
+          debugPrint("🧩 HUB(SVC): not Disconnected -> stopping first...");
+          await _conn!.stop();
+          debugPrint("🧩 HUB(SVC): stop done.");
+        } catch (e) {
+          debugPrint("⚠️ HUB(SVC): stop failed (ignored) => $e");
+        }
+      }
+
+      // ✅ ADDED: log only
+      logStatus("START_BEFORE_START");
+
+      await _conn!.start();
+
+      debugPrint("✅ HUB(SVC): start done. state(after)=${_conn!.state}");
+
+      // ✅ ADDED: log only
+      logStatus("START_AFTER_START");
+
+      if (_conn!.state != HubConnectionState.Connected) {
+        // ✅ ADDED: log only
+        logStatus("START_BAD_STATE");
+        throw Exception("HUB(SVC): start finished but state=${_conn!.state}");
+      }
+
+      // ✅ ADDED: log only
+      debugPrint("✅ HUB(SVC): CONNECTED ✅ (LongPolling)");
+      logStatus("CONNECTED_FINAL");
+    } catch (e) {
+      // ✅ ADDED: log only
+      debugPrint("❌ HUB(SVC): start failed => $e");
+      logStatus("START_FAIL");
+
+      _handlersAttached = false;
+      _disposeConnectionOnly();
+      rethrow;
+    }
+  }
+
+  void _wireLifecycle(HubConnection c) {
+    // NOTE: your original had onclose / onreconnecting / onreconnected
+    // ✅ only logs added here
+
+    c.onclose(({error}) {
+      debugPrint("🛑 HUB(SVC): onClose error=$error state=${c.state}");
+      logStatus("ONCLOSE");
+    });
+
+    c.onreconnecting(({error}) {
+      debugPrint("🔄 HUB(SVC): onReconnecting error=$error state=${c.state}");
+      logStatus("RECONNECTING");
+    });
+
+    c.onreconnected(({connectionId}) {
+      debugPrint("✅ HUB(SVC): onReconnected id=$connectionId state=${c.state}");
+      logStatus("RECONNECTED");
+    });
+  }
+
+  void _registerHandlers(HubConnection c) {
+    // Prevent duplicate
+    c.off("ReceiveBookingOffer");
+    c.off("ReceiveNotification");
+
+    // ✅ ADDED: log only
+    debugPrint("🧩 HUB(SVC): registering handlers: ReceiveBookingOffer, ReceiveNotification");
+
+    c.on("ReceiveBookingOffer", (args) {
+      final payload = _normalizeArgs(args);
+      if (payload == null) return;
+      debugPrint("📩 HUB(SVC): ReceiveBookingOffer => $payload");
+      _notifCtrl.add(payload);
+    });
+
+    c.on("ReceiveNotification", (args) {
+      final payload = _normalizeArgs(args);
+      if (payload == null) return;
+      debugPrint("📩 HUB(SVC): ReceiveNotification => $payload");
+      _notifCtrl.add(payload);
+    });
+  }
+
+  dynamic _normalizeArgs(List<Object?>? args) {
+    if (args == null || args.isEmpty) return null;
+    dynamic first = args.first;
+
+    if (first is List && first.isNotEmpty) first = first.first;
+
+    if (first is String) {
+      try {
+        first = jsonDecode(first);
+      } catch (_) {}
+    }
+
+    return first;
+  }
+
+  void _disposeConnectionOnly() {
+    // ✅ ADDED: log only
+    logStatus("DISPOSE_CONN_ONLY_BEGIN");
+
+    try {
+      _conn?.stop();
+    } catch (e) {
+      debugPrint("⚠️ HUB(SVC): stop() failed in disposeConnectionOnly => $e");
+    }
+    _conn = null;
+
+    // ✅ ADDED: log only
+    logStatus("DISPOSE_CONN_ONLY_END");
+  }
+
+  Future<void> dispose() async {
+    // ✅ ADDED: log only
+    logStatus("DISPOSE_BEGIN");
+
+    _disposeConnectionOnly();
+    await _notifCtrl.close();
+
+    // ✅ ADDED: log only
+    debugPrint("🧩 HUB(SVC): stream closed");
+    logStatus("DISPOSE_END");
+  }
+}
+
+/*
 class TaskerDispatchHubService {
   HubConnection? _conn;
 
@@ -406,7 +658,7 @@ class TaskerDispatchHubService {
     _disposeConnectionOnly();
     await _notifCtrl.close();
   }
-}
+}*/
 
 /// ===============================================================
 /// ✅ SCREEN (OLD UI kept, SignalR separate)
@@ -421,10 +673,10 @@ class TaskerHomeRedesign extends StatefulWidget {
 class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
     with WidgetsBindingObserver {
   // theme tokens
-  static const Color kPrimary = Color(0xFF5C2E91);
-  static const Color kTextDark = Color(0xFF3E1E69);
-  static const Color kMuted = Color(0xFF75748A);
-  static const Color kBg = Color(0xFFF8F7FB);
+  // static const Color kPrimary = Color(0xFF5C2E91);
+  // static const Color kTextDark = Color(0xFF3E1E69);
+  // static const Color kMuted = Color(0xFF75748A);
+  // static const Color kBg = Color(0xFFF8F7FB);
 
   static const String _baseUrl =
       "https://api.taskoon.com"; //"http://192.3.3.187:85";
@@ -546,8 +798,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   }
 
   Future<void> _trySetupSignalR({required String reason}) async {
-    final authState = context.read<AuthenticationBloc>().state;
-    final userId = authState.userDetails?.userId.toString();
+
 
     if (userId == null || userId.isEmpty) {
       debugPrint("⏳ TASKER HUB: userId not ready yet (reason=$reason)");
@@ -555,9 +806,15 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
     }
 
     if (!_hubConfigured) {
-      debugPrint("🧩 TASKER HUB: configure baseUrl=$_baseUrl userId=$userId");
-      _hub.configure(baseUrl: _baseUrl, userId: userId);
-      _hubConfigured = true;
+        debugPrint("🧩 TASKER HUB: configure baseUrl=$_baseUrl userId=$userId");
+  _hub.configure(baseUrl: _baseUrl, userId: userId);
+  _hubConfigured = true;
+
+  // ✅ ADDED: log only
+  _hub.logStatus("SCREEN_CONFIG_DONE");
+      // debugPrint("🧩 TASKER HUB: configure baseUrl=$_baseUrl userId=$userId");
+      // _hub.configure(baseUrl: _baseUrl, userId: userId);
+      // _hubConfigured = true;
     }
 
     await _safeEnsureHubConnected(reason: reason);
@@ -579,6 +836,11 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
       );
 
       await _hub.ensureConnected();
+
+// ✅ ADDED: log only
+_hub.logStatus("SCREEN_ENSURE_DONE");
+
+      // await _hub.ensureConnected();
 
       debugPrint(
         "✅ TASKER HUB: ensureConnected done. isConnected=${_hub.isConnected} state=${_hub.state}",
@@ -686,15 +948,14 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
       return;
     }
 
-    final authState = context.read<AuthenticationBloc>().state;
-    final userDetails = authState.userDetails;
+ 
 
-    if (userDetails == null || userDetails.userId == null) {
-      debugPrint("❌ LOCATION: userDetails missing (cannot send)");
+    if (userId == null) {
+      debugPrint("❌ LOCATION: user id missing (cannot send)");
       return;
     }
 
-    final userId = userDetails.userId.toString();
+
 
     // TODO replace with GPS later
     const double lat = 67.00;
@@ -1091,21 +1352,16 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: () {
-                                      final authState = context
-                                          .read<AuthenticationBloc>()
-                                          .state;
-                                      final uid =
-                                          authState.userDetails?.userId
-                                              .toString() ??
-                                          "";
+                                
+                                     
 
                                       debugPrint(
-                                        "🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$uid",
+                                        "🟢 POPUP: Accept pressed booking=${offer.bookingDetailId} userId=$userId",
                                       );
 
                                       context.read<UserBookingBloc>().add(
                                         AcceptBooking(
-                                          userId: uid,
+                                          userId: userId,
                                           bookingDetailId:
                                               offer.bookingDetailId,
                                         ),
@@ -1160,70 +1416,72 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-
     _stopLocationUpdates();
-
     _hubWatchdog?.cancel();
     _hubSub?.cancel();
-
-    // dispose hub service (fire-and-forget)
     _hub.dispose();
-
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final authState = context.read<AuthenticationBloc>().state;
-    final name = authState.userDetails?.fullName.toString() ?? 'Tasker';
+Widget build(BuildContext context) {
 
-    final earnings = period == 'Week' ? weeklyEarning : monthlyEarning;
 
-    final filteredTasks = _selectedChip == 'Upcoming'
-        ? upcoming
-        : _selectedChip == 'Current'
-        ? current
-        : [...current, ...upcoming];
+  final earnings = period == 'Week' ? weeklyEarning : monthlyEarning;
 
-    return Scaffold(
-      backgroundColor: kBg,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 16,
-        title:const Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hello,',
-                style:  TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: kTextDark,
-                ),
+  final filteredTasks = _selectedChip == 'Upcoming'
+      ? upcoming
+      : _selectedChip == 'Current'
+          ? current
+          : [...current, ...upcoming];
+
+  return Scaffold(
+    backgroundColor: kBg,
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 16,
+      title: const Padding(
+        padding: EdgeInsets.only(top: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hello,',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: kTextDark,
               ),
-               SizedBox(height: 2),
-               Text(
-                'Ready for new gigs?',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  color: kMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Ready for new gigs?',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: kMuted,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
+            ),
+          ],
+        ),//Testing@123
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(.06),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: kPrimary.withOpacity(.14)),
+            ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Available',
@@ -1231,7 +1489,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
                     fontFamily: 'Poppins',
                     fontSize: 12,
                     color: kPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -1243,132 +1501,104 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
               ],
             ),
           ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 14),
-              _InfoCard(
-                icon: available
-                    ? Icons.wifi_tethering_rounded
-                    : Icons.wifi_off_rounded,
-                text: available
-                    ? 'You are online. New offers can arrive anytime.'
-                    : 'You are offline. Turn on availability to receive offers.',
+        ),
+      ],
+    ),
+    body: SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 110),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ✅ Modern hero card (UI only)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    kPrimary.withOpacity(.16),
+                    kPrimary.withOpacity(.07),
+                    Colors.white,
+                  ],
+                ),
+                border: Border.all(color: kPrimary.withOpacity(.12)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.06),
+                    blurRadius: 22,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 289,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _WhiteCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Top small label
-                              const Text(
-                                'Tasker',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  color: Color(0xFF75748A),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              // Avatar + Name
-                              Row(
-                                children: [
-                                  _AvatarRing(url: _avatarUrl),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                       name, //  context.read<AuthenticationBloc>().state.userDetails!.fullName.toString(),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w900,
-                                            color: Color(0xFF3E1E69),
-                                            fontSize: 16.5,
-                                            height: 1.15,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 23),
-
-                              const Row(
-                                children: [
-                                  Expanded(
-                                    child: _MiniInfoChip(
-                                      icon: Icons.star_rounded,
-                                      label: 'Rating',
-                                      value: '4.9',
-                                      bg: Color(0xFFFFF4E8),
-                                      fg: Color(0xFFEE8A41),
-                                    ),
-                                  ),
-                                  // SizedBox(width: 10),
-                                  // Expanded(
-                                  //   child: _MiniInfoChip(
-                                  //     icon: Icons.task_alt_rounded,
-                                  //     label: 'Jobs',
-                                  //     value: '120+',
-                                  //     bg: Color(0xFFEFF8F4),
-                                  //     fg: Color(0xFF1E8E66),
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              const _VerificationRow(
-                                items: [
-                                  VerificationItem(
-                                    label: 'ID Verified',
-                                    icon: Icons.badge_outlined,
-                                    bg: Color(0xFFEFF8F4),
-                                    fg: Color(0xFF1E8E66),
-                                  ),
-                                  VerificationItem(
-                                    label: 'Police Verified',
-                                    icon: Icons.verified_user_outlined,
-                                    bg: Color(0xFFF3EEFF),
-                                    fg: Color(0xFF5C2E91),
-                                  ),
-                                ],
-                              ),
-                            ],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF3E1E69),
+                            fontSize: 18,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        Text(
+                          available
+                              ? 'You’re online — offers can arrive anytime.'
+                              : 'You’re offline — go available to receive offers.',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12.5,
+                            height: 1.25,
+                            color: Color(0xFF75748A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(width: 10),
+                  _StatusPill(available: available),
+                ],
+              ),
+            ),
 
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _WhiteCard(
-                        child: Padding(
+            const SizedBox(height: 14),
+
+            _InfoCard(
+              icon: available
+                  ? Icons.wifi_tethering_rounded
+                  : Icons.wifi_off_rounded,
+              text: available
+                  ? 'You are online. New offers can arrive anytime.'
+                  : 'You are offline. Turn on availability to receive offers.',
+              available: available,
+            ),
+
+            const SizedBox(height: 14),
+
+            LayoutBuilder(
+              builder: (context, c) {
+                final twoCols = c.maxWidth >= 720;
+                if (twoCols) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _TaskerProfileCard(name: name)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _WhiteCard(
                           padding: const EdgeInsets.all(14),
                           child: _EarningsCard(
                             period: period,
@@ -1377,78 +1607,329 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              _WhiteCard(
-                child: _KpiRow(
-                  rating: rating,
-                  reviews: reviews,
-                  acceptance: acceptanceRate,
-                  completion: completionRate,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Your jobs',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 16,
-                  color: kTextDark,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _ChipsRow(
-                labels: _chipLabels,
-                selected: _selectedChip,
-                onTap: (v) => setState(() => _selectedChip = v),
-              ),
-              const SizedBox(height: 14),
-              _WhiteCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                    ],
+                  );
+                }
+                return Column(
                   children: [
-                    Text(
-                      _selectedChip == 'All'
-                          ? 'Recent activity'
-                          : '$_selectedChip tasks',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14.5,
-                        color: kTextDark,
-                        fontWeight: FontWeight.w800,
+                    _TaskerProfileCard(name: name),
+                    const SizedBox(height: 12),
+                    _WhiteCard(
+                      padding: const EdgeInsets.all(14),
+                      child: _EarningsCard(
+                        period: period,
+                        amount: earnings,
+                        onChange: (p) => setState(() => period = p),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    if (filteredTasks.isEmpty)
-                      const _EmptyState(
-                        text:
-                            'No tasks yet. Turn on availability to get offers.',
-                      )
-                    else
-                      Column(
-                        children: [
-                          for (int i = 0; i < filteredTasks.length; i++) ...[
-                            _TaskTile(task: filteredTasks[i]),
-                            if (i != filteredTasks.length - 1)
-                              Divider(
-                                height: 18,
-                                color: Colors.grey.withOpacity(0.18),
-                              ),
-                          ],
-                        ],
-                      ),
                   ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            _WhiteCard(
+              child: _KpiRow(
+                rating: rating,
+                reviews: reviews,
+                acceptance: acceptanceRate,
+                completion: completionRate,
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            const Text(
+              'Your jobs',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                color: kTextDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            _ChipsRow(
+              labels: _chipLabels,
+              selected: _selectedChip,
+              onTap: (v) => setState(() => _selectedChip = v),
+            ),
+
+            const SizedBox(height: 14),
+
+            _WhiteCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedChip == 'All'
+                        ? 'Recent activity'
+                        : '$_selectedChip tasks',
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14.5,
+                      color: kTextDark,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (filteredTasks.isEmpty)
+                    const _EmptyState(
+                      text: 'No tasks yet. Turn on availability to get offers.',
+                    )
+                  else
+                    Column(
+                      children: [
+                        for (int i = 0; i < filteredTasks.length; i++) ...[
+                          _TaskTile(task: filteredTasks[i]),
+                          if (i != filteredTasks.length - 1)
+                            Divider(
+                              height: 18,
+                              color: Colors.grey.withOpacity(0.18),
+                            ),
+                        ],
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+}
+
+
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.available});
+  final bool available;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = available ? const Color(0xFF1E8E66) : const Color(0xFFEE8A41);
+    final bg = available ? const Color(0xFFEFF8F4) : const Color(0xFFFFF4E8);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withOpacity(.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            available ? Icons.wifi_tethering_rounded : Icons.wifi_off_rounded,
+            size: 16,
+            color: fg,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            available ? 'Online' : 'Offline',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskerProfileCard extends StatelessWidget {
+  const _TaskerProfileCard({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // const Text(
+          //   'Tasker',
+          //   style: TextStyle(
+          //     fontFamily: 'Poppins',
+          //     fontSize: 12,
+          //     color: Color(0xFF75748A),
+          //     fontWeight: FontWeight.w700,
+          //   ),
+          // ),
+          // const SizedBox(height: 10),
+
+          Row(
+            children: [
+              _AvatarRing(url: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF3E1E69),
+                    fontSize: 16.5,
+                    height: 1.15,
+                  ),
                 ),
               ),
-     
             ],
           ),
-        ),
+
+          const SizedBox(height: 14),
+
+          // ✅ More compact & responsive row (no overflow)
+          const Row(
+            children: [
+              // Expanded(
+              //   child: _MiniInfoChip(
+              //     icon: Icons.star_rounded,
+              //     label: 'Rating',
+              //     value: '4.9',
+              //     bg: Color(0xFFFFF4E8),
+              //     fg: Color(0xFFEE8A41),
+              //   ),
+              // ),
+
+              const _VerificationRow(
+            items: [
+              VerificationItem(
+                label: 'ID Verified',
+                icon: Icons.badge_outlined,
+                bg: Color(0xFFEFF8F4),
+                fg: Color(0xFF1E8E66),
+              ),
+              VerificationItem(
+                label: 'Police Verified',
+                icon: Icons.verified_user_outlined,
+                bg: Color(0xFFF3EEFF),
+                fg: Color(0xFF5C2E91),
+              ),
+              
+            ],
+          ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // const _VerificationRow(
+          //   items: [
+          //     VerificationItem(
+          //       label: 'ID Verified',
+          //       icon: Icons.badge_outlined,
+          //       bg: Color(0xFFEFF8F4),
+          //       fg: Color(0xFF1E8E66),
+          //     ),
+          //     VerificationItem(
+          //       label: 'Police Verified',
+          //       icon: Icons.verified_user_outlined,
+          //       bg: Color(0xFFF3EEFF),
+          //       fg: Color(0xFF5C2E91),
+          //     ),
+              
+          //   ],
+          // ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  const _WhiteCard({required this.child, this.padding = const EdgeInsets.all(14)});
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: kPrimary.withOpacity(.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 18,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.icon,
+    required this.text,
+    required this.available,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool available;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = available ? const Color(0xFF1E8E66) : kPrimary;
+    final bg = available ? const Color(0xFFEFF8F4) : kPrimary.withOpacity(.06);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: fg.withOpacity(.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: fg),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12.5,
+                color: fg.withOpacity(.95),
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: fg.withOpacity(.9)),
+        ],
       ),
     );
   }
@@ -1475,43 +1956,47 @@ class _MiniInfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: fg.withOpacity(.16)),
       ),
       child: Row(
         children: [
           Icon(icon, size: 18, color: fg),
           const SizedBox(width: 8),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: fg.withOpacity(.9),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: fg.withOpacity(.92),
+              ),
             ),
           ),
-
-          const SizedBox(width: 22),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 12.5,
-              fontWeight: FontWeight.w900,
-              color: fg,
+          const SizedBox(width: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+                color: fg,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}//Testing@123
+}
 
 class _AvatarRing extends StatelessWidget {
   const _AvatarRing({required this.url});
@@ -1521,10 +2006,10 @@ class _AvatarRing extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(2),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [Color(0xFF8B59C6), Color(0xFF5C2E91)],
+          colors: [kPrimary.withOpacity(.75), kPrimary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1532,7 +2017,10 @@ class _AvatarRing extends StatelessWidget {
       child: CircleAvatar(
         radius: 24,
         backgroundColor: Colors.white,
-        child: CircleAvatar(radius: 22, backgroundImage: NetworkImage(url)),
+        child: CircleAvatar(
+          radius: 22,
+          backgroundImage: NetworkImage(url),
+        ),
       ),
     );
   }
@@ -1573,106 +2061,28 @@ class _VerificationPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: item.bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: item.fg.withOpacity(.10)),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: item.fg.withOpacity(.14)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(item.icon, size: 16, color: item.fg),
-          const SizedBox(width: 6),
+          const SizedBox(width: 7),
           Text(
             item.label,
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 11.8,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               color: item.fg,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  static const Color kPrimary = Color(0xFF5C2E91);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kPrimary.withOpacity(.07)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.03),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            height: 40,
-            width: 40,
-            decoration: BoxDecoration(
-              color: kPrimary.withOpacity(.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: kPrimary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12.5,
-                color: kPrimary,
-              ),
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: kPrimary),
-        ],
-      ),
-    );
-  }
-}
-
-class _WhiteCard extends StatelessWidget {
-  const _WhiteCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.03),
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFF5C2E91).withOpacity(0.06)),
-      ),
-      child: child,
     );
   }
 }
@@ -1688,36 +2098,46 @@ class _ChipsRow extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onTap;
 
-  static const Color kPrimary = Color(0xFF5C2E91);
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
+      height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: labels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
           final label = labels[i];
           final sel = label == selected;
-          return GestureDetector(
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(999),
             onTap: () => onTap(label),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
                 color: sel ? kPrimary : Colors.white,
                 borderRadius: BorderRadius.circular(999),
-                border: sel
-                    ? null
-                    : Border.all(color: kPrimary.withOpacity(.3)),
+                border: Border.all(
+                  color: sel ? kPrimary : kPrimary.withOpacity(.22),
+                ),
+                boxShadow: sel
+                    ? [
+                        BoxShadow(
+                          color: kPrimary.withOpacity(.18),
+                          blurRadius: 14,
+                          offset: const Offset(0, 8),
+                        )
+                      ]
+                    : null,
               ),
               child: Text(
                 label,
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   color: sel ? Colors.white : kPrimary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   fontSize: 12.5,
                 ),
               ),
@@ -1729,6 +2149,129 @@ class _ChipsRow extends StatelessWidget {
   }
 }
 
+class _KpiRow extends StatelessWidget {
+  const _KpiRow({
+    required this.rating,
+    required this.reviews,
+    required this.acceptance,
+    required this.completion,
+  });
+
+  final double rating;
+  final int reviews;
+  final int acceptance;
+  final int completion;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        // 2 columns on small screens, 3 columns on larger
+        final cols = c.maxWidth >= 520 ? 3 : 2;
+        final gap = 10.0;
+        final itemW = (c.maxWidth - (gap * (cols - 1))) / cols;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: itemW,
+              child: _KpiTile(
+                icon: Icons.star_rate_rounded,
+                title: rating.toStringAsFixed(1),
+                sub: '$reviews reviews',
+              ),
+            ),
+            SizedBox(
+              width: itemW,
+              child: _KpiTile(
+                icon: Icons.bolt_rounded,
+                title: '$acceptance%',
+                sub: 'acceptance',
+              ),
+            ),
+            SizedBox(
+              width: itemW,
+              child: _KpiTile(
+                icon: Icons.check_circle_rounded,
+                title: '$completion%',
+                sub: 'completion',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _KpiTile extends StatelessWidget {
+  const _KpiTile({required this.icon, required this.title, required this.sub});
+
+  final IconData icon;
+  final String title;
+  final String sub;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: kPrimary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kPrimary.withOpacity(0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: kPrimary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: Color(0xFF3E1E69),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11.5,
+                    color: Color(0xFF75748A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Your _EarningsCard stays same functionality.
+/// Only UI tweaks inside to avoid overflow & look modern.
 class _EarningsCard extends StatelessWidget {
   const _EarningsCard({
     required this.period,
@@ -1740,128 +2283,130 @@ class _EarningsCard extends StatelessWidget {
   final int amount;
   final ValueChanged<String> onChange;
 
-  static const Color kPrimary = Color(0xFF5C2E91);
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // Header
+        Row(
           children: [
-            const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.account_balance_wallet_outlined,
-                  size: 16,
-                  color: Color(0xFF75748A),
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'Earnings',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: Color(0xFF75748A),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 18,
+                color: kPrimary,
+              ),
             ),
-
-            const SizedBox(height: 10),
-
-            // Amount + Live pill
-            Row(
-              children: [
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "\$${amount.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 28,
-                        color: Color(0xFF3E1E69),
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                      ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Earnings',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12.5,
+                  color: Color(0xFF75748A),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: kPrimary.withOpacity(.08),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: kPrimary.withOpacity(.16)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.trending_up_rounded, size: 16, color: kPrimary),
+                  SizedBox(width: 5),
+                  Text(
+                    'Live',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                      color: kPrimary,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: kPrimary.withOpacity(.08),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: kPrimary.withOpacity(.16)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.trending_up_rounded,
-                        size: 16,
-                        color: kPrimary,
-                      ),
-                      SizedBox(width: 5),
-                      Text(
-                        'Live',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: kPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 6),
-
-            Text(
-              'per ${period.toLowerCase()}',
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-                color: Color(0xFF75748A),
-                fontWeight: FontWeight.w500,
+                ],
               ),
             ),
           ],
         ),
 
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 12),
+
+        // Amount
+        Row(
           children: [
-            _MiniLineStat(
-              label: 'Completed',
-              value: '12',
-              icon: Icons.check_circle_outline_rounded,
-              fg: Color(0xFF1E8E66),
-            ),
-            SizedBox(height: 10),
-            _MiniLineStat(
-              label: 'Pending',
-              value: '3',
-              icon: Icons.hourglass_bottom_rounded,
-              fg: Color(0xFFEE8A41),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "\$${amount.toString()}",
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 30,
+                    color: Color(0xFF3E1E69),
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
+
         const SizedBox(height: 6),
 
+        Text(
+          'per ${period.toLowerCase()}',
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12,
+            color: Color(0xFF75748A),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+
+   const SizedBox(height: 12),
+
+Row(
+  children: const [
+    Expanded(
+      child: _MiniLineStat(
+        label: 'Completed',
+        value: '12',
+        icon: Icons.check_circle_outline_rounded,
+        fg: Color(0xFF1E8E66),
+      ),
+    ),
+    SizedBox(width: 10),
+    Expanded(
+      child: _MiniLineStat(
+        label: 'Pending',
+        value: '3',
+        icon: Icons.hourglass_bottom_rounded,
+        fg: Color(0xFFEE8A41),
+      ),
+    ),
+  ],
+),
+
+
+        const SizedBox(height: 12),
+
+        // Period pills (overflow-safe)
         Align(
           alignment: Alignment.centerLeft,
           child: Container(
@@ -1871,8 +2416,8 @@ class _EarningsCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: kPrimary.withOpacity(0.15)),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Wrap(
+              spacing: 6,
               children: [
                 _Pill(
                   label: 'Week',
@@ -1909,29 +2454,28 @@ class _MiniLineStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
       decoration: BoxDecoration(
         color: fg.withOpacity(.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: fg.withOpacity(.15)),
       ),
       child: Row(
         children: [
           Icon(icon, size: 18, color: fg),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
+          Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 color: fg.withOpacity(.95),
               ),
             ),
-          ),
+          
           const SizedBox(width: 8),
           Text(
             value,
@@ -1959,15 +2503,14 @@ class _Pill extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const Color kPrimary = Color(0xFF5C2E91);
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? kPrimary : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
@@ -1977,110 +2520,10 @@ class _Pill extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w900,
             color: selected ? Colors.white : kPrimary,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _KpiRow extends StatelessWidget {
-  const _KpiRow({
-    required this.rating,
-    required this.reviews,
-    required this.acceptance,
-    required this.completion,
-  });
-
-  final double rating;
-  final int reviews;
-  final int acceptance;
-  final int completion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _KpiTile(
-          icon: Icons.star_rate_rounded,
-          title: rating.toStringAsFixed(1),
-          sub: '$reviews reviews',
-        ),
-        _KpiTile(
-          icon: Icons.bolt_rounded,
-          title: '$acceptance%',
-          sub: 'acceptance',
-        ),
-        _KpiTile(
-          icon: Icons.check_circle_rounded,
-          title: '$completion%',
-          sub: 'completion',
-        ),
-      ],
-    );
-  }
-}
-
-class _KpiTile extends StatelessWidget {
-  const _KpiTile({required this.icon, required this.title, required this.sub});
-
-  final IconData icon;
-  final String title;
-  final String sub;
-
-  static const Color kPrimary = Color(0xFF5C2E91);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kPrimary.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kPrimary.withOpacity(0.12)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: kPrimary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: kPrimary, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: Color(0xFF3E1E69),
-                  ),
-                ),
-                Text(
-                  sub,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11.5,
-                    color: Color(0xFF75748A),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2092,69 +2535,60 @@ class _TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          task.title,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w800,
-            fontSize: 14.5,
-            color: Color(0xFF3E1E69),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            task.title,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w900,
+              fontSize: 14.5,
+              color: Color(0xFF3E1E69),
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(
-              Icons.calendar_month_rounded,
-              size: 16,
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _Meta(icon: Icons.calendar_month_rounded, text: task.date),
+              _Meta(icon: Icons.schedule_rounded, text: task.time),
+              _Meta(icon: Icons.location_on_outlined, text: task.location),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  const _Meta({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF75748A)),
+        const SizedBox(width: 6),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 180),
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
               color: Color(0xFF75748A),
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(width: 6),
-            Text(
-              task.date,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-                color: Color(0xFF75748A),
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Icon(
-              Icons.schedule_rounded,
-              size: 16,
-              color: Color(0xFF75748A),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              task.time,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12,
-                color: Color(0xFF75748A),
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Icon(
-              Icons.location_on_outlined,
-              size: 16,
-              color: Color(0xFF75748A),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                task.location,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  color: Color(0xFF75748A),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
@@ -2168,18 +2602,28 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
         children: [
-          const Icon(Icons.inbox_rounded, size: 40, color: Color(0xFF75748A)),
-          const SizedBox(height: 8),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(.08),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: kPrimary.withOpacity(.14)),
+            ),
+            child: const Icon(Icons.inbox_rounded, size: 28, color: kPrimary),
+          ),
+          const SizedBox(height: 10),
           Text(
             text,
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontSize: 12.5,
               color: Color(0xFF75748A),
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
             ),
             textAlign: TextAlign.center,
           ),

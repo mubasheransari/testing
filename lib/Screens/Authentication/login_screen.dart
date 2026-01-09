@@ -64,6 +64,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (state.status == AuthStatus.success) {
           final userId =
               state.loginResponse?.result?.user?.userId?.toString() ?? '';
+                     final name =
+              state.loginResponse?.result?.user?.fullName?.toString() ?? '';
 
           if (userId.isEmpty) {
             toastWidget('Login success but userId missing!', Colors.red);
@@ -75,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           final box = GetStorage();
           await box.write('userId', userId);
+          await box.write("name", name);
 
           final bloc = context.read<AuthenticationBloc>();
           bloc
