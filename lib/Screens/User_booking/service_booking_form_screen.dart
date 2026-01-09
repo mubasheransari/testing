@@ -305,6 +305,7 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
     final endDateTime = _combine(startDate, _endTime!);
 
     final serviceIdForApi = _resolveServiceIdForApi();
+   
 
     int bookingTypeId = _bookingTypeId;
     int? recurrencePatternId;
@@ -330,7 +331,11 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
         customDays = _buildCustomDaysString();
       }
     }
-
+ print("SUB CATEGORY ID $serviceIdForApi");
+ print("SUB CATEGORY ID $serviceIdForApi");
+ print("SUB CATEGORY ID $serviceIdForApi");
+ print("SUB CATEGORY ID $serviceIdForApi");
+ print("SUB CATEGORY ID $serviceIdForApi");
     context.read<UserBookingBloc>().add(
           CreateUserBookingRequested(
             userId: userId,

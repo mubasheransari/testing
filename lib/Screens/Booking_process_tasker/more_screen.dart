@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/emergency_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
+import 'package:taskoon/widgets/logout_popup.dart';
 
 
 
@@ -36,11 +37,11 @@ class MoreScreen extends StatelessWidget {
               child: const Icon(Icons.more_horiz_rounded,
                   color: _AppColors.primary),
             ),
-                right: _HeaderPill(
-                  label: 'Sign out',
-                  icon: Icons.logout_rounded,
-                  onTap: (){},
-                ),
+                             right: _HeaderPill(
+  label: 'Sign out',
+  icon: Icons.logout_rounded,
+  onTap: () => GlobalSignOut.show(context),
+),
               ),
             ),
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
+import 'package:taskoon/Screens/Authentication/login_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Splash_Slider/splash_screen.dart';
@@ -30,11 +31,21 @@ class Routes {
   static const takerHomeBottomNavBarRoot = '/tasker_home_bottom_nav_bar';
   static const userHomeBottomNavBarRoot = '/user_home_bottom_nav_bar';
   static const locationSignalR = '/LocationSignalRScreen';
+  static const login = '/login_screen';
 }
 
+
+class GlobalNav {
+  static final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
+
+  static NavigatorState get nav => key.currentState!;
+}
 class AppRouter {
+  
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+        case Routes.login:
+        return MaterialPageRoute(builder: (_) => LoginScreen());
       case Routes.splash:
         return MaterialPageRoute(builder: (_) => SplashScreen());
       case Routes.slider:

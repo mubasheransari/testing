@@ -825,6 +825,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:taskoon/widgets/logout_popup.dart';
 
 /* ============================ MODEL ============================ */
 
@@ -922,11 +923,13 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _p),
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
-                right: _HeaderPill(
-                  label: 'Sign out',
-                  icon: Icons.logout_rounded,
-                  onTap: widget.onSignOut,
-                ),
+                right: SizedBox(),
+//                 right: _HeaderPill(
+//   label: 'Sign out',
+//   icon: Icons.logout_rounded,
+//   onTap: () => GlobalSignOut.show(context),
+// ),
+
               ),
             ),
 

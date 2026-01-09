@@ -463,7 +463,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
   // mock data (UI unchanged)
   final _avatarUrl =
       'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop';
-  final _title = 'Handyman, Pro';
+ // final _title = '${context.read()}';
 
   final _badges = const [
     _Badge(
@@ -1193,22 +1193,22 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
         elevation: 0,
         centerTitle: false,
         titleSpacing: 16,
-        title: Padding(
+        title:const Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello, $name',
-                style: const TextStyle(
+                'Hello,',
+                style:  TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: kTextDark,
                 ),
               ),
-              const SizedBox(height: 2),
-              const Text(
+               SizedBox(height: 2),
+               Text(
                 'Ready for new gigs?',
                 style: TextStyle(
                   fontFamily: 'Poppins',
@@ -1298,7 +1298,7 @@ class _TaskerHomeRedesignState extends State<TaskerHomeRedesign>
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _title,
+                                       name, //  context.read<AuthenticationBloc>().state.userDetails!.fullName.toString(),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -1511,7 +1511,7 @@ class _MiniInfoChip extends StatelessWidget {
       ),
     );
   }
-}
+}//Testing@123
 
 class _AvatarRing extends StatelessWidget {
   const _AvatarRing({required this.url});
