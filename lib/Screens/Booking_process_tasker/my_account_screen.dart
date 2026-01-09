@@ -916,14 +916,11 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
 
             // ✅ Header (same style family as your latest screens)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16,vertical: 10),
               child: _HeaderCard(
                 title: 'My account',
-                left: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _p),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
-                right: SizedBox(),
+                left:   SizedBox(),
+                right: SizedBox(width: 20,),
 //                 right: _HeaderPill(
 //   label: 'Sign out',
 //   icon: Icons.logout_rounded,
@@ -1452,7 +1449,7 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),

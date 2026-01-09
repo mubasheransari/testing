@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/services_model.dart';
@@ -12,6 +13,9 @@ import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 
 
 
+  final box = GetStorage();
+      var userId=     box.read('userId');//Testing@123
+             var name = box.read("name");
 class UserBookingHome extends StatefulWidget {
   const UserBookingHome({super.key});
 
@@ -73,15 +77,11 @@ class _UserBookingHomeState extends State<UserBookingHome>
     }
   }
 
-  /// ------------------------------------------------------------
-  /// ✅ CONFIGURE HUB (safe / idempotent)
-  /// ------------------------------------------------------------
   Future<void> _configureHubIfPossible() async {
-    final authState = context.read<AuthenticationBloc>().state;
-    final userId = authState.userDetails?.userId?.toString();
 
-    if (userId == null || userId.isEmpty) {
-      debugPrint("❌ UserBookingHome: userId missing (userDetails not loaded)");
+
+    if (userId == null) {
+      debugPrint("❌ UserBookingHome: userId missing (user id not loaded)");
       return;
     }
 
@@ -166,15 +166,12 @@ class _UserBookingHomeState extends State<UserBookingHome>
     });
   }
 
-  /// ------------------------------------------------------------
-  /// ✅ WATCHDOG (checks every 3s, reconnect if disconnected)
-  /// ------------------------------------------------------------
+
   void _startHubWatchdog() {
     _hubWatchdog?.cancel();
     _hubWatchdog = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
 
-      // if not configured yet, try to configure again (userDetails may arrive late)
       if (!_hubConfigured) {
         _configureHubIfPossible();
         return;
@@ -235,7 +232,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 110),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -411,7 +408,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
       titleSpacing: 16,
       title: Padding(
         padding: const EdgeInsets.all(16),
-        child:  GreetingText(name: context.read<AuthenticationBloc>().state.userDetails!.fullName.toString(),),
+        child:  GreetingText(name: name),
       ),
       actions: [
         IconButton(

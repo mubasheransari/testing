@@ -129,7 +129,7 @@ class _GreetingTextState extends State<GreetingText> {
     final g = _greeting();
     final text = (widget.name == null || widget.name!.trim().isEmpty)
         ? g
-        : "$g 👋, ${widget.name}";
+        : "$g 👋, \n${widget.name}";
 
     return Text(
       text,
