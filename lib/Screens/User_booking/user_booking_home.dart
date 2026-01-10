@@ -422,7 +422,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
           padding: EdgeInsets.only(right: 16),
           child: CircleAvatar(
             radius: 18,
-            backgroundImage: AssetImage('assets/avatar.png'),
+            backgroundImage: NetworkImage('https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=256&auto=format&fit=crop'),
           ),
         ),
       ],
