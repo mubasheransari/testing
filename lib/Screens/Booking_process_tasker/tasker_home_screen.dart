@@ -2454,7 +2454,7 @@ class _MiniLineStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: fg.withOpacity(.08),
         borderRadius: BorderRadius.circular(16),

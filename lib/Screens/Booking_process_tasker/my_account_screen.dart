@@ -1,6 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
+
+          final box = GetStorage();
+
+          var role = box.read("role");
 
 class UserProfile {
   final String? avatarPath; 
@@ -84,16 +89,18 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         child: Column(
           children: [
             const SizedBox(height: 8),
-          const  Padding(
-              padding:  EdgeInsets.symmetric(horizontal: 16,vertical: 10),
+            Padding(
+              padding:const  EdgeInsets.symmetric(horizontal: 16,vertical: 10),
               child: _HeaderCard(
                 title: 'My account',
-                left:   SizedBox(),
-                right: SizedBox(width: 20,),
+                left:role == "Tasker"? IconButton(onPressed: (){
+                  Navigator.of(context).pop();
+                }, icon:const Icon(Icons.arrow_back)):SizedBox(),
+                right:const SizedBox(width: 20,),
               ),
             ),
 
-            const SizedBox(height: 12),
+         //   const SizedBox(height: 6),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -592,7 +599,7 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
