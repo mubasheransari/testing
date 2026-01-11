@@ -2891,6 +2891,53 @@ class _HomeHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Wrap(
+  spacing: 8,
+  runSpacing: 8,
+  children: [
+    _HeroBadge(
+      t: t,
+      icon: Icons.flash_on_rounded,
+      text: 'Instant booking in minutes',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.verified_rounded,
+      text: 'Top-rated taskers with real reviews',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.support_agent_rounded,
+      text: 'Customer support when you need it',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.badge_rounded,
+      text: 'ID verified for safety',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.shield_rounded, // ✅ (instead of shield_moon)
+      text: 'Police check',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.schedule_rounded,
+      text: 'ASAP • Future • Multi-day • Daily \nWeekly • Monthly • Custom days',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.payments_rounded,
+      text: 'Secure payments & transparent pricing',
+    ),
+    _HeroBadge(
+      t: t,
+      icon: Icons.location_on_rounded,
+      text: 'Nearby taskers matched fast',
+    ),
+  ],
+)
+
+              /*  Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
@@ -2903,14 +2950,27 @@ class _HomeHeroCard extends StatelessWidget {
                     _HeroBadge(
                         t: t,
                         icon: Icons.support_agent_rounded,
-                        text: 'Support'),
+                        text: 'Customer Support'),
+                        _HeroBadge(
+                        t: t,
+                        icon: Icons.verified,
+                        text: 'ID Verified'),
+                        _HeroBadge(
+                        t: t,
+                        icon: Icons.shield_moon,
+                        text: 'Police Check'),
+                          _HeroBadge(
+                        t: t,
+                        icon: Icons.schedule,
+                        text: 'ASAP • Future • Multi-Day • Daily • Weekly\n• Monthly • Custom Days'),
+
+
                   ],
-                ),
+                ),*/
               ],
             ),
           ),
           const SizedBox(width: 10),
-          _HeroMark(t: t),
         ],
       ),
     );
