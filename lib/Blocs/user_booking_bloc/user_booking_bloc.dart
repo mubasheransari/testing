@@ -104,8 +104,8 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     bookingTypeId: e.bookingTypeId,
     bookingDate: e.bookingDate,
     endDate: e.endDate,
-    startTime: startDt,        // ✅ DateTime now
-    endTime: endDt,            // ✅ DateTime now
+    startTime: startDt,    
+    endTime: endDt,            
     address: e.address,
     taskerLevelId: e.taskerLevelId,
     recurrencePatternId: e.recurrencePatternId,
@@ -115,14 +115,12 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   );
 
   if (r.isSuccess) {
-    print('✅ [Bloc] createBooking SUCCESS');
     emit(state.copyWith(
       createStatus: UserBookingCreateStatus.success,
       bookingCreateResponse: r.data,
       clearCreateError: true,
     ));
   } else {
-    print('❌ [Bloc] createBooking FAIL: ${r.failure?.message}');
     emit(state.copyWith(
       createStatus: UserBookingCreateStatus.failure,
       createError: r.failure?.message ?? 'Failed to create booking',
@@ -138,9 +136,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   ) async {
     emit(
       state.copyWith(
-        userBookingCancelStatus: UserBookingCancelStatus.submitting,
-        // clearCreateError: true,
-        // clearCreateResponse: true,
+        userBookingCancelStatus: UserBookingCancelStatus.submitting
       ),
     );
 
@@ -164,9 +160,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     } else {
       emit(
         state.copyWith(
-          userBookingCancelStatus: UserBookingCancelStatus.failure,
-          // createError: r.failure?.message ?? 'Failed to create booking',
-          // clearCreateResponse: true,
+          userBookingCancelStatus: UserBookingCancelStatus.failure
         ),
       );
     }
@@ -218,7 +212,6 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     emit(
       state.copyWith(
         changeAvailabilityStatusEnum: ChangeAvailabilityStatusEnum.initial,
-        // clearLocationError: true,
       ),
     );
 
