@@ -13,11 +13,6 @@ import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
 import 'dart:async';
 import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 
-
-
-
-
-
 //   final box = GetStorage();
 //       var userId=     box.read('userId');//Testing@123
 //              var name = box.read("name");
@@ -83,7 +78,6 @@ import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 //   }
 
 //   Future<void> _configureHubIfPossible() async {
-
 
 //     if (userId == null) {
 //       debugPrint("❌ UserBookingHome: userId missing (user id not loaded)");
@@ -170,7 +164,6 @@ import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 //       _ensureHubConnected(force: true);
 //     });
 //   }
-
 
 //   void _startHubWatchdog() {
 //     _hubWatchdog?.cancel();
@@ -804,11 +797,6 @@ import 'package:taskoon/widgets/greetingWithLocation_widget.dart';
 //     );
 //   }
 // }
-
-
-
-
-
 
 /*
 final box = GetStorage();
@@ -2117,9 +2105,6 @@ class _Glass extends StatelessWidget {
 }
 */
 
-
-
-
 final box = GetStorage();
 var userId = box.read('userId');
 var name = box.read("name");
@@ -2187,12 +2172,10 @@ class _UserBookingHomeState extends State<UserBookingHome>
     if (_hubConfigured) return;
 
     debugPrint(
-        "🧩 UserBookingHome: configuring hub baseUrl=$_baseUrl userId=$userId");
-
-    DispatchHubSingleton.instance.configure(
-      baseUrl: _baseUrl,
-      userId: userId,
+      "🧩 UserBookingHome: configuring hub baseUrl=$_baseUrl userId=$userId",
     );
+
+    DispatchHubSingleton.instance.configure(baseUrl: _baseUrl, userId: userId);
 
     _hubConfigured = true;
   }
@@ -2217,14 +2200,17 @@ class _UserBookingHomeState extends State<UserBookingHome>
     _reconnectTimer = null;
 
     try {
-      debugPrint("🔌 UserBookingHome: ensureConnected() starting... "
-          "isConnected(before)=${DispatchHubSingleton.instance.isConnected}");
+      debugPrint(
+        "🔌 UserBookingHome: ensureConnected() starting... "
+        "isConnected(before)=${DispatchHubSingleton.instance.isConnected}",
+      );
 
       await DispatchHubSingleton.instance.ensureConnected();
 
       final connected = DispatchHubSingleton.instance.isConnected == true;
       debugPrint(
-          "✅ UserBookingHome: hub ensureConnected done. isConnected=$connected");
+        "✅ UserBookingHome: hub ensureConnected done. isConnected=$connected",
+      );
 
       if (!connected) {
         _scheduleReconnect("ensureConnected returned but still disconnected");
@@ -2245,15 +2231,17 @@ class _UserBookingHomeState extends State<UserBookingHome>
     final seconds = (_reconnectAttempt <= 1)
         ? 2
         : (_reconnectAttempt == 2)
-            ? 4
-            : (_reconnectAttempt == 3)
-                ? 8
-                : (_reconnectAttempt == 4)
-                    ? 16
-                    : 30;
+        ? 4
+        : (_reconnectAttempt == 3)
+        ? 8
+        : (_reconnectAttempt == 4)
+        ? 16
+        : 30;
 
-    debugPrint("🛡️ HUB WATCHDOG: disconnected -> reconnecting... "
-        "reason=$reason attempt=$_reconnectAttempt in ${seconds}s");
+    debugPrint(
+      "🛡️ HUB WATCHDOG: disconnected -> reconnecting... "
+      "reason=$reason attempt=$_reconnectAttempt in ${seconds}s",
+    );
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: seconds), () {
@@ -2380,20 +2368,23 @@ class _UserBookingHomeState extends State<UserBookingHome>
                     final visibleGroups = _q.isEmpty
                         ? allGroups
                         : allGroups.where((g) {
-                            final groupMatch =
-                                g.name.toLowerCase().contains(_q);
+                            final groupMatch = g.name.toLowerCase().contains(
+                              _q,
+                            );
                             final serviceMatch = g.services.any(
                               (s) => s.name.toLowerCase().contains(_q),
                             );
                             return groupMatch || serviceMatch;
                           }).toList();
 
-                    final chipLabels =
-                        visibleGroups.map((e) => e.name).toList();
+                    final chipLabels = visibleGroups
+                        .map((e) => e.name)
+                        .toList();
 
                     // ✅ keep selection valid without changing UI/behavior
                     if (visibleGroups.isNotEmpty) {
-                      final selectedStillVisible = _selectedChip != null &&
+                      final selectedStillVisible =
+                          _selectedChip != null &&
                           visibleGroups.any((g) => g.name == _selectedChip);
 
                       if (!selectedStillVisible) {
@@ -2415,18 +2406,21 @@ class _UserBookingHomeState extends State<UserBookingHome>
                     final selectedServices = (_selectedGroup == null)
                         ? <dynamic>[]
                         : (_q.isEmpty
-                            ? _selectedGroup!.services
-                            : _selectedGroup!.services
-                                .where((svc) =>
-                                    svc.name.toLowerCase().contains(_q))
-                                .toList());
+                              ? _selectedGroup!.services
+                              : _selectedGroup!.services
+                                    .where(
+                                      (svc) =>
+                                          svc.name.toLowerCase().contains(_q),
+                                    )
+                                    .toList());
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
                           height: 38,
-                          child: (state.servicesStatus == ServicesStatus.loading &&
+                          child:
+                              (state.servicesStatus == ServicesStatus.loading &&
                                   allGroups.isEmpty)
                               ? _buildLoadingChipsModern(t)
                               : ListView.separated(
@@ -2444,12 +2438,12 @@ class _UserBookingHomeState extends State<UserBookingHome>
                                       onTap: () {
                                         setState(() {
                                           _selectedChip = label;
-                                          _selectedGroup =
-                                              visibleGroups.firstWhere(
-                                            (g) => g.name == label,
-                                            orElse: () =>
-                                                visibleGroups.first,
-                                          );
+                                          _selectedGroup = visibleGroups
+                                              .firstWhere(
+                                                (g) => g.name == label,
+                                                orElse: () =>
+                                                    visibleGroups.first,
+                                              );
                                         });
                                       },
                                     );
@@ -2462,8 +2456,11 @@ class _UserBookingHomeState extends State<UserBookingHome>
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.grid_view_rounded,
-                                  size: 18, color: t.mutedText),
+                              Icon(
+                                Icons.grid_view_rounded,
+                                size: 18,
+                                color: t.mutedText,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -2491,8 +2488,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) =>
-                                          ServiceBookingFormScreen(
+                                      builder: (_) => ServiceBookingFormScreen(
                                         group: _selectedGroup!,
                                         initialService: svc,
                                         serviceId: svc.id,
@@ -2525,7 +2521,6 @@ class _UserBookingHomeState extends State<UserBookingHome>
     );
   }
 
-
   PreferredSizeWidget _buildAppBarModern(_UiTokens t) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(102),
@@ -2543,9 +2538,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
                     child: Row(
                       children: [
                         const SizedBox(width: 10),
-                        Expanded(
-                          child: GreetingText(name: name),
-                        ),
+                        Expanded(child: GreetingText(name: name)),
                       ],
                     ),
                   ),
@@ -2622,7 +2615,8 @@ class _UserBookingHomeState extends State<UserBookingHome>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => const ServiceCertificatesGridScreen()),
+                  builder: (_) => const ServiceCertificatesGridScreen(),
+                ),
               );
             },
           ),
@@ -2663,11 +2657,15 @@ class _UserBookingHomeState extends State<UserBookingHome>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const ServiceCertificatesGridScreen()),
+                    builder: (_) => const ServiceCertificatesGridScreen(),
+                  ),
                 );
               },
-              icon: Icon(Icons.arrow_forward_rounded,
-                  size: 16, color: t.primary),
+              icon: Icon(
+                Icons.arrow_forward_rounded,
+                size: 16,
+                color: t.primary,
+              ),
               label: Text(
                 'View all',
                 style: TextStyle(
@@ -2773,8 +2771,8 @@ class _UserBookingHomeState extends State<UserBookingHome>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>
-                                const ServiceCertificatesGridScreen()),
+                          builder: (_) => const ServiceCertificatesGridScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -2823,12 +2821,12 @@ class _UiTokens {
   });
 
   static _UiTokens of(BuildContext context) => const _UiTokens(
-        primary: Color(0xFF7841BA),
-        primaryDark: Color(0xFF5C2E91),
-        primaryText: Color(0xFF3E1E69),
-        mutedText: Color(0xFF75748A),
-        bg: Color(0xFFF8F7FB),
-      );
+    primary: Color(0xFF7841BA),
+    primaryDark: Color(0xFF5C2E91),
+    primaryText: Color(0xFF3E1E69),
+    mutedText: Color(0xFF75748A),
+    bg: Color(0xFFF8F7FB),
+  );
 }
 
 /* ============================== HERO ============================== */
@@ -2891,53 +2889,54 @@ class _HomeHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Wrap(
-  spacing: 8,
-  runSpacing: 8,
-  children: [
-    _HeroBadge(
-      t: t,
-      icon: Icons.flash_on_rounded,
-      text: 'Instant booking in minutes',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.verified_rounded,
-      text: 'Top-rated taskers with real reviews',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.support_agent_rounded,
-      text: 'Customer support when you need it',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.badge_rounded,
-      text: 'ID verified for safety',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.shield_rounded, // ✅ (instead of shield_moon)
-      text: 'Police check',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.schedule_rounded,
-      text: 'ASAP • Future • Multi-day • Daily \nWeekly • Monthly • Custom days',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.payments_rounded,
-      text: 'Secure payments & transparent\npricing',
-    ),
-    _HeroBadge(
-      t: t,
-      icon: Icons.location_on_rounded,
-      text: 'Nearby taskers matched fast',
-    ),
-  ],
-)
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.flash_on_rounded,
+                      text: 'Instant booking in minutes',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.verified_rounded,
+                      text: 'Top-rated taskers with real reviews',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.support_agent_rounded,
+                      text: 'Customer support when you need it',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.badge_rounded,
+                      text: 'ID verified for safety',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.shield_rounded, // ✅ (instead of shield_moon)
+                      text: 'Police check',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.schedule_rounded,
+                      text:
+                          'ASAP • Future • Multi-day • Daily \nWeekly • Monthly • Custom days',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.payments_rounded,
+                      text: 'Secure payments & transparent\npricing',
+                    ),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.location_on_rounded,
+                      text: 'Nearby taskers matched fast',
+                    ),
+                  ],
+                ),
 
-              /*  Wrap(
+                /*  Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
@@ -3034,16 +3033,17 @@ class _HeroMark extends StatelessWidget {
       height: 70,
       child: Stack(
         children: [
+          Positioned(top: 6, right: 0, child: pill(t.primary.withOpacity(.35))),
           Positioned(
-              top: 6, right: 0, child: pill(t.primary.withOpacity(.35))),
+            top: 28,
+            right: 10,
+            child: pill(t.primary.withOpacity(.22), w: 60),
+          ),
           Positioned(
-              top: 28,
-              right: 10,
-              child: pill(t.primary.withOpacity(.22), w: 60)),
-          Positioned(
-              top: 50,
-              right: 4,
-              child: pill(t.primary.withOpacity(.16), w: 46, h: 16)),
+            top: 50,
+            right: 4,
+            child: pill(t.primary.withOpacity(.16), w: 46, h: 16),
+          ),
         ],
       ),
     );
@@ -3112,8 +3112,11 @@ class _SearchCardModern extends StatelessWidget {
                 onTap: onClear,
                 child: Padding(
                   padding: const EdgeInsets.all(6),
-                  child: Icon(Icons.close_rounded,
-                      size: 18, color: t.mutedText),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: t.mutedText,
+                  ),
                 ),
               ),
 
@@ -3164,7 +3167,7 @@ class _InfoCardModern extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [
                     t.primary.withOpacity(.20),
-                    t.primary.withOpacity(.06)
+                    t.primary.withOpacity(.06),
                   ],
                 ),
                 border: Border.all(color: t.primary.withOpacity(.12)),
@@ -3452,8 +3455,11 @@ class _ServiceHorizontalCardModern extends StatelessWidget {
                     child: Icon(icon, color: accent, size: 20),
                   ),
                   const Spacer(),
-                  Icon(Icons.star_rounded,
-                      size: 18, color: t.primary.withOpacity(.45)),
+                  Icon(
+                    Icons.star_rounded,
+                    size: 18,
+                    color: t.primary.withOpacity(.45),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -3480,8 +3486,7 @@ class _ServiceHorizontalCardModern extends StatelessWidget {
               const Spacer(),
               Row(
                 children: [
-                  Icon(Icons.location_on_rounded,
-                      size: 16, color: t.mutedText),
+                  Icon(Icons.location_on_rounded, size: 16, color: t.mutedText),
                   const SizedBox(width: 6),
                   Text(
                     'Nearby',
