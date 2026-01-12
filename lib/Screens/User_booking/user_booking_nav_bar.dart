@@ -319,7 +319,7 @@ class _RootNavState extends State<_RootNav> {
           BottomItem(icon: Icons.home_rounded, label: 'Home'),
           BottomItem(icon: Icons.event_note_rounded, label: 'Bookings'),
           BottomItem(icon: Icons.list_alt_rounded, label: 'Feedback'),
-          BottomItem(icon: Icons.list_alt_rounded, label: 'Guidelines'),
+          BottomItem(icon: Icons.list_alt_rounded, label: 'Guideline'),
           BottomItem(icon: Icons.menu_rounded, label: 'Account'),
         ],
       ),
@@ -327,8 +327,395 @@ class _RootNavState extends State<_RootNav> {
   }
 }
 
-// ============================ BOTTOM NAV (MODERN GLASS) ============================
+// ============================ BOTTOM NAV (PURPLE DIALOG-STYLE GLASS) ============================
 
+class BottomItem {
+  final IconData icon;
+  final String label;
+  const BottomItem({required this.icon, required this.label});
+}
+
+class GlassBottomNav extends StatelessWidget {
+  const GlassBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<BottomItem> items;
+
+  // ✅ Taskoon Purple Gradient
+  static const LinearGradient _grad = LinearGradient(
+    colors: [Color(0xFF7841BA), Color(0xFF5C2E91)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final s = w / 390.0;
+
+    return SafeArea(
+      top: false,
+   minimum: EdgeInsets.fromLTRB(14 * s, 0, 14 * s, 60 * s),
+//   minimum: EdgeInsets.fromLTRB(14 * s, 0, 14 * s, 12 * s),
+      child: Container(
+        height: 76 * s,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22 * s),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 18,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22 * s),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: _grad,
+                border: Border.all(color: Colors.white.withOpacity(.18)),
+              ),
+              child: Row(
+                children: [
+                  for (int i = 0; i < items.length; i++)
+                    Expanded(
+                      child: _NavItemTile(
+                        item: items[i],
+                        selected: i == currentIndex,
+                        onTap: () => onTap(i),
+                        scale: s,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItemTile extends StatelessWidget {
+  const _NavItemTile({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+    required this.scale,
+  });
+
+  final BottomItem item;
+  final bool selected;
+  final VoidCallback onTap;
+  final double scale;
+
+  // ✅ Taskoon Purple Gradient (same as nav)
+  static const LinearGradient _grad = LinearGradient(
+    colors: [Color(0xFF7841BA), Color(0xFF5C2E91)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: Colors.white24,
+        highlightColor: Colors.transparent,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: 10 * scale,
+              vertical: 9 * scale,
+            ),
+            decoration: BoxDecoration(
+              // ✅ selected looks like your dialog button/pill style
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(16 * scale),
+              border: selected
+                  ? Border.all(
+                      color: const Color(0xFF7841BA).withOpacity(.22),
+                      width: 1.1,
+                    )
+                  : Border.all(
+                      color: Colors.white.withOpacity(.10),
+                      width: 1,
+                    ),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ✅ icon
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: selected
+                      ? ShaderMask(
+                          key: const ValueKey('selectedIcon'),
+                          shaderCallback: (rect) => _grad.createShader(rect),
+                          child: Icon(
+                            item.icon,
+                            color: Colors.white,
+                            size: 22 * scale,
+                          ),
+                        )
+                      : Icon(
+                          item.icon,
+                          key: const ValueKey('normalIcon'),
+                          color: Colors.white.withOpacity(.88),
+                          size: 22 * scale,
+                        ),
+                ),
+
+                SizedBox(height: 6 * scale),
+
+                // ✅ label
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 10.2 * scale,
+                    fontWeight: FontWeight.w900,
+                    color: selected
+                        ? const Color(0xFF0F172A)
+                        : Colors.white.withOpacity(.88),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+
+                SizedBox(height: 6 * scale),
+
+                // ✅ tiny indicator
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 3 * scale,
+                  width: selected ? 22 * scale : 10 * scale,
+                  decoration: BoxDecoration(
+                    gradient: selected ? _grad : null,
+                    color: selected ? null : Colors.white.withOpacity(.22),
+                    borderRadius: BorderRadius.circular(59),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ============================ BOTTOM NAV (DIALOG-STYLE GLASS) ============================
+
+// class BottomItem {
+//   final IconData icon;
+//   final String label;
+//   const BottomItem({required this.icon, required this.label});
+// }
+
+// class GlassBottomNav extends StatelessWidget {
+//   const GlassBottomNav({
+//     super.key,
+//     required this.currentIndex,
+//     required this.onTap,
+//     required this.items,
+//   });
+
+//   final int currentIndex;
+//   final ValueChanged<int> onTap;
+//   final List<BottomItem> items;
+
+//   // same as your dialog gradient
+//   static const LinearGradient _grad = LinearGradient(
+//     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//     begin: Alignment.centerLeft,
+//     end: Alignment.centerRight,
+//   );
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final w = MediaQuery.sizeOf(context).width;
+//     final s = w / 390.0;
+
+//     return SafeArea(
+//       top: false,
+//       minimum: EdgeInsets.fromLTRB(14 * s, 0, 14 * s, 12 * s),
+//       child: Container(
+//         height: 76 * s,
+//         decoration: BoxDecoration(
+//           borderRadius: BorderRadius.circular(22 * s),
+//           boxShadow: const [
+//             BoxShadow(
+//               color: Color(0x22000000),
+//               blurRadius: 18,
+//               offset: Offset(0, 10),
+//             ),
+//           ],
+//         ),
+//         child: ClipRRect(
+//           borderRadius: BorderRadius.circular(22 * s),
+//           child: BackdropFilter(
+//             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+//             child: Container(
+//               decoration: BoxDecoration(
+//                 gradient: _grad,
+//                 border: Border.all(color: Colors.white.withOpacity(.18)),
+//               ),
+//               child: Row(
+//                 children: [
+//                   for (int i = 0; i < items.length; i++)
+//                     Expanded(
+//                       child: _NavItemTile(
+//                         item: items[i],
+//                         selected: i == currentIndex,
+//                         onTap: () => onTap(i),
+//                         scale: s,
+//                       ),
+//                     ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _NavItemTile extends StatelessWidget {
+//   const _NavItemTile({
+//     required this.item,
+//     required this.selected,
+//     required this.onTap,
+//     required this.scale,
+//   });
+
+//   final BottomItem item;
+//   final bool selected;
+//   final VoidCallback onTap;
+//   final double scale;
+
+//   static const LinearGradient _grad = LinearGradient(
+//     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//     begin: Alignment.centerLeft,
+//     end: Alignment.centerRight,
+//   );
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Material(
+//       color: Colors.transparent,
+//       child: InkWell(
+//         onTap: onTap,
+//         splashColor: Colors.white24,
+//         highlightColor: Colors.transparent,
+//         child: Center(
+//           child: AnimatedContainer(
+//             duration: const Duration(milliseconds: 220),
+//             curve: Curves.easeOutCubic,
+//             padding: EdgeInsets.symmetric(horizontal: 10 * scale, vertical: 9 * scale),
+//             decoration: BoxDecoration(
+//               // selected looks like your dialog button/pill style
+//               color: selected ? Colors.white : Colors.transparent,
+//               borderRadius: BorderRadius.circular(16 * scale),
+//               border: selected
+//                   ? Border.all(color: const Color(0xFF7F53FD).withOpacity(.22), width: 1.1)
+//                   : Border.all(color: Colors.white.withOpacity(.10), width: 1),
+//               boxShadow: selected
+//                   ? const [
+//                       BoxShadow(
+//                         color: Color(0x22000000),
+//                         blurRadius: 14,
+//                         offset: Offset(0, 8),
+//                       ),
+//                     ]
+//                   : null,
+//             ),
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 // icon
+//                 AnimatedSwitcher(
+//                   duration: const Duration(milliseconds: 180),
+//                   child: selected
+//                       ? ShaderMask(
+//                           key: const ValueKey('selectedIcon'),
+//                           shaderCallback: (rect) => _grad.createShader(rect),
+//                           child: Icon(item.icon, color: Colors.white, size: 22 * scale),
+//                         )
+//                       : Icon(
+//                           item.icon,
+//                           key: const ValueKey('normalIcon'),
+//                           color: Colors.white.withOpacity(.88),
+//                           size: 22 * scale,
+//                         ),
+//                 ),
+
+//                 SizedBox(height: 6 * scale),
+
+//                 // label
+//                 Text(
+//                   item.label,
+//                   maxLines: 1,
+//                   overflow: TextOverflow.ellipsis,
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk', // match dialog typography
+//                     fontSize: 11.2 * scale,
+//                     fontWeight: FontWeight.w900,
+//                     color: selected ? const Color(0xFF0F172A) : Colors.white.withOpacity(.88),
+//                     letterSpacing: 0.2,
+//                   ),
+//                 ),
+
+//                 SizedBox(height: 6 * scale),
+
+//                 // tiny indicator
+//                 AnimatedContainer(
+//                   duration: const Duration(milliseconds: 160),
+//                   height: 3 * scale,
+//                   width: selected ? 22 * scale : 10 * scale,
+//                   decoration: BoxDecoration(
+//                     gradient: selected ? _grad : null,
+//                     color: selected ? null : Colors.white.withOpacity(.22),
+//                     borderRadius: BorderRadius.circular(99),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+// ============================ BOTTOM NAV (MODERN GLASS) ============================
+/*
 class BottomItem {
   final IconData icon;
   final String label;
@@ -461,7 +848,7 @@ class _NavItemTile extends StatelessWidget {
     );
   }
 }
-
+*/
 /* ============================ YOUR EXISTING SCREENS ============================
    Keep these imports in your project, I am just referencing them here.
    - UserBookingHome()
