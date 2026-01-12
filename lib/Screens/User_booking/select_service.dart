@@ -904,10 +904,13 @@ class _Glass extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
+                // ignore: deprecated_member_use
                 Colors.white.withOpacity(.92),
+                // ignore: deprecated_member_use
                 Colors.white.withOpacity(.78),
               ],
             ),
+            // ignore: deprecated_member_use
             border: Border.all(color: t.primary.withOpacity(.10)),
             boxShadow: [
               BoxShadow(

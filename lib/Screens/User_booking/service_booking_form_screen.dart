@@ -983,10 +983,10 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
                                       Colors.white),
                                 ),
                               )
-                            : Row(
-                                key: const ValueKey("normal"),
+                            :const Row(
+                                key:  ValueKey("normal"),
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
+                                children: [
                                   Icon(Icons.search_rounded,
                                       size: 20, color: Colors.white),
                                   SizedBox(width: 10),
