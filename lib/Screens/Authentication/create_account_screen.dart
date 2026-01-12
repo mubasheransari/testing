@@ -8,6 +8,790 @@ import '../../Models/auth_model.dart';
 import '../../Repository/auth_repository.dart';
 import '../../widgets/toast_widget.dart';
 
+
+
+
+class CreateAccountScreen extends StatefulWidget {
+  final String role;
+  const CreateAccountScreen({super.key, required this.role});
+
+  @override
+  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
+}
+
+class _CreateAccountScreenState extends State<CreateAccountScreen> {
+  // ✅ Theme tokens (UI only)
+  static const Color kPrimary = Color(0xFF5C2E91);
+  static const Color kTextDark = Color(0xFF3E1E69);
+  static const Color kMuted = Color(0xFF75748A);
+  static const Color kBg = Color(0xFFF8F7FB);
+  static const Color kFieldBg = Color(0xFFF4F5F7);
+
+  final nameCtrl = TextEditingController();
+  final companyCtrl = TextEditingController();
+  final abanCtrl = TextEditingController();
+  final repNameCtrl = TextEditingController();
+  final repPhoneCtrl = TextEditingController();
+  final phoneCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+  final addrCtrl = TextEditingController();
+  final serviceCtrl = TextEditingController();
+
+  bool obscure = true;
+  bool agreed = false;
+
+  late final AuthRepositoryHttp _repo;
+
+  @override
+  void initState() {
+    super.initState();
+    _repo = AuthRepositoryHttp(
+      baseUrl: 'https://api.taskoon.com', //'http://192.3.3.187:85',
+      endpoint: '/api/auth/signup',
+    );
+  }
+
+  @override
+  void dispose() {
+    nameCtrl.dispose();
+    companyCtrl.dispose();
+    abanCtrl.dispose();
+    repNameCtrl.dispose();
+    repPhoneCtrl.dispose();
+    phoneCtrl.dispose();
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    addrCtrl.dispose();
+    serviceCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _isBusiness => widget.role.toLowerCase() == 'business';
+  bool get _isTasker => widget.role.toLowerCase() == 'tasker';
+  bool get _isUser => widget.role.toLowerCase() == 'user';
+
+  // ---- helpers (UNCHANGED) ---------------------------------------
+
+  final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  bool _isStrongPassword(String p) {
+    if (p.length < 8) return false;
+    final hasUpper = p.contains(RegExp(r'[A-Z]'));
+    final hasLower = p.contains(RegExp(r'[a-z]'));
+    final hasDigit = p.contains(RegExp(r'\d'));
+    return hasUpper && hasLower && hasDigit;
+  }
+
+  String _composeAuPhone(String local) {
+    final digits = local.replaceAll(RegExp(r'[^0-9]'), '');
+    final withoutLeadingZero = digits.replaceFirst(RegExp(r'^0+'), '');
+    return '+92$withoutLeadingZero'; //aus61
+  }
+
+  String _normalizeAbn(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
+
+  bool _validateAndToast() {
+    if (!agreed) {
+      toastWidget(
+          'Please agree to the Terms & Privacy to continue.', Colors.redAccent);
+      return false;
+    }
+    if (phoneCtrl.text.trim().isEmpty) {
+      toastWidget('Phone number is required.', Colors.redAccent);
+      return false;
+    }
+    if (emailCtrl.text.trim().isEmpty) {
+      toastWidget('Email address is required.', Colors.redAccent);
+      return false;
+    }
+    if (!_emailRe.hasMatch(emailCtrl.text.trim())) {
+      toastWidget('Please enter a valid email address.', Colors.redAccent);
+      return false;
+    }
+    if (passCtrl.text.trim().isEmpty) {
+      toastWidget('Password is required.', Colors.redAccent);
+      return false;
+    }
+    if (!_isStrongPassword(passCtrl.text)) {
+      toastWidget(
+        'Password must be at least 8 chars with upper, lower, and number.',
+        Colors.redAccent,
+      );
+      return false;
+    }
+
+    if (_isUser) {
+      if (nameCtrl.text.trim().isEmpty) {
+        toastWidget('Full Name is required.', Colors.redAccent);
+        return false;
+      }
+    } else if (_isTasker) {
+      if (nameCtrl.text.trim().isEmpty) {
+        toastWidget('Full Name is required.', Colors.redAccent);
+        return false;
+      }
+      if (addrCtrl.text.trim().isEmpty) {
+        toastWidget('Address is required for Tasker.', Colors.redAccent);
+        return false;
+      }
+    } else if (_isBusiness) {
+      if (companyCtrl.text.trim().isEmpty) {
+        toastWidget('Company Name is required.', Colors.redAccent);
+        return false;
+      }
+      if (abanCtrl.text.trim().isEmpty) {
+        toastWidget('ABN is required.', Colors.redAccent);
+        return false;
+      }
+      final abnOnlyDigits = _normalizeAbn(abanCtrl.text);
+      if (abnOnlyDigits.length < 11) {
+        toastWidget('Please enter a valid ABN.', Colors.redAccent);
+        return false;
+      }
+      if (repNameCtrl.text.trim().isEmpty) {
+        toastWidget("Representative Name is required.", Colors.redAccent);
+        return false;
+      }
+      if (repPhoneCtrl.text.trim().isEmpty) {
+        toastWidget("Representative Phone is required.", Colors.redAccent);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool get valid {
+    final base = phoneCtrl.text.trim().isNotEmpty &&
+        emailCtrl.text.trim().isNotEmpty &&
+        passCtrl.text.trim().isNotEmpty &&
+        agreed;
+
+    if (_isUser) {
+      return base && nameCtrl.text.trim().isNotEmpty;
+    } else if (_isTasker) {
+      return base &&
+          nameCtrl.text.trim().isNotEmpty &&
+          addrCtrl.text.trim().isNotEmpty;
+    } else if (_isBusiness) {
+      return base &&
+          companyCtrl.text.trim().isNotEmpty &&
+          abanCtrl.text.trim().isNotEmpty &&
+          repNameCtrl.text.trim().isNotEmpty &&
+          repPhoneCtrl.text.trim().isNotEmpty;
+    }
+    return base;
+  }
+
+  void _submit(BuildContext context) {
+    if (!_validateAndToast()) return;
+
+    final phone = _composeAuPhone(phoneCtrl.text);
+    final email = emailCtrl.text.trim();
+    final password = passCtrl.text;
+
+    final bloc = context.read<AuthenticationBloc>();
+
+    if (_isUser) {
+      bloc.add(RegisterUserRequested(
+        fullName: nameCtrl.text.trim(),
+        phoneNumber: phone,
+        email: email,
+        password: password,
+        desiredService: const [],
+        companyCategory: const [],
+        companySubCategory: const [],
+        abn: null,
+      ));
+    } else if (_isTasker) {
+      bloc.add(RegisterTaskerRequested(
+        fullName: nameCtrl.text.trim(),
+        phoneNumber: phone,
+        email: email,
+        password: password,
+        address: addrCtrl.text.trim(),
+        abn: _normalizeAbn(abanCtrl.text),
+      ));
+    } else {
+      final repPhone = _composeAuPhone(repPhoneCtrl.text);
+      final abn = _normalizeAbn(abanCtrl.text);
+
+      const kCatId = '2';
+      const kSubId = '3';
+
+      bloc.add(RegisterCompanyRequested(
+        fullName: companyCtrl.text.trim(),
+        phoneNumber: phone,
+        email: email,
+        password: password,
+        desiredService: const [],
+        companyCategory: const [
+          SelectableItem(id: kCatId, name: 'Default', isSelected: true),
+        ],
+        companySubCategory: const [
+          SelectableItem(id: kSubId, name: 'Default', isSelected: true),
+        ],
+        abn: abn,
+        representativeName: repNameCtrl.text.trim(),
+        representativeNumber: repPhone,
+      ));
+    }
+  }
+
+  // ---- UI helpers (UPDATED UI ONLY) --------------------------------
+
+  OutlineInputBorder _border([Color c = Colors.transparent]) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: c, width: 1.2),
+      );
+
+  Widget _sectionTitle(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12.5,
+            color: kMuted,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .2,
+          ),
+        ),
+      );
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: kTextDark,
+          ),
+        ),
+      );
+
+  Widget _filledField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    bool obscure = false,
+    Widget? suffixIcon,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscure,
+      onChanged: (_) => setState(() {}),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: kFieldBg,
+        hintText: hint,
+        hintStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          color: Color(0xFF9AA0AE),
+          fontWeight: FontWeight.w600,
+          fontSize: 12.8,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        suffixIcon: suffixIcon,
+        enabledBorder: _border(),
+        focusedBorder: _border(kPrimary.withOpacity(.35)),
+      ),
+      style: const TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w700,
+        color: kTextDark,
+        fontSize: 13.2,
+      ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: kPrimary.withOpacity(.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 18,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => AuthenticationBloc(_repo),
+      child: BlocListener<AuthenticationBloc, AuthenticationState>(
+        listenWhen: (p, c) => p.status != c.status,
+        listener: (context, state) {
+          if (state.status == AuthStatus.success) {
+            final msg = state.response?.message ?? 'Account created';
+            toastWidget(msg, Colors.green);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+            );
+          } else if (state.status == AuthStatus.failure) {
+            toastWidget(state.error ?? 'Registration failed', Colors.redAccent);
+          }
+        },
+        child: Builder(
+          builder: (context) {
+            final role = widget.role.toUpperCase();
+            final status =
+                context.select((AuthenticationBloc b) => b.state.status);
+            final isLoading = status == AuthStatus.loading;
+
+            return Scaffold(
+              backgroundColor: kBg,
+              body: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ✅ Modern header (UI only)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              kPrimary.withOpacity(.18),
+                              kPrimary.withOpacity(.08),
+                              Colors.white,
+                            ],
+                          ),
+                          border: Border.all(color: kPrimary.withOpacity(.12)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(.06),
+                              blurRadius: 22,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // back
+                            InkWell(
+                              onTap: () => Navigator.pop(context),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: kPrimary.withOpacity(.12)),
+                                ),
+                                child: const Icon(Icons.arrow_back_rounded,
+                                    color: kPrimary),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Create account',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: kTextDark,
+                                      height: 1.05,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Role: $role',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: kPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    widget.role.toLowerCase() == 'business'
+                                        ? 'Tell us about your company to get started.'
+                                        : widget.role.toLowerCase() == 'tasker'
+                                            ? 'Create your account to start earning.'
+                                            : 'Create your account to get tasks done.',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12.5,
+                                      color: kMuted,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+                            const _DecorShapesPurpleModern(),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ✅ Form card (UI only)
+                      _card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _sectionTitle('Profile'),
+
+                            // role-specific fields
+                            if (_isUser || _isTasker) ...[
+                              _label('Full Name'),
+                              _filledField(
+                                controller: nameCtrl,
+                                hint: 'Full Name',
+                                keyboardType: TextInputType.name,
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+
+                            if (_isBusiness) ...[
+                              _label('Company Name'),
+                              _filledField(
+                                controller: companyCtrl,
+                                hint: 'Company Name',
+                                keyboardType: TextInputType.name,
+                              ),
+                              const SizedBox(height: 14),
+
+                              _label('ABN'),
+                              _filledField(
+                                controller: abanCtrl,
+                                hint: 'ABN',
+                                keyboardType: TextInputType.text,
+                              ),
+                              const SizedBox(height: 14),
+
+                              _label("Company's Representative Name"),
+                              _filledField(
+                                controller: repNameCtrl,
+                                hint: "Representative Name",
+                                keyboardType: TextInputType.name,
+                              ),
+                              const SizedBox(height: 14),
+
+                              _label("Company's Representative Phone Number"),
+                              _filledField(
+                                controller: repPhoneCtrl,
+                                hint: "Representative Phone Number",
+                                keyboardType: TextInputType.phone,
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+
+                            _sectionTitle('Contact'),
+
+                            _label('Phone Number'),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 82,
+                                  height: 52,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: kFieldBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: kPrimary.withOpacity(.08),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '+92',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w900,
+                                      color: kTextDark,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _filledField(
+                                    controller: phoneCtrl,
+                                    hint: 'Phone Number',
+                                    keyboardType: TextInputType.phone,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+
+                            _label('Email Address'),
+                            _filledField(
+                              controller: emailCtrl,
+                              hint: 'Email Address',
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 14),
+
+                            _sectionTitle('Security'),
+
+                            _label('Password'),
+                            _filledField(
+                              controller: passCtrl,
+                              hint: 'Password',
+                              obscure: obscure,
+                              suffixIcon: IconButton(
+                                onPressed: () =>
+                                    setState(() => obscure = !obscure),
+                                icon: Icon(
+                                  obscure
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                  color: kMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            if (_isTasker) ...[
+                              _sectionTitle('Tasker Details'),
+
+                              _label('ABN'),
+                              _filledField(
+                                controller: abanCtrl,
+                                hint: 'ABN',
+                                keyboardType: TextInputType.text,
+                              ),
+                              const SizedBox(height: 14),
+
+                              _label('Address'),
+                              _filledField(
+                                controller: addrCtrl,
+                                hint: 'Address',
+                                keyboardType: TextInputType.streetAddress,
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+
+                            // ✅ Agreement (same behavior)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kPrimary.withOpacity(.06),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: kPrimary.withOpacity(.12),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () =>
+                                        setState(() => agreed = !agreed),
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: agreed
+                                              ? kPrimary
+                                              : const Color(0xFFCBD5E1),
+                                          width: 2,
+                                        ),
+                                        color: agreed
+                                            ? kPrimary
+                                            : Colors.transparent,
+                                      ),
+                                      child: agreed
+                                          ? const Icon(Icons.check,
+                                              size: 16, color: Colors.white)
+                                          : null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: 'I agree to the ',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: kTextDark,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: 'Terms of Service',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: ' & ',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: kTextDark,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: 'Privacy',
+                                            style: TextStyle(
+                                              fontFamily: 'Poppins',
+                                              color: kPrimary,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      style: TextStyle(fontSize: 13, height: 1.35),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // ✅ Submit (same enable/disable logic)
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: valid
+                                      ? kPrimary
+                                      : const Color(0xFFECEFF3),
+                                  foregroundColor: valid
+                                      ? Colors.white
+                                      : Colors.black54,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  elevation: valid ? 10 : 0,
+                                  shadowColor: kPrimary.withOpacity(.28),
+                                ),
+                                onPressed: (valid && !isLoading)
+                                    ? () => _submit(context)
+                                    : null,
+                                child: Text(
+                                  isLoading ? 'Please wait…' : 'SUBMIT',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: .25,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ✅ Bottom helper (UI only)
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => LoginScreen()),
+                            );
+                          },
+                          child: const Text(
+                            'Already have an account? Login',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w900,
+                              color: kPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// ✅ Same decoration idea but modern + matches theme (UI only)
+class _DecorShapesPurpleModern extends StatelessWidget {
+  const _DecorShapesPurpleModern();
+
+  @override
+  Widget build(BuildContext context) {
+    const light = Color(0xFFE9DEFF);
+    const mid = Color(0xFFD9CCFF);
+    const dark = Color(0xFF5C2E91);
+
+    Widget block(Color c, {double w = 78, double h = 22, double angle = .55}) {
+      return Transform.rotate(
+        angle: angle,
+        child: Container(
+          width: w,
+          height: h,
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 100,
+      height: 76,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: const [
+          // We keep it simple (no functionality impact)
+        ],
+      ),
+    );
+  }
+}
+
+
+/*
+
 class CreateAccountScreen extends StatefulWidget {
   final String role;
   const CreateAccountScreen({super.key, required this.role});
@@ -613,3 +1397,4 @@ class _DecorShapesPurple extends StatelessWidget {
     );
   }
 }
+*/

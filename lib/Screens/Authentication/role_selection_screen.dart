@@ -11,9 +11,12 @@ class RoleSelectScreen extends StatefulWidget {
 }
 
 class _RoleSelectScreenState extends State<RoleSelectScreen> {
-  // Brand palette
-  static const Color purple = Color(0xFF7841BA);
-  String? selected; 
+  static const Color kPrimary = Color(0xFF5C2E91);
+  static const Color kTextDark = Color(0xFF3E1E69);
+  static const Color kMuted = Color(0xFF75748A);
+  static const Color kBg = Color(0xFFF8F7FB);
+
+  String? selected;
   bool triedContinue = false;
 
   void _pick(String value) {
@@ -26,63 +29,89 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     final disabled = selected == null;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: kBg,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
           children: [
-            Center(
-              child: Image.asset(
-                'assets/taskoon_logo.png',
-                height: 95,
-                width: 95,
-              ),
-            ),
-            // Logo + tiny gold ring
-            /* Center(
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: gold, width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x15000000),
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
-                    )
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    kPrimary.withOpacity(.18),
+                    kPrimary.withOpacity(.08),
+                    Colors.white,
                   ],
                 ),
-                child: Image.asset('assets/taskoon_logo.png',
-                    height: 64, width: 64),
+                border: Border.all(color: kPrimary.withOpacity(.12)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.06),
+                    blurRadius: 22,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-            ),*/
-            const SizedBox(height: 16),
-
-            // Title & helper
-            Text(
-              'How do you want to use Taskoon?',
-              textAlign: TextAlign.center,
-              style: t.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-                height: 1.22,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: kPrimary.withOpacity(.18)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.06),
+                          blurRadius: 18,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/taskoon_logo.png',
+                      height: 62,
+                      width: 62,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'How do you want to use Taskoon?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: kTextDark,
+                      height: 1.18,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Pick one to personalize your experience.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12.5,
+                      color: kMuted,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Pick one to personalize your experience.',
-              textAlign: TextAlign.center,
-              style: t.bodyMedium?.copyWith(color: Colors.black54),
-            ),
-            const SizedBox(height: 22),
 
-            // Cards
+            const SizedBox(height: 14),
+
+            // ✅ Role cards (same logic)
             _RoleCard(
               icon: CupertinoIcons.person,
               title: 'User',
@@ -107,37 +136,50 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
               onTap: () => _pick('business'),
             ),
 
-            // Validation hint
+            // ✅ Validation hint (same behavior, themed)
             if (triedContinue && selected == null) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.error_outline, size: 18, color: Color(0xFFE11D48)),
-                  SizedBox(width: 6),
-                  Text(
-                    'Select an option to continue',
-                    style: TextStyle(
-                      color: Color(0xFFE11D48),
-                      fontWeight: FontWeight.w700,
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFDA4AF)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.error_outline, size: 18, color: Color(0xFFE11D48)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Select an option to continue',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: Color(0xFFE11D48),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
-            // Continue
+            // ✅ Continue button (modern pill)
             SizedBox(
               height: 56,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: disabled ? const Color(0xFFECEFF3) : purple,
+                  backgroundColor: disabled ? const Color(0xFFECEFF3) : kPrimary,
                   foregroundColor: disabled ? Colors.black54 : Colors.white,
+                  elevation: disabled ? 0 : 10,
+                  shadowColor: kPrimary.withOpacity(.28),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  elevation: disabled ? 0 : 6,
-                  shadowColor: purple.withOpacity(.35),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
                 onPressed: () {
                   if (selected == null) {
@@ -145,19 +187,37 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
                     return;
                   }
 
+                  // ✅ unchanged navigation
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              CreateAccountScreen(role: selected!)));
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateAccountScreen(role: selected!),
+                    ),
+                  );
                 },
                 child: const Text(
                   'Continue',
                   style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: .2),
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .2,
+                  ),
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // ✅ Tiny helper text (optional UI only)
+            const Text(
+              'You can change this later from settings.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 11.5,
+                color: kMuted,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -182,15 +242,14 @@ class _RoleCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const Color purple = Color(0xFF7841BA);
-  static const Color purpleAlt = Color(0xFF8B59C6);
-  static const Color lilac = Color(0xFFF3ECFF);
-  static const Color border = Color(0xFFE3DAFF);
-  static const Color gold = Color(0xFFD4AF37);
+  static const Color kPrimary = Color(0xFF5C2E91);
+  static const Color kTextDark = Color(0xFF3E1E69);
+  static const Color kMuted = Color(0xFF75748A);
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected ? lilac : Colors.white;
+    final border = selected ? kPrimary.withOpacity(.35) : kPrimary.withOpacity(.12);
+    final bg = Colors.white;
 
     return Semantics(
       button: true,
@@ -198,101 +257,126 @@ class _RoleCard extends StatelessWidget {
       label: '$title option',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        splashColor: purple.withOpacity(.08),
+        borderRadius: BorderRadius.circular(20),
+        splashColor: kPrimary.withOpacity(.06),
         highlightColor: Colors.transparent,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              width: selected ? 2 : 1.5,
-              color: selected ? purple.withOpacity(.45) : border,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: purple.withOpacity(.10),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : const [],
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: border, width: selected ? 1.8 : 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(selected ? .06 : .04),
+                blurRadius: selected ? 18 : 14,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              // Icon tile with gradient ring
+              // ✅ Icon tile (theme)
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(16),
                   gradient: LinearGradient(
-                    colors: [purpleAlt, purple],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                    colors: [
+                      kPrimary.withOpacity(.22),
+                      kPrimary.withOpacity(.10),
+                    ],
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x12000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  border: Border.all(color: kPrimary.withOpacity(.16)),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Icon(icon, color: purple, size: 22),
-                  ],
-                ),
+                child: Icon(icon, color: kPrimary, size: 22),
               ),
+
               const SizedBox(width: 12),
 
-              // Texts
+              // ✅ Texts
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                          color: purple,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          letterSpacing: .2,
-                        )),
-                    const SizedBox(height: 2),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: kTextDark,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15.5,
+                        letterSpacing: .2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        color: Colors.black.withOpacity(.75),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: kMuted,
                         fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Checkmark
+              const SizedBox(width: 10),
+
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 180),
                 switchInCurve: Curves.easeOutBack,
                 child: selected
-                    ? const Icon(CupertinoIcons.check_mark_circled_solid,
-                        key: ValueKey('check'), color: purple, size: 24)
-                    : const SizedBox(
-                        key: ValueKey('empty'), width: 24, height: 24),
+                    ? Container(
+                        key: const ValueKey('selected'),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: kPrimary.withOpacity(.10),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: kPrimary.withOpacity(.18)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CupertinoIcons.check_mark_circled_solid,
+                              color: kPrimary,
+                              size: 18,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Selected',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                                color: kPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Container(
+                        key: const ValueKey('not_selected'),
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: kPrimary.withOpacity(.06),
+                          border: Border.all(color: kPrimary.withOpacity(.14)),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -301,4 +385,3 @@ class _RoleCard extends StatelessWidget {
     );
   }
 }
-

@@ -754,7 +754,7 @@ class AuthenticationBloc
       storage.write("isActive", res.data!.result!.user!.isActive.toString());
       storage.write(
         "isOnboardingRequired",
-        res.data!.result!.user!.requiresOnboarding.toString(),
+        res.data!.result!.user!.requriesOnboarding.toString(),
       );
     } else {
       debugPrint('LOGIN FAIL => ${res.failure}');

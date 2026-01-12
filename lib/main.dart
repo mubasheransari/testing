@@ -14,7 +14,7 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
   runApp(const MyApp());
-}
+}//Testing@123
 
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -62,6 +62,7 @@ class MyApp extends StatelessWidget {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Taskoon',
+                 navigatorKey: GlobalNav.key, // ✅ IMPORTANT
             theme: AppTheme.light,//Testing@123
             initialRoute: Routes.splash,//userHomeBottomNavBarRoot,//takerHomeBottomNavBarRoot,
             // Routes.locationSignalR,//Routes.splash,//Routes.userHomeBottomNavBarRoot,
