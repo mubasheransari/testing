@@ -4,18 +4,8 @@ import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
-
-
-
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-// ✅ your imports
-// import 'package:taskoon/Blocs/authentication/authentication_bloc.dart';
-// import 'package:taskoon/Blocs/authentication/authentication_state.dart';
-// import 'package:taskoon/Blocs/authentication/authentication_event.dart';
-// import 'package:taskoon/Screens/service_booking_form_screen.dart';
 
 class ServiceCertificatesGridScreen extends StatefulWidget {
   const ServiceCertificatesGridScreen({super.key});
@@ -27,9 +17,7 @@ class ServiceCertificatesGridScreen extends StatefulWidget {
 
 class _ServiceCertificatesGridScreenState
     extends State<ServiceCertificatesGridScreen> {
-  static const Color kPurple = Color(0xFF7841BA);
-  static const Color kPurpleDark = Color(0xFF5C2E91);
-  static const Color kPage = Color(0xFFF8F7FB);
+
 
   final TextEditingController _searchCtrl = TextEditingController();
   String _search = '';
@@ -482,16 +470,16 @@ class _ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            _Glass(
-              radius: 16,
-              child: SizedBox(
-                width: 46,
-                height: 46,
-                child:
-                    Icon(Icons.grid_view_rounded, color: t.primaryDark),
-              ),
-            ),
+            // const SizedBox(width: 12),
+            // _Glass(
+            //   radius: 16,
+            //   child: SizedBox(
+            //     width: 46,
+            //     height: 46,
+            //     child:
+            //         Icon(Icons.grid_view_rounded, color: t.primaryDark),
+            //   ),
+            // ),
           ],
         ),
       ),
