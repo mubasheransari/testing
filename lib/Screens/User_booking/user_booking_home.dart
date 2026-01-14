@@ -2319,15 +2319,16 @@ class _UserBookingHomeState extends State<UserBookingHome>
         ),
       ),
       child: Scaffold(
-        appBar: _buildAppBarModern(t),
+       // appBar: _buildAppBarModern(t),
         body: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
+            padding: const EdgeInsets.fromLTRB(16, 64, 16, 110),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HomeHeroCard(t: t),
+
+                _HomeHeroCard(t: t,userName: name,),
                 const SizedBox(height: 14),
 
                 // ✅ search (NOW WORKS)
@@ -2830,7 +2831,107 @@ class _UiTokens {
 }
 
 /* ============================== HERO ============================== */
+class _HomeHeroCard extends StatelessWidget {
+  const _HomeHeroCard({
+    required this.t,
+    required this.userName,
+  });
 
+  final _UiTokens t;
+  final String userName;
+
+  String _firstName(String v) {
+    final s = v.trim();
+    if (s.isEmpty) return '';
+    return s.split(RegExp(r'\s+')).first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fn = _firstName(userName);
+    final greet = fn.isEmpty ? 'Find the right tasker 👋' : 'Hi, $fn 👋';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            t.primary.withOpacity(.14),
+            t.primary.withOpacity(.06),
+            Colors.white,
+          ],
+        ),
+        border: Border.all(color: t.primary.withOpacity(.14)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greet,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    color: t.primaryText,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .2,
+                  ),
+                ),
+                Text( 'Find the right tasker 👋', style: TextStyle( fontFamily: 'Poppins', color: t.primaryText, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: .2, ), ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose a category and book in minutes.',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    color: t.mutedText,
+                    fontSize: 13,
+                    height: 1.2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _HeroBadge(t: t, icon: Icons.flash_on_rounded, text: 'Instant booking in minutes'),
+                    _HeroBadge(t: t, icon: Icons.verified_rounded, text: 'Top-rated taskers with real reviews'),
+                    _HeroBadge(t: t, icon: Icons.support_agent_rounded, text: 'Customer support when you need it'),
+                    _HeroBadge(t: t, icon: Icons.badge_rounded, text: 'ID verified for safety'),
+                    _HeroBadge(t: t, icon: Icons.shield_rounded, text: 'Police check'),
+                    _HeroBadge(
+                      t: t,
+                      icon: Icons.schedule_rounded,
+                      text: 'ASAP • Future • Multi-day • Daily \nWeekly • Monthly • Custom days',
+                    ),
+                    _HeroBadge(t: t, icon: Icons.payments_rounded, text: 'Secure payments & transparent\npricing'),
+                    _HeroBadge(t: t, icon: Icons.location_on_rounded, text: 'Nearby taskers matched fast'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+    );
+  }
+}
+
+/*
 class _HomeHeroCard extends StatelessWidget {
   const _HomeHeroCard({required this.t});
   final _UiTokens t;
@@ -2974,8 +3075,7 @@ class _HomeHeroCard extends StatelessWidget {
       ),
     );
   }
-}
-
+}*/
 class _HeroBadge extends StatelessWidget {
   const _HeroBadge({required this.t, required this.icon, required this.text});
   final _UiTokens t;
