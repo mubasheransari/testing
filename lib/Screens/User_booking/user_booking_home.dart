@@ -3417,15 +3417,32 @@ class _ServicePillTile extends StatelessWidget {
               child: Icon(_pickIcon(text), size: 16, color: t.primaryDark),
             ),
             const SizedBox(width: 10),
-            Text(
-              text,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12.5,
-                color: t.primaryText,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            Expanded(
+      child: Text(
+        text,
+        softWrap: true,
+        // remove maxLines to allow full wrap
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 12.5,
+          color: t.primaryText,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+    //      Expanded(
+    //   child: Text(
+    //     text,
+    //     maxLines: 1, // or 2
+    //     overflow: TextOverflow.ellipsis,
+    //     style: TextStyle(
+    //       fontFamily: 'Poppins',
+    //       fontSize: 12.5,
+    //       color: t.primaryText,
+    //       fontWeight: FontWeight.w700,
+    //     ),
+    //   ),
+    // ),
           ],
         ),
       ),
