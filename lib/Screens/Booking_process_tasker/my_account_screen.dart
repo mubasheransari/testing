@@ -1,21 +1,23 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/widgets/logout_popup.dart';
 
-          final box = GetStorage();
+final box = GetStorage();
 
-          var role = box.read("role");
+var role = box.read("role");
 
 class UserProfile {
-  final String? avatarPath; 
+  final String? avatarPath;
   final String fullName;
   final DateTime? dob;
   final String address;
 
   final String bankName;
-  final String accountNumberMasked; 
+  final String accountNumberMasked;
   final String bsb;
   final String abn;
 
@@ -53,13 +55,8 @@ class UserProfile {
   }
 }
 
-
 class MyAccountScreen extends StatefulWidget {
-  const MyAccountScreen({
-    super.key,
-    this.bottomBar,
-    this.onSignOut,
-  });
+  const MyAccountScreen({super.key, this.bottomBar, this.onSignOut});
 
   final Widget? bottomBar;
   final VoidCallback? onSignOut;
@@ -70,9 +67,24 @@ class MyAccountScreen extends StatefulWidget {
 
 class _MyAccountScreenState extends State<MyAccountScreen> {
 
-  UserProfile profile = const UserProfile(
+  // UserProfile profile = const UserProfile(
+  //   avatarPath: null,
+  //   fullName: 'Steaphan Micheal',
+  //   dob: null,
+  //   address: '41 block, e-street',
+  //   bankName: 'ABC bank',
+  //   accountNumberMasked: '**** **** 4565',
+  //   bsb: '457',
+  //   abn: '36 123 456 789',
+  // );
+
+  @override
+  Widget build(BuildContext context) {
+    var fullName = context.read<AuthenticationBloc>().state.userDetails!.fullName.toString();
+   
+      UserProfile profile =  UserProfile(
     avatarPath: null,
-    fullName: 'Steaphan Micheal',
+    fullName:fullName, //'Steaphan Micheal',
     dob: null,
     address: '41 block, e-street',
     bankName: 'ABC bank',
@@ -81,8 +93,6 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     abn: '36 123 456 789',
   );
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F6FB),
       bottomNavigationBar: widget.bottomBar,
@@ -91,17 +101,24 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
           children: [
             const SizedBox(height: 8),
             Padding(
-              padding:const  EdgeInsets.symmetric(horizontal: 16,vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
               child: _HeaderCard(
                 title: 'My account',
-                left:role == "Tasker"? IconButton(onPressed: (){
-                  Navigator.of(context).pop();
-                }, icon:const Icon(Icons.arrow_back)):SizedBox(),
-                right:role != "Tasker"? _HeaderPill(
-  label: 'Sign out',
-  icon: Icons.logout_rounded,
-  onTap: () => GlobalSignOut.show(context),
-):const SizedBox(width: 20,),
+                left: role == "Tasker"
+                    ? IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.arrow_back),
+                      )
+                    :const SizedBox(),
+                right: role != "Tasker"
+                    ? _HeaderPill(
+                        label: 'Sign out',
+                        icon: Icons.logout_rounded,
+                        onTap: () => GlobalSignOut.show(context),
+                      )
+                    : const SizedBox(width: 20),
               ),
             ),
 
@@ -119,7 +136,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                           children: [
                             _AvatarEditable(
                               path: profile.avatarPath,
-                              onTap: _openEdit,
+                             onTap: (){}, // onTap: _openEdit,
                               radius: 34,
                             ),
                             const SizedBox(width: 12),
@@ -156,7 +173,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                             const SizedBox(width: 10),
                             _MiniAction(
                               icon: Icons.edit_rounded,
-                              onTap: _openEdit,
+                             onTap: (){},//  onTap: _openEdit,
                             ),
                           ],
                         ),
@@ -164,7 +181,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                     ),
 
                     const SizedBox(height: 14),
-                  const  _SectionTitle(
+                    const _SectionTitle(
                       title: 'Personal information',
                       icon: Icons.person_rounded,
                     ),
@@ -175,7 +192,9 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                         const SizedBox(height: 12),
                         _InfoLine(
                           label: 'Date of birth',
-                          value: profile.dob != null ? _fmtDate(profile.dob!) : '—',
+                          value: profile.dob != null
+                              ? _fmtDate(profile.dob!)
+                              : '—',
                         ),
                         const SizedBox(height: 12),
                         _InfoLine(label: 'Address', value: profile.address),
@@ -183,13 +202,13 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                         _PrimaryButton(
                           label: 'Edit personal info',
                           icon: Icons.edit_rounded,
-                          onTap: _openEdit,
+                          onTap: (){},// onTap: _openEdit,
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 14),
-                  const  _SectionTitle(
+                    const _SectionTitle(
                       title: 'Bank details',
                       icon: Icons.account_balance_rounded,
                     ),
@@ -208,13 +227,13 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                         _PrimaryButton(
                           label: 'Edit bank details',
                           icon: Icons.edit_rounded,
-                          onTap: _openEdit,
+                          onTap: (){},
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 14),
-                  const  _SectionTitle(
+                    const _SectionTitle(
                       title: 'ABN / Business information',
                       icon: Icons.business_center_rounded,
                     ),
@@ -226,7 +245,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                         _PrimaryButton(
                           label: 'Edit business info',
                           icon: Icons.edit_rounded,
-                          onTap: _openEdit,
+                         onTap: (){},//  onTap: _openEdit,
                         ),
                       ],
                     ),
@@ -240,20 +259,28 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
   }
 
-  Future<void> _openEdit() async {
-    final updated = await Navigator.push<UserProfile>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditProfileScreen(initial: profile),
-      ),
-    );
-    if (updated != null) setState(() => profile = updated);
-  }
+  // Future<void> _openEdit() async {
+  //   final updated = await Navigator.push<UserProfile>(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => EditProfileScreen(initial: profile)),
+  //   );
+  //   if (updated != null) setState(() => profile = updated);
+  // }
 
   static String _fmtDate(DateTime d) {
     const months = [
-      'January','February','March','April','May','June',
-      'July','August','September','October','November','December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${d.day} ${months[d.month - 1]}, ${d.year}';
   }
@@ -377,7 +404,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   fontFamily: 'Poppins',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF75748A).withOpacity(.95),
+                                  color: const Color(
+                                    0xFF75748A,
+                                  ).withOpacity(.95),
                                 ),
                               ),
                             ],
@@ -386,7 +415,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
 
                       const SizedBox(height: 14),
-                     const _SectionTitle(
+                      const _SectionTitle(
                         title: 'Personal information',
                         icon: Icons.person_rounded,
                       ),
@@ -401,16 +430,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 controller: _name,
                                 textInputAction: TextInputAction.next,
                                 validator: (v) =>
-                                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                    (v == null || v.trim().isEmpty)
+                                    ? 'Required'
+                                    : null,
                               ),
                               const SizedBox(height: 12),
                               _Field(
                                 label: 'Date of birth',
-                                controller: TextEditingController(text: dobText),
+                                controller: TextEditingController(
+                                  text: dobText,
+                                ),
                                 readOnly: true,
                                 onTap: _pickDob,
-                                suffix: const Icon(Icons.calendar_month_rounded,
-                                    color: Colors.black54),
+                                suffix: const Icon(
+                                  Icons.calendar_month_rounded,
+                                  color: Colors.black54,
+                                ),
                               ),
                               const SizedBox(height: 12),
                               _Field(
@@ -462,7 +497,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                       const SizedBox(height: 14),
 
-                     const _SectionTitle(
+                      const _SectionTitle(
                         title: 'ABN / Business information',
                         icon: Icons.business_center_rounded,
                       ),
@@ -547,9 +582,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       lastDate: last,
       builder: (ctx, child) {
         return Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(primary: _p),
-          ),
+          data: Theme.of(
+            ctx,
+          ).copyWith(colorScheme: const ColorScheme.light(primary: _p)),
           child: child!,
         );
       },
@@ -577,13 +612,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   static String _fmtDate(DateTime d) {
     const months = [
-      'January','February','March','April','May','June',
-      'July','August','September','October','November','December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${d.day} ${months[d.month - 1]}, ${d.year}';
   }
 }
-
 
 class _AppColors {
   static const primary = Color(0xFF5C2E91);
@@ -654,7 +698,9 @@ class _HeaderPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = filled ? _AppColors.primary : _AppColors.primary.withOpacity(.08);
+    final bg = filled
+        ? _AppColors.primary
+        : _AppColors.primary.withOpacity(.08);
     final fg = filled ? Colors.white : _AppColors.primary;
 
     return Material(
@@ -753,7 +799,10 @@ class _InfoCard extends StatelessWidget {
     return _WhiteCard(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
       ),
     );
   }
@@ -801,11 +850,7 @@ class _InfoLine extends StatelessWidget {
 }
 
 class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.icon,
-    this.onTap,
-  });
+  const _PrimaryButton({required this.label, required this.icon, this.onTap});
 
   final String label;
   final IconData icon;
@@ -820,7 +865,9 @@ class _PrimaryButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12),
           side: BorderSide(color: _AppColors.primary.withOpacity(.25)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           foregroundColor: _AppColors.primary,
         ),
         icon: Icon(icon, size: 18),
@@ -877,9 +924,15 @@ class _AvatarEditable extends StatelessWidget {
       child: CircleAvatar(
         radius: radius,
         backgroundColor: const Color(0xFFDADADA),
-        backgroundImage: (path != null && path!.isNotEmpty) ? FileImage(File(path!)) : null,
+        backgroundImage: (path != null && path!.isNotEmpty)
+            ? FileImage(File(path!))
+            : null,
         child: (path == null || path!.isEmpty)
-            ? Icon(Icons.person_rounded, size: radius * 1.15, color: Colors.white.withOpacity(.95))
+            ? Icon(
+                Icons.person_rounded,
+                size: radius * 1.15,
+                color: Colors.white.withOpacity(.95),
+              )
             : null,
       ),
     );
@@ -927,7 +980,10 @@ class _Field extends StatelessWidget {
         filled: true,
         fillColor: const Color(0xFFF6F7FB),
         suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE6E8F0)),
@@ -938,7 +994,10 @@ class _Field extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _AppColors.primary.withOpacity(.55), width: 1.6),
+          borderSide: BorderSide(
+            color: _AppColors.primary.withOpacity(.55),
+            width: 1.6,
+          ),
         ),
       ),
     );
@@ -1013,4 +1072,3 @@ class _SheetTile extends StatelessWidget {
     );
   }
 }
-
