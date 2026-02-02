@@ -8,6 +8,7 @@ import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
 import 'package:taskoon/Models/services_model.dart';
 import 'package:taskoon/Models/services_ui_model.dart';
 import 'package:taskoon/Realtime/dispatch_hub_service.dart';
+import 'package:taskoon/Repository/auth_repository.dart';
 import 'package:taskoon/Screens/User_booking/select_service.dart';
 import 'package:taskoon/Screens/User_booking/service_booking_form_screen.dart';
 import 'dart:async';
@@ -2122,7 +2123,7 @@ class _UserBookingHomeState extends State<UserBookingHome>
   CertificationGroup? _selectedGroup;
   ServiceDto? servicesdto;
 
-  static const String _baseUrl = "https://api.taskoon.com";
+  static const String _baseUrl = ApiConfig.baseUrl; //"https://api.taskoon.com";
 
   bool _hubConfigured = false;
 
