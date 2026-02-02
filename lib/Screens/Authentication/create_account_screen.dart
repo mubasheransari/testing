@@ -47,7 +47,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   void initState() {
     super.initState();
     _repo = AuthRepositoryHttp(
-      baseUrl: 'https://api.taskoon.com', //'http://192.3.3.187:85',
+      baseUrl:ApiConfig.baseUrl, //'https://api.taskoon.com', //'http://192.3.3.187:85',
       endpoint: '/api/auth/signup',
     );
   }

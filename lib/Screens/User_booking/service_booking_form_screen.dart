@@ -466,8 +466,8 @@ class _ServiceBookingFormScreenState extends State<ServiceBookingFormScreen> {
             customDays: customDays,
             address: _manualLocationCtrl.text.trim(),
             taskerLevelId: _selectedTaskerLevelId!,
-            latitude: _resolveLat(),
-            longitude: _resolveLng(),
+            latitude:67.00, //_resolveLat(),
+            longitude:70.00// _resolveLng(),
           ),
         );
   }
