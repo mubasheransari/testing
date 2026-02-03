@@ -43,7 +43,11 @@ class ApiConfig {
   static const String bookingCancelEndpoint = '/api/booking/cancel';
   static const String bookingGetEndpoint = '/api/Booking/booking';
   static const String updateLocationEndpoint = '/api/Address/update/location';
-    static const String changeAvailabilityStatusEndpoint = '/api/user/available/status';
+  static const String changeAvailabilityStatusEndpoint = '/api/user/available/status';
+
+  //SOS
+  static const String sosStartEndpoint = '/api/sos/start';
+  static const String sosUpdateLocationEndpoint = '/api/sos/location';
 }
 
 extension on String {
@@ -56,6 +60,19 @@ extension on String {
 }
 
 abstract class AuthRepository {
+      //SOS
+    Future<Result<RegistrationResponse>> startSos({
+    required String taskerUserId,
+    required String bookingDetailId,
+    required double latitude,
+    required double longitude,
+  });
+      //SOS
+  Future<Result<RegistrationResponse>> updateSosLocation({
+    required String sosId,
+    required double latitude,
+    required double longitude,
+  });
 
     Future<Result<RegistrationResponse>> cancelBookingPut({
     required String bookingDetailId,
@@ -246,6 +263,204 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+
+
+
+  @override
+Future<Result<RegistrationResponse>> startSos({
+  required String taskerUserId,
+  required String bookingDetailId,
+  required double latitude,
+  required double longitude,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrlLocation}${ApiConfig.sosStartEndpoint}',
+  );
+
+  final body = <String, dynamic>{
+    "taskerUserId": taskerUserId,
+    "bookingDetailId": bookingDetailId,
+    "latitude": latitude,
+    "longitude": longitude,
+  };
+
+  try {
+    print('>>> SOS START POST $uri');
+    print('>>> REQUEST: ${jsonEncode(body)}');
+
+    final res = await http
+        .post(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
+
+    print('<<< SOS START STATUS: ${res.statusCode}');
+    print('<<< SOS START BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(
+          RegistrationResponse(isSuccess: true, message: 'SOS started'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      final resp = RegistrationResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: resp.message ?? 'SOS start failed',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    // non-2xx: try parse message from backend
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          final errors = (err['errors'] as List)
+              .map((e) => '${e['field']}: ${e['error']}')
+              .join(' • ');
+          if (errors.isNotEmpty) message = errors;
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
+@override
+Future<Result<RegistrationResponse>> updateSosLocation({
+  required String sosId,
+  required double latitude,
+  required double longitude,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrlLocation}${ApiConfig.sosUpdateLocationEndpoint}',
+  );
+
+  final body = <String, dynamic>{
+    "sosId": sosId,
+    "latitude": latitude,
+    "longitude": longitude,
+  };
+
+  try {
+    print('>>> SOS LOCATION PUT $uri');
+    print('>>> REQUEST: ${jsonEncode(body)}');
+
+    final res = await http
+        .put(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
+
+    print('<<< SOS LOCATION STATUS: ${res.statusCode}');
+    print('<<< SOS LOCATION BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.ok(
+          RegistrationResponse(isSuccess: true, message: 'SOS location updated'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      final resp = RegistrationResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: resp.message ?? 'SOS location update failed',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    // non-2xx
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          final errors = (err['errors'] as List)
+              .map((e) => '${e['field']}: ${e['error']}')
+              .join(' • ');
+          if (errors.isNotEmpty) message = errors;
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
 
   @override
 Future<Result<RegistrationResponse>> cancelBookingPut({
