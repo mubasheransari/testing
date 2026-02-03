@@ -13,6 +13,10 @@ enum UserLocationUpdateStatus { initial, updating, success, failure }
 enum FindingTaskerStatus { initial, updating, success, failure }
 enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
 enum AcceptBookingEnum { initial, updating, success, failure }
+//SOS
+enum StartSosStatus { initial, submitting, success, failure }
+enum UpdateSosLocationStatus { initial, submitting, success, failure }
+
 
 // ignore: must_be_immutable
 class UserBookingState extends Equatable {
@@ -50,7 +54,25 @@ class UserBookingState extends Equatable {
   final RegistrationResponse? acceptBookingResponse;
   final String? acceptBookingMessage;
 
+    // ----- SOS -----
+  final StartSosStatus startSosStatus;
+  final UpdateSosLocationStatus updateSosLocationStatus;
+
+  final RegistrationResponse? startSosResponse;
+  final String? startSosError;
+
+  final RegistrationResponse? updateSosLocationResponse;
+  final String? updateSosLocationError;
+
+
   const UserBookingState({
+     // SOS
+    this.startSosStatus = StartSosStatus.initial,
+    this.updateSosLocationStatus = UpdateSosLocationStatus.initial,
+    this.startSosResponse,
+    this.startSosError,
+    this.updateSosLocationResponse,
+    this.updateSosLocationError,
     this.bookingCreateResponse,
 
     // find tasker
@@ -84,6 +106,20 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+        // SOS
+    StartSosStatus? startSosStatus,
+    UpdateSosLocationStatus? updateSosLocationStatus,
+
+    RegistrationResponse? startSosResponse,
+    String? startSosError,
+    bool clearStartSosResponse = false,
+    bool clearStartSosError = false,
+
+    RegistrationResponse? updateSosLocationResponse,
+    String? updateSosLocationError,
+    bool clearUpdateSosLocationResponse = false,
+    bool clearUpdateSosLocationError = false,
+
     // statuses
     AcceptBookingEnum? acceptBookingEnum,
     ChangeAvailabilityStatusEnum? changeAvailabilityStatusEnum,
@@ -126,6 +162,23 @@ class UserBookingState extends Equatable {
     String? changeAvailabilityError,
   }) {
     return UserBookingState(
+            // SOS
+      startSosStatus: startSosStatus ?? this.startSosStatus,
+      updateSosLocationStatus:
+          updateSosLocationStatus ?? this.updateSosLocationStatus,
+
+      startSosResponse:
+          clearStartSosResponse ? null : (startSosResponse ?? this.startSosResponse),
+      startSosError:
+          clearStartSosError ? null : (startSosError ?? this.startSosError),
+
+      updateSosLocationResponse: clearUpdateSosLocationResponse
+          ? null
+          : (updateSosLocationResponse ?? this.updateSosLocationResponse),
+      updateSosLocationError: clearUpdateSosLocationError
+          ? null
+          : (updateSosLocationError ?? this.updateSosLocationError),
+
       // statuses
       acceptBookingEnum: acceptBookingEnum ?? this.acceptBookingEnum,
       changeAvailabilityStatusEnum:
@@ -183,6 +236,14 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+            // SOS
+        startSosStatus,
+        updateSosLocationStatus,
+        startSosResponse,
+        startSosError,
+        updateSosLocationResponse,
+        updateSosLocationError,
+
         // cancel
         userBookingCancelStatus,
 

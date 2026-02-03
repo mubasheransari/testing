@@ -129,6 +129,41 @@ class CancelBooking extends UserBookingEvent {
   List<Object?> get props => [userId, bookingDetailId, reason];
 }
 
+//SOS
+
+class StartSosRequested extends UserBookingEvent {
+  final String taskerUserId;
+  final String bookingDetailId;
+  final double latitude;
+  final double longitude;
+
+  const StartSosRequested({
+    required this.taskerUserId,
+    required this.bookingDetailId,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  @override
+  List<Object?> get props => [taskerUserId, bookingDetailId, latitude, longitude];
+}
+
+class UpdateSosLocationRequested extends UserBookingEvent {
+  final String sosId;
+  final double latitude;
+  final double longitude;
+
+  const UpdateSosLocationRequested({
+    required this.sosId,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  @override
+  List<Object?> get props => [sosId, latitude, longitude];
+}
+
+
 
 // abstract class UserBookingEvent extends Equatable {
 //   const UserBookingEvent();

@@ -13,7 +13,84 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<ChangeAvailabilityStatus>(_changeAvailabilityStatus);
     on<AcceptBooking>(_acceptBooking);
     on<CancelBooking>(_onCancelUserBookingRequested);
+        on<StartSosRequested>(_startSosRequested);
+    on<UpdateSosLocationRequested>(_updateSosLocationRequested);
+
   }
+Future<void> _startSosRequested(
+  StartSosRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(
+    state.copyWith(
+      startSosStatus: StartSosStatus.submitting,
+      clearStartSosError: true,
+      clearStartSosResponse: true,
+    ),
+  );
+
+  final r = await repo.startSos(
+    taskerUserId: e.taskerUserId,
+    bookingDetailId: e.bookingDetailId,
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess) {
+    emit(
+      state.copyWith(
+        startSosStatus: StartSosStatus.success,
+        startSosResponse: r.data,
+        clearStartSosError: true,
+      ),
+    );
+  } else {
+    emit(
+      state.copyWith(
+        startSosStatus: StartSosStatus.failure,
+        startSosError: r.failure?.message ?? 'Failed to start SOS',
+        clearStartSosResponse: true,
+      ),
+    );
+  }
+}
+
+Future<void> _updateSosLocationRequested(
+  UpdateSosLocationRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(
+    state.copyWith(
+      updateSosLocationStatus: UpdateSosLocationStatus.submitting,
+      clearUpdateSosLocationError: true,
+      clearUpdateSosLocationResponse: true,
+    ),
+  );
+
+  final r = await repo.updateSosLocation(
+    sosId: e.sosId,
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess) {
+    emit(
+      state.copyWith(
+        updateSosLocationStatus: UpdateSosLocationStatus.success,
+        updateSosLocationResponse: r.data,
+        clearUpdateSosLocationError: true,
+      ),
+    );
+  } else {
+    emit(
+      state.copyWith(
+        updateSosLocationStatus: UpdateSosLocationStatus.failure,
+        updateSosLocationError: r.failure?.message ?? 'Failed to update SOS location',
+        clearUpdateSosLocationResponse: true,
+      ),
+    );
+  }
+}
 
   Future<void> findingTaskerRequested(
     FindingTaskerRequested e,
