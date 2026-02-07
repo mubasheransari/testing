@@ -9,23 +9,6 @@ import 'dart:convert';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:taskoon/Repository/auth_repository.dart';
 
-// ✅ FULL UPDATED CODE (Popup + SignalR offer data showing properly)
-// - Fixes bookingDuration parsing (supports 4.5 etc)
-// - Shows full offer details dynamically inside popup (Offer Details table)
-// - Keeps your UI same (only popup now shows all SignalR fields correctly)
-
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:signalr_netcore/signalr_client.dart';
-
-// NOTE: keep your imports for ApiConfig + UserBookingBloc + events
-// import 'package:your_app/config/api_config.dart';
-// import 'package:your_app/bloc/user_booking/user_booking_bloc.dart';
-// import 'package:your_app/bloc/user_booking/user_booking_event.dart';
 
 const Color kPrimary = Color(0xFF5C2E91);
 const Color kTextDark = Color(0xFF3E1E69);
