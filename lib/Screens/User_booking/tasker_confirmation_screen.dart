@@ -5,7 +5,7 @@ import 'package:taskoon/Screens/User_booking/payment_method.dart';
 
 
 class TaskerConfirmationScreen extends StatelessWidget {
-  final String name, distance, rating, cost;
+  final String name, distance, rating, cost,taskerDetailId;
 
   TaskerConfirmationScreen({
     super.key,
@@ -13,6 +13,7 @@ class TaskerConfirmationScreen extends StatelessWidget {
     required this.distance,
     required this.rating,
     required this.cost,
+    required this.taskerDetailId
   });
 
   // Theme taken from UserBookingHome
@@ -249,8 +250,8 @@ class TaskerConfirmationScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  child: const Text(
-                    'PROCEED TO PAYMENT',
+                  child:  Text(
+                    'PROCEED TO PAYMENT ${taskerDetailId}',
                     style: TextStyle(
                       fontFamily: kFont,
                       fontSize: 15,

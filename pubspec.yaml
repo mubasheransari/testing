@@ -43,6 +43,9 @@ dependencies:
   geocoding:
   intl:
   google_places_flutter: ^2.1.1
+  firebase_core: any
+  firebase_messaging: any
+  flutter_local_notifications: any
 
 
 dev_dependencies:

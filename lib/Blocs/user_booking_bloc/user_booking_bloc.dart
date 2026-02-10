@@ -229,6 +229,7 @@ Future<void> _updateSosLocationRequested(
       // r.data is BookingCreateResponse?
       final bookingResp = r.data; // BookingCreateResponse?
 
+
       emit(
         state.copyWith(
           userBookingCancelStatus: UserBookingCancelStatus.success,

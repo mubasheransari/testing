@@ -86,7 +86,7 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
             t.cancel();
             _timer = null;
 
-            Navigator.push(
+            Navigator.push(//bookingDetailId
               context,
               MaterialPageRoute(
                 builder: (_) => TaskerConfirmationScreen(
@@ -98,6 +98,9 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
                           .toString(),
                   distance:
                       (_lastRawNotification?['data']?['distanceInKM'] ?? 0)
+                          .toString(),
+                          taskerDetailId:
+                      (_lastRawNotification?['data']?['bookingDetailId'] ?? 0)
                           .toString(),
                 ),
               ),
