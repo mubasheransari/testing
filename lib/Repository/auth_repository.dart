@@ -483,7 +483,7 @@ Future<Result<RegistrationResponse>> cancelBookingPut({
     print('>>> REQUEST: ${jsonEncode(body)}');
 
     final res = await http
-        .post(uri, headers: _headers(), body: jsonEncode(body))
+        .put(uri, headers: _headers(), body: jsonEncode(body))
         .timeout(timeout);
 
     print('<<< CANCEL BOOKING STATUS: ${res.statusCode}');
