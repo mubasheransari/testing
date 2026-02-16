@@ -15,6 +15,7 @@ class AuthenticationBloc
   var storage = GetStorage();
 
   AuthenticationBloc(this.repo) : super(const AuthenticationState()) {
+    
     on<GetUserStatusRequested>(_onGetUserStatusRequested);
     on<RegisterUserRequested>(_onRegisterUser);
     on<RegisterCompanyRequested>(_onRegisterCompany);

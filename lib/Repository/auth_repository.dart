@@ -8,6 +8,7 @@ import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/named_bytes.dart';
+import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/service_document_model.dart';
 import 'package:taskoon/Models/training_videos_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
@@ -48,6 +49,9 @@ class ApiConfig {
   //SOS
   static const String sosStartEndpoint = '/api/sos/start';
   static const String sosUpdateLocationEndpoint = '/api/sos/location';
+  //payment
+   static const String createPaymentIntent = '/api/payment/create-intent';
+
 }
 
 extension on String {
@@ -60,6 +64,11 @@ extension on String {
 }
 
 abstract class AuthRepository {
+
+  //Payment
+  Future<Result<PaymentIntentResponse>> createPaymentIntent({
+  required String bookingDetailId,
+});
       //SOS
     Future<Result<RegistrationResponse>> startSos({
     required String taskerUserId,
@@ -264,7 +273,97 @@ class AuthRepositoryHttp implements AuthRepository {
     return null;
   }
 
+//Payment
 
+@override
+Future<Result<PaymentIntentResponse>> createPaymentIntent({
+  required String bookingDetailId,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.createPaymentIntent}',
+  );
+
+  final body = <String, dynamic>{
+    "bookingDetailId": bookingDetailId,
+  };
+
+  try {
+    debugPrint('>>> CREATE INTENT POST $uri');
+    debugPrint('>>> REQUEST: ${jsonEncode(body)}');
+
+    final res = await http
+        .post(uri, headers: _headers(), body: jsonEncode(body))
+        .timeout(timeout);
+
+    debugPrint('<<< CREATE INTENT STATUS: ${res.statusCode}');
+    debugPrint('<<< CREATE INTENT BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = PaymentIntentResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Create intent failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    // non-2xx
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          message = (err['errors'] as List).join(' • ');
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+//SOS 
 
 
   @override

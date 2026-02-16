@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Screens/User_booking/payment_method.dart';
 
 
 
 
 class TaskerConfirmationScreen extends StatelessWidget {
-  final String name, distance, rating, cost,taskerDetailId;
+  final String name, distance, rating, cost,bookingDetailId;
 
   TaskerConfirmationScreen({
     super.key,
@@ -13,7 +16,7 @@ class TaskerConfirmationScreen extends StatelessWidget {
     required this.distance,
     required this.rating,
     required this.cost,
-    required this.taskerDetailId
+    required this.bookingDetailId
   });
 
   // Theme taken from UserBookingHome
@@ -244,6 +247,12 @@ class TaskerConfirmationScreen extends StatelessWidget {
                     elevation: 0,
                   ),
                   onPressed: () {
+                    context.read<UserBookingBloc>().add(
+  CreatePaymentIntentRequested(
+    bookingDetailId: bookingDetailId
+  ),
+);
+
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (_) => const PaymentMethodScreen(),
@@ -251,7 +260,7 @@ class TaskerConfirmationScreen extends StatelessWidget {
                     );
                   },
                   child:  Text(
-                    'PROCEED TO PAYMENT ${taskerDetailId}',
+                    'PROCEED TO PAYMENT',
                     style: TextStyle(
                       fontFamily: kFont,
                       fontSize: 15,

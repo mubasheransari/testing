@@ -1,11 +1,13 @@
 import 'package:equatable/equatable.dart';
 import 'package:taskoon/Models/auth_model.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
-import 'package:taskoon/Models/booking_find_response.dart'; // ✅ add
+import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Models/payment_intent_response.dart'; // ✅ add
 
 
 
 
+enum CreatePaymentIntentStatus { initial, submitting, success, failure }
 
 enum UserBookingCreateStatus { initial, submitting, success, failure }
 enum UserBookingCancelStatus { initial, submitting, success, failure }
@@ -20,6 +22,11 @@ enum UpdateSosLocationStatus { initial, submitting, success, failure }
 
 // ignore: must_be_immutable
 class UserBookingState extends Equatable {
+
+  final CreatePaymentIntentStatus createPaymentIntentStatus;
+final PaymentIntentResponse? paymentIntentResponse;
+final String? paymentIntentError;
+
   // ✅ NEW CREATE BOOKING RESPONSE (API returns result as LIST)
   final BookingCreateResponse? bookingCreateResponse;
 
@@ -66,6 +73,9 @@ class UserBookingState extends Equatable {
 
 
   const UserBookingState({
+      this.createPaymentIntentStatus = CreatePaymentIntentStatus.initial,
+  this.paymentIntentResponse,
+  this.paymentIntentError,
      // SOS
     this.startSosStatus = StartSosStatus.initial,
     this.updateSosLocationStatus = UpdateSosLocationStatus.initial,
@@ -106,6 +116,12 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+    CreatePaymentIntentStatus? createPaymentIntentStatus,
+PaymentIntentResponse? paymentIntentResponse,
+String? paymentIntentError,
+bool clearPaymentIntentResponse = false,
+bool clearPaymentIntentError = false,
+
         // SOS
     StartSosStatus? startSosStatus,
     UpdateSosLocationStatus? updateSosLocationStatus,
@@ -162,6 +178,17 @@ class UserBookingState extends Equatable {
     String? changeAvailabilityError,
   }) {
     return UserBookingState(
+      createPaymentIntentStatus:
+    createPaymentIntentStatus ?? this.createPaymentIntentStatus,
+
+paymentIntentResponse: clearPaymentIntentResponse
+    ? null
+    : (paymentIntentResponse ?? this.paymentIntentResponse),
+
+paymentIntentError: clearPaymentIntentError
+    ? null
+    : (paymentIntentError ?? this.paymentIntentError),
+
             // SOS
       startSosStatus: startSosStatus ?? this.startSosStatus,
       updateSosLocationStatus:
@@ -236,6 +263,10 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+    createPaymentIntentStatus,
+paymentIntentResponse,
+paymentIntentError,
+
             // SOS
         startSosStatus,
         updateSosLocationStatus,

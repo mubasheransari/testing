@@ -7,6 +7,8 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
 
   UserBookingBloc(this.repo) : super(UserBookingState()) {
+    on<CreatePaymentIntentRequested>(_createPaymentIntentRequested);
+
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
     on<FindingTaskerRequested>(findingTaskerRequested);
@@ -17,6 +19,46 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<UpdateSosLocationRequested>(_updateSosLocationRequested);
 
   }
+
+  //Payment
+
+  Future<void> _createPaymentIntentRequested(
+  CreatePaymentIntentRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(
+    state.copyWith(
+      createPaymentIntentStatus: CreatePaymentIntentStatus.submitting,
+      clearPaymentIntentError: true,
+      clearPaymentIntentResponse: true,
+    ),
+  );
+
+  final r = await repo.createPaymentIntent(
+    bookingDetailId: e.bookingDetailId,
+  );
+
+  if (r.isSuccess) {
+    emit(
+      state.copyWith(
+        createPaymentIntentStatus: CreatePaymentIntentStatus.success,
+        paymentIntentResponse: r.data,
+        clearPaymentIntentError: true,
+      ),
+    );
+  } else {
+    emit(
+      state.copyWith(
+        createPaymentIntentStatus: CreatePaymentIntentStatus.failure,
+        paymentIntentError: r.failure?.message ?? 'Failed to create payment intent',
+        clearPaymentIntentResponse: true,
+      ),
+    );
+  }
+}
+
+
+  //SOS
 Future<void> _startSosRequested(
   StartSosRequested e,
   Emitter<UserBookingState> emit,

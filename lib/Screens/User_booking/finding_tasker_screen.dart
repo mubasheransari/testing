@@ -105,7 +105,7 @@ class _FindingYourTaskerScreenState extends State<FindingYourTaskerScreen> {
                   cost: (_lastRawNotification?['data']?['cost'] ?? 0).toString(),
                   rating: (_lastRawNotification?['data']?['taskerRating'] ?? 0).toString(),
                   distance: (_lastRawNotification?['data']?['distanceInKM'] ?? 0).toString(),
-                  taskerDetailId:
+                  bookingDetailId:
                       (_lastRawNotification?['data']?['bookingDetailId'] ?? 0).toString(),
                 ),
               ),

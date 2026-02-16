@@ -7,6 +7,8 @@ import '../../Models/auth_model.dart';
 import '../../Models/login_responnse.dart';
 import '../../Models/services_ui_model.dart';
 
+enum CreatePaymentIntentStatus { initial, submitting, success, failure }
+
 enum GetUserStatusEnum { initial, loading, success, failure }
 
 enum TrainingVideosStatus { initial, loading, success, failure }
@@ -30,6 +32,7 @@ enum PaymentStatus { initial, loading, urlReady, failure }
 enum CertificateSubmitStatus { initial, uploading, success, failure }
 
 class AuthenticationState extends Equatable {
+  
   final int certificationsSelectedCount;
 
   /// Summary for "Choose Services" screen

@@ -163,6 +163,18 @@ class UpdateSosLocationRequested extends UserBookingEvent {
   List<Object?> get props => [sosId, latitude, longitude];
 }
 
+class CreatePaymentIntentRequested extends UserBookingEvent {
+  final String bookingDetailId;
+
+  const CreatePaymentIntentRequested({
+    required this.bookingDetailId,
+  });
+
+  @override
+  List<Object?> get props => [bookingDetailId];
+}
+
+
 
 
 // abstract class UserBookingEvent extends Equatable {
