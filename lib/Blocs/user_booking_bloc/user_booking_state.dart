@@ -3,12 +3,6 @@ import 'package:taskoon/Models/auth_model.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
-
-import 'package:equatable/equatable.dart';
-import 'package:taskoon/Models/auth_model.dart';
-import 'package:taskoon/Models/booking_create_response.dart';
-import 'package:taskoon/Models/booking_find_response.dart';
-import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
 
 
@@ -25,9 +19,7 @@ enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
 enum AcceptBookingEnum { initial, updating, success, failure }
 
 class UserBookingState extends Equatable {
-  // =========================
-  // ✅ SOS (NEW)
-  // =========================
+
   final StartSosStatus startSosStatus;
   final StartSosResult? startSosResult;
   final String? startSosError;
@@ -35,20 +27,15 @@ class UserBookingState extends Equatable {
   final UpdateSosLocationStatus updateSosLocationStatus;
   final String? updateSosLocationError;
 
-  // (optional legacy if you still use RegistrationResponse elsewhere)
   final RegistrationResponse? startSosResponse;
   final RegistrationResponse? updateSosLocationResponse;
 
-  // =========================
-  // ✅ Payment Intent
-  // =========================
+
   final CreatePaymentIntentStatus createPaymentIntentStatus;
   final PaymentIntentResponse? paymentIntentResponse;
   final String? paymentIntentError;
 
-  // =========================
-  // ✅ Booking
-  // =========================
+
   final BookingCreateResponse? bookingCreateResponse;
 
   final BookingFindResponse? bookingFindResponse;

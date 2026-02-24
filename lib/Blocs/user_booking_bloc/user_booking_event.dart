@@ -173,4 +173,4 @@ class CreatePaymentIntentRequested extends UserBookingEvent {
   @override
   List<Object?> get props => [bookingDetailId];
 }
-
+class StopSosRequested extends UserBookingEvent {}

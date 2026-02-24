@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
@@ -6,6 +9,8 @@ import 'package:taskoon/Repository/auth_repository.dart';
 
 class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
+    Timer? _sosLocationTimer;
+  String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
     on<StartSosRequested>(_startSosRequested);
@@ -17,23 +22,71 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<ChangeAvailabilityStatus>(_changeAvailabilityStatus);
     on<AcceptBooking>(_acceptBooking);
     on<CancelBooking>(_onCancelUserBookingRequested);
+    on<StopSosRequested>(_stopSosRequested);
+  }
+void _startSosTimer() {
+  // ✅ cancel only timer, DO NOT null sosId here
+  _sosLocationTimer?.cancel();
+  _sosLocationTimer = null;
+
+  if (_activeSosId == null) {
+    print("❌ SOS TIMER NOT STARTED: _activeSosId is null");
+    return;
   }
 
+  print("✅ SOS TIMER STARTED for sosId=$_activeSosId");
+
+  _sosLocationTimer = Timer.periodic(const Duration(seconds: 10), (t) {
+    if (isClosed) {
+      print("⚠️ Bloc closed -> cancelling SOS timer");
+      t.cancel();
+      return;
+    }
+
+    if (_activeSosId == null) {
+      print("⚠️ sosId became null -> cancelling timer");
+      t.cancel();
+      return;
+    }
+
+    print("⏱️ SOS TIMER TICK -> dispatch UpdateSosLocationRequested");
+
+    add(
+      UpdateSosLocationRequested(
+        sosId: _activeSosId!,
+        latitude: 67.00,
+        longitude: 70.00,
+      ),
+    );
+  });
+}
+
+void _stopSosTimer() {
+  if (_sosLocationTimer != null) {
+    print("🛑 SOS TIMER STOPPED");
+  }
+  _sosLocationTimer?.cancel();
+  _sosLocationTimer = null;
+  _activeSosId = null;
+}
 
 
 Future<void> _startSosRequested(
   StartSosRequested e,
   Emitter<UserBookingState> emit,
 ) async {
+  // ✅ prevent double start if already active or submitting
   if (state.startSosStatus == StartSosStatus.submitting) return;
+  if (_activeSosId != null) {
+    print("ℹ️ SOS already active ($_activeSosId), ignoring StartSosRequested");
+    return;
+  }
 
-  emit(
-    state.copyWith(
-      startSosStatus: StartSosStatus.submitting,
-      clearStartSosError: true,
-      clearStartSosResult: true,
-    ),
-  );
+  emit(state.copyWith(
+    startSosStatus: StartSosStatus.submitting,
+    clearStartSosError: true,
+    clearStartSosResult: true,
+  ));
 
   final r = await repo.startSos(
     taskerUserId: e.taskerUserId,
@@ -42,33 +95,31 @@ Future<void> _startSosRequested(
     longitude: e.longitude,
   );
 
-if (r.isSuccess == true && r.data?.result != null) {
-final raw = r.data!.result!.toJson(); 
-final result = StartSosResult.fromJson(raw);
+  if (r.isSuccess == true && r.data?.result != null) {
+    final sosId = r.data!.result!.sosId;
+    _activeSosId = sosId;
 
+    // ✅ start 10s loop (with fallback initial location)
+    _startSosTimer();
 
-  emit(
-    state.copyWith(
+    emit(state.copyWith(
       startSosStatus: StartSosStatus.success,
-      startSosResult: result,
-    ),
-  );
-}
+      startSosResult: r.data!.result,
+      clearStartSosError: true,
+    ));
+  } else {
+    emit(state.copyWith(
+      startSosStatus: StartSosStatus.failure,
+      startSosError: r.failure?.message ?? 'SOS start failed',
+    ));
+  }
 }
 
 Future<void> _updateSosLocationRequested(
   UpdateSosLocationRequested e,
   Emitter<UserBookingState> emit,
 ) async {
-  if (state.updateSosLocationStatus ==
-      UpdateSosLocationStatus.submitting) return;
-
-  emit(
-    state.copyWith(
-      updateSosLocationStatus: UpdateSosLocationStatus.submitting,
-      clearUpdateSosLocationError: true,
-    ),
-  );
+  print("🚀 Calling updateSosLocation sosId=${e.sosId} lat=${e.latitude} lng=${e.longitude}");
 
   final r = await repo.updateSosLocation(
     sosId: e.sosId,
@@ -77,21 +128,64 @@ Future<void> _updateSosLocationRequested(
   );
 
   if (r.isSuccess == true) {
-    emit(
-      state.copyWith(
-        updateSosLocationStatus: UpdateSosLocationStatus.success,
-      ),
-    );
+    emit(state.copyWith(updateSosLocationStatus: UpdateSosLocationStatus.success));
   } else {
-    emit(
-      state.copyWith(
-        updateSosLocationStatus: UpdateSosLocationStatus.failure,
-        updateSosLocationError:
-            r.failure?.message ?? 'Failed to update SOS location',
-      ),
-    );
+    emit(state.copyWith(
+      updateSosLocationStatus: UpdateSosLocationStatus.failure,
+      updateSosLocationError: r.failure?.message ?? 'Failed to update SOS location',
+    ));
   }
 }
+
+Future<void> _stopSosRequested(
+  StopSosRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  _stopSosTimer();
+
+  emit(state.copyWith(
+    startSosStatus: StartSosStatus.initial,
+    updateSosLocationStatus: UpdateSosLocationStatus.initial,
+    clearStartSosResult: true,
+  ));
+}
+
+// Future<void> _updateSosLocationRequested(
+//   UpdateSosLocationRequested e,
+//   Emitter<UserBookingState> emit,
+// ) async {
+//   if (state.updateSosLocationStatus ==
+//       UpdateSosLocationStatus.submitting) return;
+
+//   emit(
+//     state.copyWith(
+//       updateSosLocationStatus: UpdateSosLocationStatus.submitting,
+//       clearUpdateSosLocationError: true,
+//     ),
+//   );
+
+//   final r = await repo.updateSosLocation(
+//     sosId: e.sosId,
+//     latitude: e.latitude,
+//     longitude: e.longitude,
+//   );
+
+//   if (r.isSuccess == true) {
+//     emit(
+//       state.copyWith(
+//         updateSosLocationStatus: UpdateSosLocationStatus.success,
+//       ),
+//     );
+//   } else {
+//     emit(
+//       state.copyWith(
+//         updateSosLocationStatus: UpdateSosLocationStatus.failure,
+//         updateSosLocationError:
+//             r.failure?.message ?? 'Failed to update SOS location',
+//       ),
+//     );
+//   }
+// }
 
   //Payment
 

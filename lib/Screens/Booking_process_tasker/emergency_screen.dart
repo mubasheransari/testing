@@ -210,34 +210,41 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
               // SOS center
               Center(
                 child: _SosButton(
-                  onTap: ()async{
-                         print("IMRAN KHAN PTI");
-          print("IMRAN KHAN PTI");
-          print("IMRAN KHAN PTI");
-          final box = GetStorage();
-          final savedUserId = box.read<String>('userId');
+      onTap: () async {
+  final box = GetStorage();
+  final savedUserId = (box.read<String>('userId') ?? '').trim();
 
-          context.read<UserBookingBloc>().add(
-                StartSosRequested(
-                  taskerUserId: savedUserId.toString(),
-                  bookingDetailId: "94a6d2f8-3e6d-4586-9027-bc0ecfea76bb",
-                  latitude: 67.00,
-                  longitude: 70.00,
-                ),
-              );
-                    await showSharingLocationDialog(
-  context,
-  emergencyNumber: widget.emergencyNumber,
-  locationText: _locationLabel, // or "Lat..., Lng..." or resolved address
-  onCall: () => _call(widget.emergencyNumber),
-  onStopSharing: () {
-    // ✅ stop your sharing logic here (timer/stream/etc.)
-    // e.g. _sharingTimer?.cancel(); setState(() => _isSharing = false);
-  },
-);
+  const bookingDetailId = "94a6d2f8-3e6d-4586-9027-bc0ecfea76bb";
+  const initialLat = 67.00;
+  const initialLng = 70.00;
 
-                  },
-                  controller: _pulseCtl,
+  // ✅ capture bloc once (avoid context.read inside dialog)
+  final bookingBloc = context.read<UserBookingBloc>();
+
+  // ✅ open dialog (dialog itself will dispatch StartSosRequested ONCE)
+  await showSharingLocationDialog(
+    context,
+    bookingBloc: bookingBloc,
+    emergencyNumber: widget.emergencyNumber,
+    locationText: _locationLabel,
+
+    bookingDetailId: bookingDetailId,
+    taskerUserId: savedUserId,
+    initialLat: initialLat,
+    initialLng: initialLng,
+
+    onCall: () => _call(widget.emergencyNumber),
+
+    // ✅ stop + close is handled safely here
+    onStopSharing: () async {
+      bookingBloc.add(StopSosRequested());
+    },
+
+    barrierDismissible: false,
+  );
+},
+  controller: _pulseCtl,
+                 // controller: _pulseCtl,
                 ),
               ),
               const SizedBox(height: 18),
