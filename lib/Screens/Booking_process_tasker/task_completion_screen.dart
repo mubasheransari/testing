@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 
 class TaskCompletionScreen extends StatefulWidget {
   const TaskCompletionScreen({super.key});

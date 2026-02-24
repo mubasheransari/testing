@@ -766,21 +766,6 @@ class AuthenticationBloc
         ),
       );
     }
-    // emit(state.copyWith(status: AuthStatus.loading, error: null));
-
-    // final res = await repo.signIn(email: event.email, password: event.password);
-
-    // if (res.isSuccess) {
-    //   emit(state.copyWith(
-    //     status: AuthStatus.success,
-    //     loginResponse: res.data,
-    //   ));
-    // } else {
-    //   emit(state.copyWith(
-    //     status: AuthStatus.failure,
-    //     error: res.failure?.message ?? 'Login failed',
-    //   ));
-    // }
   }
 
   Future<void> _onGetUserStatusRequested(

@@ -1,10 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-
-import 'dart:async';
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/booking_calcel_dialog.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/task_completion_screen.dart';
 

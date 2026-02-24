@@ -67,16 +67,7 @@ class MyAccountScreen extends StatefulWidget {
 
 class _MyAccountScreenState extends State<MyAccountScreen> {
 
-  // UserProfile profile = const UserProfile(
-  //   avatarPath: null,
-  //   fullName: 'Steaphan Micheal',
-  //   dob: null,
-  //   address: '41 block, e-street',
-  //   bankName: 'ABC bank',
-  //   accountNumberMasked: '**** **** 4565',
-  //   bsb: '457',
-  //   abn: '36 123 456 789',
-  // );
+
 
   @override
   Widget build(BuildContext context) {

@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:taskoon/Constants/constants.dart';
-import 'package:taskoon/Screens/Booking_process_tasker/chat_with_tasker.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/prestart_safety_check_screen.dart';
 
 class ArrivalConfirmGlassScreen extends StatefulWidget {
@@ -76,24 +75,10 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                             const SizedBox(height: 18),
                             Image.asset('assets/arrived_avatar.png',height: 99,width: 199,),
 
-                            // Illustration placeholder (swap with your asset if you want)
-                          /*  Container(
-                              width: 96,
-                              height: 96,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.40),
-                                borderRadius: BorderRadius.circular(28),
-                                border: Border.all(color: Colors.white.withOpacity(.45)),
-                              ),
-                              alignment: Alignment.center,
-                              child:  Image.asset('assets/arrived_avatar.png',height: 140,width: 149,)
-                              
-                              //const Icon(Icons.engineering_rounded, size: 56, color: Color(0xFF1F2937)),
-                            ),*/
-
+                   
                             const SizedBox(height: 24),
 
-                            Text(
+                          const  Text(
                               'Task details',
                               style: TextStyle(
                                 color: const Color(0xFF1F2937),
