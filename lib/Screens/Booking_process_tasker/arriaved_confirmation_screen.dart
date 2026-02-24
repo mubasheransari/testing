@@ -32,12 +32,11 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
-                color: Colors.white.withOpacity(0.08), // translucent frosted film
+                color: Colors.white.withOpacity(0.08), 
               ),
             ),
           ),
 
-          // Content
           SafeArea(
             child: Center(
               child: ConstrainedBox(

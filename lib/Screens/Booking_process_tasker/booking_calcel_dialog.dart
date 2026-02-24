@@ -5,7 +5,6 @@ import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.da
 
 enum TaskerCancelledAction { findAnother, cancelTask, viewRefund, closed }
 
-/// Shows the "Tasker cancelled" dialog and returns the user action.
 Future<TaskerCancelledAction?> showTaskerCancelledDialog(
   BuildContext context, {
   String title = 'Tasker cancelled',
@@ -83,7 +82,6 @@ Future<TaskerCancelledAction?> showTaskerCancelledDialog(
   );
 }
 
-/* ============================ INTERNAL WIDGET ============================ */
 
 class _TaskerCancelledDialogCard extends StatelessWidget {
   const _TaskerCancelledDialogCard({

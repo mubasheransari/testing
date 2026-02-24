@@ -1,5 +1,3 @@
-
-
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
@@ -27,7 +25,7 @@ const Color kBg = Color(0xFFF8F7FB);
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({
     super.key,
-    this.emergencyNumber = '000', // change to 911/112 depending on region
+    this.emergencyNumber = '112233', // change to 911/112 depending on region
     this.supportLabel = 'Notify Taskoon Support',
     this.supportSubtitle = 'Tap to alert us – we will step in quickly!',
     this.onSupportTap, // override to open your in-app support if desired

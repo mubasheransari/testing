@@ -1,23 +1,6 @@
-// ✅ Animated "Sharing Location" dialog (theme-matching)
-// - Creative pulse + wave rings + subtle gradient
-// - Buttons: Call emergency number, Stop sharing
-// - Optional: shows coords + address label
-//
-// Usage:
-// showSharingLocationDialog(
-//   context,
-//   emergencyNumber: '000',
-//   locationText: _locationLabel, // e.g. "Lat -33..., Lng 151..."
-//   onCall: () => _call(widget.emergencyNumber),
-//   onStopSharing: () { /* stop your stream/timer */ },
-// );
-
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
-import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
+
 
 const Color kPrimary = Color(0xFF5C2E91);
 const Color kTextDark = Color(0xFF3E1E69);
@@ -41,10 +24,10 @@ Future<Future<Object?>> showSharingLocationDialog(
     transitionDuration: const Duration(milliseconds: 340),
  pageBuilder: (_, __, ___) {
   return Center(
-    child: Material( // ✅ provides Material ancestor for InkWell
+    child: Material(
       color: Colors.transparent,
       child: _SharingLocationDialogBody(
-        emergencyNumber: emergencyNumber,
+        emergencyNumber: '112233',
         title: title,
         subtitle: subtitle,
         locationText: locationText,
@@ -410,11 +393,10 @@ class _PillBadge extends StatelessWidget {
   }
 }
 
-/* ===================== Animated Painter (pulse rings) ===================== */
 
 class _PulsePainter extends CustomPainter {
   _PulsePainter({required this.progress});
-  final double progress; // 0..1
+  final double progress; 
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -437,7 +419,6 @@ class _PulsePainter extends CustomPainter {
       canvas.drawCircle(center, radius, paint);
     }
 
-    // subtle rotating dots around (creative)
     final dotCount = 10;
     final dotRadius = 2.2;
     final orbit = 62.0;

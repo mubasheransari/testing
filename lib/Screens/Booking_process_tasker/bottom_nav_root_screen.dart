@@ -12,7 +12,6 @@ class TaskoonTheme {
 
   static const colors = _TaskoonColors();
 
-  // modern radii + durations
   static const double r12 = 12;
   static const double r16 = 16;
   static const double r20 = 20;
@@ -21,7 +20,6 @@ class TaskoonTheme {
   static const Duration fast = Duration(milliseconds: 160);
   static const Duration med = Duration(milliseconds: 220);
 
-  // unified shadows (soft, modern)
   static List<BoxShadow> softShadow([double opacity = .10]) => [
         BoxShadow(
           color: Colors.black.withOpacity(opacity),

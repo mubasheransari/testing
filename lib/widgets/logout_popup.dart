@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:taskoon/Routes/routes.dart';
 import 'package:taskoon/Screens/Authentication/login_screen.dart';
 
 
@@ -32,7 +31,6 @@ class GlobalSignOut {
   }
 }
 
-/* ===================== THEMED SIGNOUT DIALOG ===================== Testing@123 */
 
 class _SignOutDialog extends StatelessWidget {
   const _SignOutDialog();
