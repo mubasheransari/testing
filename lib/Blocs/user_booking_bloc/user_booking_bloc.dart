@@ -8,11 +8,9 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
-    //sos
-      on<StartSosRequested>(_startSosRequested);
-           on<UpdateSosLocationRequested>(_updateSosLocationRequested);
+    on<StartSosRequested>(_startSosRequested);
+    on<UpdateSosLocationRequested>(_updateSosLocationRequested);
     on<CreatePaymentIntentRequested>(_createPaymentIntentRequested);
-
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
     on<UpdateUserLocationRequested>(_onUpdateUserLocationRequested);
     on<FindingTaskerRequested>(findingTaskerRequested);
@@ -21,11 +19,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<CancelBooking>(_onCancelUserBookingRequested);
   }
 
-  //sos
 
-  // ===============================
-// SOS BLOC METHODS
-// ===============================
 
 Future<void> _startSosRequested(
   StartSosRequested e,
@@ -49,12 +43,9 @@ Future<void> _startSosRequested(
   );
 
 if (r.isSuccess == true && r.data?.result != null) {
-// final raw = r.data!.result!.toJson();
-final raw = r.data!.result!.toJson(); // ✅ Map<String, dynamic>
+final raw = r.data!.result!.toJson(); 
 final result = StartSosResult.fromJson(raw);
-  // final result = StartSosResult(
-  //    sosId: raw['sosId']?.toString() ?? '',
-  // );
+
 
   emit(
     state.copyWith(
