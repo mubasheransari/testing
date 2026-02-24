@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,14 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/emergency_form_tabs.dart';
 import 'package:taskoon/widgets/share_location_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-
 
 const Color kPrimary = Color(0xFF5C2E91);
 const Color kTextDark = Color(0xFF3E1E69);
@@ -25,10 +21,10 @@ const Color kBg = Color(0xFFF8F7FB);
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({
     super.key,
-    this.emergencyNumber = '112233', // change to 911/112 depending on region
+    this.emergencyNumber = '112233',
     this.supportLabel = 'Notify Taskoon Support',
     this.supportSubtitle = 'Tap to alert us – we will step in quickly!',
-    this.onSupportTap, // override to open your in-app support if desired
+    this.onSupportTap,
   });
 
   final String emergencyNumber;
@@ -40,7 +36,8 @@ class EmergencyScreen extends StatefulWidget {
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
-class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProviderStateMixin {
+class _EmergencyScreenState extends State<EmergencyScreen>
+    with SingleTickerProviderStateMixin {
   final Completer<GoogleMapController> _mapCtl = Completer();
   GoogleMapController? _gmaps;
 
@@ -51,9 +48,10 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
   String _locationLabel = 'Locating…';
 
   // SOS pulse
-  late final AnimationController _pulseCtl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 950))
-        ..repeat(reverse: true);
+  late final AnimationController _pulseCtl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 950),
+  )..repeat(reverse: true);
 
   @override
   void initState() {
@@ -79,7 +77,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       final here = LatLng(pos.latitude, pos.longitude);
 
       setState(() {
@@ -87,7 +87,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
         _meMarker = Marker(
           markerId: const MarkerId('me'),
           position: here,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueViolet,
+          ),
         );
         _loadingLocation = false;
         _locationLabel =
@@ -108,15 +110,19 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
     if (!enabled) return false;
 
     var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+    if (perm == LocationPermission.denied)
+      perm = await Geolocator.requestPermission();
 
-    return perm == LocationPermission.always || perm == LocationPermission.whileInUse;
+    return perm == LocationPermission.always ||
+        perm == LocationPermission.whileInUse;
   }
 
   Future<void> _animateTo(LatLng target) async {
     final c = _gmaps ?? await _mapCtl.future;
     c.animateCamera(
-      CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 14.5)),
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: 14.5),
+      ),
     );
   }
 
@@ -137,7 +143,10 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
 
   Future<void> _shareLocation() async {
     // keep your existing nav
-    Navigator.push(context, MaterialPageRoute(builder: (_) => EmergencyFormTabsScreen()));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => EmergencyFormTabsScreen()),
+    );
   }
 
   void _onSupport() {
@@ -210,56 +219,47 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
               // SOS center
               Center(
                 child: _SosButton(
-      onTap: () async {
-  final box = GetStorage();
-  final savedUserId = (box.read<String>('userId') ?? '').trim();
+                  onTap: () async {
+                    final box = GetStorage();
+                    final savedUserId = (box.read<String>('userId') ?? '')
+                        .trim();
 
-  const bookingDetailId = "94a6d2f8-3e6d-4586-9027-bc0ecfea76bb";
-  const initialLat = 67.00;
-  const initialLng = 70.00;
+                    const bookingDetailId =
+                        "94a6d2f8-3e6d-4586-9027-bc0ecfea76bb";
+                    const initialLat = 67.00;
+                    const initialLng = 70.00;
 
-  // ✅ capture bloc once (avoid context.read inside dialog)
-  final bookingBloc = context.read<UserBookingBloc>();
+                    // ✅ capture bloc once (avoid context.read inside dialog)
+                    final bookingBloc = context.read<UserBookingBloc>();
 
-  // ✅ open dialog (dialog itself will dispatch StartSosRequested ONCE)
-  await showSharingLocationDialog(
-    context,
-    bookingBloc: bookingBloc,
-    emergencyNumber: widget.emergencyNumber,
-    locationText: _locationLabel,
+                    // ✅ open dialog (dialog itself will dispatch StartSosRequested ONCE)
+                    await showSharingLocationDialog(
+                      context,
+                      bookingBloc: bookingBloc,
+                      emergencyNumber: widget.emergencyNumber,
+                      locationText: _locationLabel,
 
-    bookingDetailId: bookingDetailId,
-    taskerUserId: savedUserId,
-    initialLat: initialLat,
-    initialLng: initialLng,
+                      bookingDetailId: bookingDetailId,
+                      taskerUserId: savedUserId,
+                      initialLat: initialLat,
+                      initialLng: initialLng,
 
-    onCall: () => _call(widget.emergencyNumber),
+                      onCall: () => _call(widget.emergencyNumber),
 
-    // ✅ stop + close is handled safely here
-    onStopSharing: () async {
-      bookingBloc.add(StopSosRequested());
-    },
+                      // ✅ stop + close is handled safely here
+                      onStopSharing: () async {
+                        bookingBloc.add(StopSosRequested());
+                      },
 
-    barrierDismissible: false,
-  );
-},
-  controller: _pulseCtl,
-                 // controller: _pulseCtl,
+                      barrierDismissible: false,
+                    );
+                  },
+                  controller: _pulseCtl,
+                  // controller: _pulseCtl,
                 ),
               ),
               const SizedBox(height: 18),
-              // Center(
-              //   child: const Text(
-              //           'Press the SOS button to activate\nemergency services',
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: Color(0xFF5C2E91),
-              //             fontWeight: FontWeight.w800,
-              //             fontSize: 16,
-              //             height: 1.25,
-              //           ),
-              //         ),
-              // ),
+
               const Center(
                 child: Text(
                   'Press the SOS button to activate\nemergency services',
@@ -309,7 +309,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
 
               const SizedBox(height: 14),
 
-              // Map card
               _WhiteCard(
                 padding: const EdgeInsets.all(10),
                 child: Column(
@@ -323,7 +322,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                             color: kPrimary.withOpacity(.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.map_rounded, color: kPrimary, size: 18),
+                          child: const Icon(
+                            Icons.map_rounded,
+                            color: kPrimary,
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         const Expanded(
@@ -339,8 +342,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                         ),
                         _SmallPill(
                           label: _loadingLocation ? 'Locating' : 'Ready',
-                          fg: _loadingLocation ? const Color(0xFFEE8A41) : const Color(0xFF1E8E66),
-                          bg: _loadingLocation ? const Color(0xFFFFF4E8) : const Color(0xFFEFF8F4),
+                          fg: _loadingLocation
+                              ? const Color(0xFFEE8A41)
+                              : const Color(0xFF1E8E66),
+                          bg: _loadingLocation
+                              ? const Color(0xFFFFF4E8)
+                              : const Color(0xFFEFF8F4),
                         ),
                       ],
                     ),
@@ -354,7 +361,10 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                             width: double.infinity,
                             child: GoogleMap(
                               onMapCreated: _onMapCreated,
-                              initialCameraPosition: CameraPosition(target: _center, zoom: 12.5),
+                              initialCameraPosition: CameraPosition(
+                                target: _center,
+                                zoom: 12.5,
+                              ),
                               markers: {if (_meMarker != null) _meMarker!},
                               myLocationEnabled: true,
                               myLocationButtonEnabled: false,
@@ -364,7 +374,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                               rotateGesturesEnabled: true,
                               tiltGesturesEnabled: true,
                               gestureRecognizers: {
-                                Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+                                Factory<OneSequenceGestureRecognizer>(
+                                  () => EagerGestureRecognizer(),
+                                ),
                               },
                             ),
                           ),
@@ -399,12 +411,18 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                         IconButton(
                           tooltip: 'Copy',
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(text: _locationLabel));
+                            Clipboard.setData(
+                              ClipboardData(text: _locationLabel),
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Location copied')),
                             );
                           },
-                          icon: const Icon(Icons.copy_rounded, color: kPrimary, size: 20),
+                          icon: const Icon(
+                            Icons.copy_rounded,
+                            color: kPrimary,
+                            size: 20,
+                          ),
                         ),
                       ],
                     ),
@@ -423,7 +441,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
                     backgroundColor: kPrimary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   icon: const Icon(Icons.share_location_rounded),
                   label: const Text(
@@ -443,8 +463,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
     );
   }
 }
-
-/* ============================== UI PARTS ============================== */
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
@@ -493,7 +511,9 @@ class _HeroCard extends StatelessWidget {
               border: Border.all(color: kPrimary.withOpacity(.14)),
             ),
             child: Icon(
-              loading ? Icons.location_searching_rounded : Icons.location_on_rounded,
+              loading
+                  ? Icons.location_searching_rounded
+                  : Icons.location_on_rounded,
               color: kPrimary,
             ),
           ),
@@ -513,7 +533,9 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  loading ? 'Fetching your current location…' : 'Your location is ready to share.',
+                  loading
+                      ? 'Fetching your current location…'
+                      : 'Your location is ready to share.',
                   style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12.5,
@@ -522,53 +544,6 @@ class _HeroCard extends StatelessWidget {
                     height: 1.25,
                   ),
                 ),
-           /*    const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        locationLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          color: kMuted,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: onCopy,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: kPrimary.withOpacity(.08),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: kPrimary.withOpacity(.16)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.copy_rounded, size: 16, color: kPrimary),
-                            SizedBox(width: 6),
-                            Text(
-                              'Copy',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: kPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),*/
               ],
             ),
           ),
@@ -615,12 +590,15 @@ class _SosButton extends StatelessWidget {
                     offset: const Offset(0, 10),
                   ),
                 ],
-                border: Border.all(color: Colors.white.withOpacity(.92), width: 7),
+                border: Border.all(
+                  color: Colors.white.withOpacity(.92),
+                  width: 7,
+                ),
               ),
               alignment: Alignment.center,
-              child: Column(
+              child: const Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
                     'SOS',
                     style: TextStyle(
@@ -632,16 +610,6 @@ class _SosButton extends StatelessWidget {
                       height: 1.0,
                     ),
                   ),
-                  // SizedBox(height: 6),
-                  // Text(
-                  //   'Tap to call',
-                  //   style: TextStyle(
-                  //     fontFamily: 'Poppins',
-                  //     color: Colors.white,
-                  //     fontWeight: FontWeight.w700,
-                  //     fontSize: 12.5,
-                  //   ),
-                  // ),
                 ],
               ),
             ),
@@ -754,7 +722,10 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _WhiteCard extends StatelessWidget {
-  const _WhiteCard({required this.child, this.padding = const EdgeInsets.all(14)});
+  const _WhiteCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
   final Widget child;
   final EdgeInsets padding;
 
@@ -832,10 +803,7 @@ class _CircleIconButton extends StatelessWidget {
 }
 
 class _ConfirmSOSDialog extends StatelessWidget {
-  const _ConfirmSOSDialog({
-    required this.onConfirm,
-    required this.number,
-  });
+  const _ConfirmSOSDialog({required this.onConfirm, required this.number});
 
   final VoidCallback onConfirm;
   final String number;
@@ -868,7 +836,10 @@ class _ConfirmSOSDialog extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
           child: const Text(
             'Cancel',
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         ElevatedButton(
@@ -880,11 +851,16 @@ class _ConfirmSOSDialog extends StatelessWidget {
             backgroundColor: kPrimary,
             foregroundColor: Colors.white,
             elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
           child: const Text(
             'Call now',
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w900),
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],
@@ -910,4 +886,3 @@ const String _greyMapStyle = '''
   {"featureType":"water","elementType":"geometry.fill","stylers":[{"color":"#c9c9c9"}]}
 ]
 ''';
-

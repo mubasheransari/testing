@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
 class DialogWidget extends StatelessWidget {
   final VoidCallback onGoBackPressed;
   final VoidCallback onCancelPressed;

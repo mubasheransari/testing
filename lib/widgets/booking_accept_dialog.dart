@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:taskoon/Constants/constants.dart';
-import 'package:taskoon/widgets/booking_wait_longer_dialog.dart';
 
 Future<bool?> showBookingAcceptDialog(
   BuildContext context, {
@@ -65,82 +64,7 @@ Future<bool?> showBookingAcceptDialog(
   );
 }
 
-// Future<void> showBookingAcceptDialog(
-//   BuildContext context, {
-//   // Assets
-//   required String topBadgeAsset,
-//   required String watermarkAsset,
-//   String? downloadIconAsset,
-//   String? shareIconAsset,
 
-//   // Text
-//   String title = 'Accept Booking',
-//   String subtitle = 'Do you want to accept the booking?',
-
-//   // Actions
-//   VoidCallback? onAccept,
-//   VoidCallback? onCancel,
-// }) {
-//   return showGeneralDialog(
-//     context: context,
-//     barrierDismissible: true,
-//     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-//     barrierColor: Colors.black.withOpacity(.15),
-//     transitionDuration: const Duration(milliseconds: 220),
-//     pageBuilder: (_, __, ___) {
-//       final width = MediaQuery.of(context).size.width * 0.80;
-//       return Stack(
-//         fit: StackFit.expand,
-//         children: [
-//           BackdropFilter(
-//             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-//             child: const SizedBox.expand(),
-//           ),
-//           Center(
-//             child: _DecisionDialogCard(
-//               width: width,
-//               title: title,
-//               subtitle: subtitle,
-//               topBadgeAsset: topBadgeAsset,
-//               watermarkAsset: watermarkAsset,
-//               // optional icons (unused visually here but kept for parity)
-//               primaryLabel: 'Accept',
-//               primaryIcon: Icons.task_alt,
-//               onPrimary: () {
-//                 Navigator.of(context).pop(); // close this dialog first
-//                 onAccept?.call();
-//               },
-//               secondaryLabel: 'Cancel',
-//               secondaryIcon: Icons.cancel,
-//               onSecondary: () {
-//                 Navigator.of(context).pop();
-//                 onCancel?.call();
-//               },
-//               secondaryOutlined: true,
-//               warningText:
-//                   'Cancellations may affect your future bookings',
-//             ),
-//           ),
-//         ],
-//       );
-//     },
-//     transitionBuilder: (ctx, anim, _, child) {
-//       final curved = CurvedAnimation(
-//         parent: anim,
-//         curve: Curves.easeOutCubic,
-//         reverseCurve: Curves.easeInCubic,
-//       );
-//       return FadeTransition(
-//         opacity: curved,
-//         child: SlideTransition(
-//           position: Tween<Offset>(begin: const Offset(0, .06), end: Offset.zero)
-//               .animate(curved),
-//           child: child,
-//         ),
-//       );
-//     },
-//   );
-// }
 class _DecisionDialogCard extends StatelessWidget {
   const _DecisionDialogCard({
     required this.width,
@@ -179,8 +103,8 @@ class _DecisionDialogCard extends StatelessWidget {
   final VoidCallback onSecondary;
   final bool secondaryOutlined;
 
-  final String? warningText;   // red line (optional)
-  final String? highlightText; // green line (optional)
+  final String? warningText;  
+  final String? highlightText;
   final Color? highlightColor;
 
   @override
