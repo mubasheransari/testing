@@ -49,10 +49,12 @@ Future<void> _startSosRequested(
   );
 
 if (r.isSuccess == true && r.data?.result != null) {
-  final raw = r.data!.result as Map<String, dynamic>;
-  final result = StartSosResult(
-     sosId: raw['sosId']?.toString() ?? '',
-  );
+// final raw = r.data!.result!.toJson();
+final raw = r.data!.result!.toJson(); // ✅ Map<String, dynamic>
+final result = StartSosResult.fromJson(raw);
+  // final result = StartSosResult(
+  //    sosId: raw['sosId']?.toString() ?? '',
+  // );
 
   emit(
     state.copyWith(

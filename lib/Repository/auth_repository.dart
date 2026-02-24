@@ -10,6 +10,7 @@ import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/service_document_model.dart';
+import 'package:taskoon/Models/sos/start_sos_response.dart';
 import 'package:taskoon/Models/training_videos_model.dart';
 import 'package:taskoon/Models/user_details_model.dart';
 import '../Models/auth_model.dart';
@@ -70,7 +71,7 @@ abstract class AuthRepository {
   required String bookingDetailId,
 });
       //SOS
-    Future<Result<RegistrationResponse>> startSos({
+    Future<Result<StartSosResponse>> startSos({
     required String taskerUserId,
     required String bookingDetailId,
     required double latitude,
@@ -367,7 +368,8 @@ Future<Result<PaymentIntentResponse>> createPaymentIntent({
 
 
   @override
-Future<Result<RegistrationResponse>> startSos({
+@override
+Future<Result<StartSosResponse>> startSos({
   required String taskerUserId,
   required String bookingDetailId,
   required double latitude,
@@ -397,9 +399,15 @@ Future<Result<RegistrationResponse>> startSos({
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final raw = res.body.trim();
+
+      // ✅ backend returned empty body
       if (raw.isEmpty) {
         return Result.ok(
-          RegistrationResponse(isSuccess: true, message: 'SOS started'),
+          StartSosResponse(
+            isSuccess: true,
+            message: 'Sos request has been raised',
+            result: null,
+          ),
         );
       }
 
@@ -414,13 +422,13 @@ Future<Result<RegistrationResponse>> startSos({
         );
       }
 
-      final resp = RegistrationResponse.fromJson(parsed);
+      final resp = StartSosResponse.fromJson(parsed);
 
-      if (!resp.isSuccess) {
+      if (resp.isSuccess != true) {
         return Result.fail(
           Failure(
             code: 'validation',
-            message: resp.message ?? 'SOS start failed',
+            message: resp.message.isNotEmpty ? resp.message : 'SOS start failed',
             statusCode: res.statusCode,
           ),
         );

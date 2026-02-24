@@ -57,6 +57,7 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                               'Please confirm\nyour arrival',
                               textAlign: TextAlign.center,
                               style: TextStyle(
+                                     fontFamily: 'Poppins',
                                 color: const Color(0xFF111827),
                                 fontWeight: FontWeight.w800,
                                 height: 1.15,
@@ -68,6 +69,7 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                               "You're scheduled to begin shortly",
                               textAlign: TextAlign.center,
                               style: TextStyle(
+                                     fontFamily: 'Poppins',
                                 color: const Color(0xFF6B7280),
                                 fontSize: size.width < 360 ? 12 : 14,
                               ),
@@ -81,6 +83,7 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                           const  Text(
                               'Task details',
                               style: TextStyle(
+                                     fontFamily: 'Poppins',
                                 color: const Color(0xFF1F2937),
                                 fontSize: 22,
                                 fontWeight: FontWeight.w800,
@@ -118,6 +121,7 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                               trackBackground:  Colors.red,
                               knobColor: Colors.white,
                               textStyle: const TextStyle(
+                                     fontFamily: 'Poppins',
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -128,7 +132,8 @@ class _ArrivalConfirmGlassScreenState extends State<ArrivalConfirmGlassScreen> {
                             const SizedBox(height: 10),
                             const Text(
                               'Swipe to notify the client',
-                              style: TextStyle(color: Color(0xFF6B7280), fontSize: 12.5),
+                                    
+                              style: TextStyle(color: Color(0xFF6B7280), fontSize: 12.5, fontFamily: 'Poppins',),
                             ),
                           ],
                         ),
@@ -252,7 +257,7 @@ class _DetailRow extends StatelessWidget {
               height: 1.35,
             ),
         children: [
-          TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+          TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Poppins',)),
           TextSpan(text: value),
         ],
       ),
@@ -384,7 +389,7 @@ class _SwipeToConfirmState extends State<SwipeToConfirm> with SingleTickerProvid
                           maxLines: 1,
                           overflow: TextOverflow.fade,
                           style: widget.textStyle ??
-                              const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                              const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, fontFamily: 'Poppins'),
                         ),
                       ),
                     ),
