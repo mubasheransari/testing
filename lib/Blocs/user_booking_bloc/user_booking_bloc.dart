@@ -1,12 +1,16 @@
 import 'package:bloc/bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
+import 'package:taskoon/Models/sos/start_sos_response.dart';
 import 'package:taskoon/Repository/auth_repository.dart';
 
 class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   final AuthRepository repo;
 
-  UserBookingBloc(this.repo) : super(UserBookingState()) {
+  UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    //sos
+      on<StartSosRequested>(_startSosRequested);
+           on<UpdateSosLocationRequested>(_updateSosLocationRequested);
     on<CreatePaymentIntentRequested>(_createPaymentIntentRequested);
 
     on<CreateUserBookingRequested>(_onCreateUserBookingRequested);
@@ -16,6 +20,85 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<AcceptBooking>(_acceptBooking);
     on<CancelBooking>(_onCancelUserBookingRequested);
   }
+
+  //sos
+
+  // ===============================
+// SOS BLOC METHODS
+// ===============================
+
+Future<void> _startSosRequested(
+  StartSosRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  if (state.startSosStatus == StartSosStatus.submitting) return;
+
+  emit(
+    state.copyWith(
+      startSosStatus: StartSosStatus.submitting,
+      clearStartSosError: true,
+      clearStartSosResult: true,
+    ),
+  );
+
+  final r = await repo.startSos(
+    taskerUserId: e.taskerUserId,
+    bookingDetailId: e.bookingDetailId,
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+if (r.isSuccess == true && r.data?.result != null) {
+  final raw = r.data!.result as Map<String, dynamic>;
+  final result = StartSosResult(
+     sosId: raw['sosId']?.toString() ?? '',
+  );
+
+  emit(
+    state.copyWith(
+      startSosStatus: StartSosStatus.success,
+      startSosResult: result,
+    ),
+  );
+}
+}
+
+Future<void> _updateSosLocationRequested(
+  UpdateSosLocationRequested e,
+  Emitter<UserBookingState> emit,
+) async {
+  if (state.updateSosLocationStatus ==
+      UpdateSosLocationStatus.submitting) return;
+
+  emit(
+    state.copyWith(
+      updateSosLocationStatus: UpdateSosLocationStatus.submitting,
+      clearUpdateSosLocationError: true,
+    ),
+  );
+
+  final r = await repo.updateSosLocation(
+    sosId: e.sosId,
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess == true) {
+    emit(
+      state.copyWith(
+        updateSosLocationStatus: UpdateSosLocationStatus.success,
+      ),
+    );
+  } else {
+    emit(
+      state.copyWith(
+        updateSosLocationStatus: UpdateSosLocationStatus.failure,
+        updateSosLocationError:
+            r.failure?.message ?? 'Failed to update SOS location',
+      ),
+    );
+  }
+}
 
   //Payment
 

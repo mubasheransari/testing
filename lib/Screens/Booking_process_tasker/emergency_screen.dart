@@ -6,9 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/emergency_form_tabs.dart';
 import 'package:taskoon/widgets/share_location_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -209,6 +213,20 @@ class _EmergencyScreenState extends State<EmergencyScreen> with SingleTickerProv
               Center(
                 child: _SosButton(
                   onTap: ()async{
+                         print("IMRAN KHAN PTI");
+          print("IMRAN KHAN PTI");
+          print("IMRAN KHAN PTI");
+          final box = GetStorage();
+          final savedUserId = box.read<String>('userId');
+
+          context.read<UserBookingBloc>().add(
+                StartSosRequested(
+                  taskerUserId: savedUserId.toString(),
+                  bookingDetailId: "94a6d2f8-3e6d-4586-9027-bc0ecfea76bb",
+                  latitude: 67.00,
+                  longitude: 70.00,
+                ),
+              );
                     await showSharingLocationDialog(
   context,
   emergencyNumber: widget.emergencyNumber,

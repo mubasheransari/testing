@@ -4,75 +4,92 @@ import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 
+import 'package:equatable/equatable.dart';
+import 'package:taskoon/Models/auth_model.dart';
+import 'package:taskoon/Models/booking_create_response.dart';
+import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Models/payment_intent_response.dart';
+import 'package:taskoon/Models/sos/start_sos_response.dart';
+
+
+
+enum StartSosStatus { initial, submitting, success, failure }
+enum UpdateSosLocationStatus { initial, submitting, success, failure }
 enum CreatePaymentIntentStatus { initial, submitting, success, failure }
 
 enum UserBookingCreateStatus { initial, submitting, success, failure }
-
 enum UserBookingCancelStatus { initial, submitting, success, failure }
-
 enum UserLocationUpdateStatus { initial, updating, success, failure }
-
 enum FindingTaskerStatus { initial, updating, success, failure }
-
 enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
-
 enum AcceptBookingEnum { initial, updating, success, failure }
 
-// ignore: must_be_immutable
 class UserBookingState extends Equatable {
+  // =========================
+  // ✅ SOS (NEW)
+  // =========================
+  final StartSosStatus startSosStatus;
+  final StartSosResult? startSosResult;
+  final String? startSosError;
+
+  final UpdateSosLocationStatus updateSosLocationStatus;
+  final String? updateSosLocationError;
+
+  // (optional legacy if you still use RegistrationResponse elsewhere)
+  final RegistrationResponse? startSosResponse;
+  final RegistrationResponse? updateSosLocationResponse;
+
+  // =========================
+  // ✅ Payment Intent
+  // =========================
   final CreatePaymentIntentStatus createPaymentIntentStatus;
   final PaymentIntentResponse? paymentIntentResponse;
   final String? paymentIntentError;
 
-  // ✅ NEW CREATE BOOKING RESPONSE (API returns result as LIST)
+  // =========================
+  // ✅ Booking
+  // =========================
   final BookingCreateResponse? bookingCreateResponse;
 
-  // ----- find tasker -----
   final BookingFindResponse? bookingFindResponse;
   final String? findingTaskerError;
 
-  // ----- statuses -----
   final UserBookingCreateStatus createStatus;
   final UserBookingCancelStatus userBookingCancelStatus;
   final ChangeAvailabilityStatusEnum changeAvailabilityStatusEnum;
   final FindingTaskerStatus findingTaskerStatus;
   final AcceptBookingEnum acceptBookingEnum;
 
-  // ----- create booking API response (your existing generic response if used elsewhere) -----
   final RegistrationResponse? createResponse;
   final String? createError;
 
-  // ----- location update -----
   final UserLocationUpdateStatus locationStatus;
   final double? lastLatitude;
   final double? lastLongitude;
   final String? locationError;
 
-  // ----- change availability -----
   final String? changeAvailabilityError;
 
-  // ----- accept booking -----
   final String? acceptBookingError;
-
-  // ✅ Accept booking success payload/message
   final RegistrationResponse? acceptBookingResponse;
   final String? acceptBookingMessage;
 
-  final RegistrationResponse? startSosResponse;
-  final String? startSosError;
-
-  final RegistrationResponse? updateSosLocationResponse;
-  final String? updateSosLocationError;
-
   const UserBookingState({
+    // SOS
+    this.startSosStatus = StartSosStatus.initial,
+    this.startSosResult,
+    this.startSosError,
+    this.updateSosLocationStatus = UpdateSosLocationStatus.initial,
+    this.updateSosLocationError,
+    this.startSosResponse,
+    this.updateSosLocationResponse,
+
+    // payment
     this.createPaymentIntentStatus = CreatePaymentIntentStatus.initial,
     this.paymentIntentResponse,
     this.paymentIntentError,
 
-    this.startSosResponse,
-    this.startSosError,
-    this.updateSosLocationResponse,
-    this.updateSosLocationError,
+    // booking create
     this.bookingCreateResponse,
 
     // find tasker
@@ -106,30 +123,45 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+    // =========================
+    // ✅ SOS
+    // =========================
+    StartSosStatus? startSosStatus,
+    StartSosResult? startSosResult,
+    String? startSosError,
+    bool clearStartSosResult = false,
+    bool clearStartSosError = false,
+
+    UpdateSosLocationStatus? updateSosLocationStatus,
+    String? updateSosLocationError,
+    bool clearUpdateSosLocationError = false,
+
+    // optional legacy RegistrationResponse
+    RegistrationResponse? startSosResponse,
+    bool clearStartSosResponse = false,
+
+    RegistrationResponse? updateSosLocationResponse,
+    bool clearUpdateSosLocationResponse = false,
+
+    // =========================
+    // ✅ Payment Intent
+    // =========================
     CreatePaymentIntentStatus? createPaymentIntentStatus,
     PaymentIntentResponse? paymentIntentResponse,
     String? paymentIntentError,
     bool clearPaymentIntentResponse = false,
     bool clearPaymentIntentError = false,
 
-    RegistrationResponse? startSosResponse,
-    String? startSosError,
-    bool clearStartSosResponse = false,
-    bool clearStartSosError = false,
-
-    RegistrationResponse? updateSosLocationResponse,
-    String? updateSosLocationError,
-    bool clearUpdateSosLocationResponse = false,
-    bool clearUpdateSosLocationError = false,
-
-    // statuses
+    // =========================
+    // ✅ Booking statuses
+    // =========================
     AcceptBookingEnum? acceptBookingEnum,
     ChangeAvailabilityStatusEnum? changeAvailabilityStatusEnum,
     FindingTaskerStatus? findingTaskerStatus,
     UserBookingCreateStatus? createStatus,
     UserBookingCancelStatus? userBookingCancelStatus,
 
-    // ✅ create booking response (NEW)
+    // booking create response
     BookingCreateResponse? bookingCreateResponse,
     bool clearBookingCreateResponse = false,
 
@@ -164,6 +196,31 @@ class UserBookingState extends Equatable {
     String? changeAvailabilityError,
   }) {
     return UserBookingState(
+      // =========================
+      // ✅ SOS
+      // =========================
+      startSosStatus: startSosStatus ?? this.startSosStatus,
+      startSosResult:
+          clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
+      startSosError: clearStartSosError ? null : (startSosError ?? this.startSosError),
+
+      updateSosLocationStatus:
+          updateSosLocationStatus ?? this.updateSosLocationStatus,
+      updateSosLocationError: clearUpdateSosLocationError
+          ? null
+          : (updateSosLocationError ?? this.updateSosLocationError),
+
+      startSosResponse: clearStartSosResponse
+          ? null
+          : (startSosResponse ?? this.startSosResponse),
+
+      updateSosLocationResponse: clearUpdateSosLocationResponse
+          ? null
+          : (updateSosLocationResponse ?? this.updateSosLocationResponse),
+
+      // =========================
+      // ✅ Payment intent
+      // =========================
       createPaymentIntentStatus:
           createPaymentIntentStatus ?? this.createPaymentIntentStatus,
 
@@ -175,21 +232,9 @@ class UserBookingState extends Equatable {
           ? null
           : (paymentIntentError ?? this.paymentIntentError),
 
-      startSosResponse: clearStartSosResponse
-          ? null
-          : (startSosResponse ?? this.startSosResponse),
-      startSosError: clearStartSosError
-          ? null
-          : (startSosError ?? this.startSosError),
-
-      updateSosLocationResponse: clearUpdateSosLocationResponse
-          ? null
-          : (updateSosLocationResponse ?? this.updateSosLocationResponse),
-      updateSosLocationError: clearUpdateSosLocationError
-          ? null
-          : (updateSosLocationError ?? this.updateSosLocationError),
-
-      // statuses
+      // =========================
+      // ✅ Other statuses
+      // =========================
       acceptBookingEnum: acceptBookingEnum ?? this.acceptBookingEnum,
       changeAvailabilityStatusEnum:
           changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
@@ -198,7 +243,7 @@ class UserBookingState extends Equatable {
       userBookingCancelStatus:
           userBookingCancelStatus ?? this.userBookingCancelStatus,
 
-      // ✅ create booking response
+      // booking create response
       bookingCreateResponse: clearBookingCreateResponse
           ? null
           : (bookingCreateResponse ?? this.bookingCreateResponse),
@@ -211,19 +256,17 @@ class UserBookingState extends Equatable {
           ? null
           : (findingTaskerError ?? this.findingTaskerError),
 
-      // create booking API (existing)
-      createResponse: clearCreateResponse
-          ? null
-          : (createResponse ?? this.createResponse),
+      // create booking API
+      createResponse:
+          clearCreateResponse ? null : (createResponse ?? this.createResponse),
       createError: clearCreateError ? null : (createError ?? this.createError),
 
       // location
       locationStatus: locationStatus ?? this.locationStatus,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
-      locationError: clearLocationError
-          ? null
-          : (locationError ?? this.locationError),
+      locationError:
+          clearLocationError ? null : (locationError ?? this.locationError),
 
       // accept booking
       acceptBookingError: clearAcceptBookingError
@@ -246,47 +289,50 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
-    createPaymentIntentStatus,
-    paymentIntentResponse,
-    paymentIntentError,
+        // payment
+        createPaymentIntentStatus,
+        paymentIntentResponse,
+        paymentIntentError,
 
-    startSosResponse,
-    startSosError,
-    updateSosLocationResponse,
-    updateSosLocationError,
+        // ✅ SOS
+        startSosStatus,
+        startSosResult,
+        startSosError,
+        updateSosLocationStatus,
+        updateSosLocationError,
+        startSosResponse,
+        updateSosLocationResponse,
 
-    // cancel
-    userBookingCancelStatus,
+        // cancel
+        userBookingCancelStatus,
 
-    // ✅ create booking (NEW)
-    bookingCreateResponse,
+        // create booking
+        bookingCreateResponse,
 
-    // find tasker
-    bookingFindResponse,
-    findingTaskerError,
+        // find tasker
+        bookingFindResponse,
+        findingTaskerError,
+        findingTaskerStatus,
 
-    // accept booking
-    acceptBookingEnum,
-    acceptBookingError,
-    acceptBookingResponse,
-    acceptBookingMessage,
+        // accept booking
+        acceptBookingEnum,
+        acceptBookingError,
+        acceptBookingResponse,
+        acceptBookingMessage,
 
-    // availability
-    changeAvailabilityStatusEnum,
-    changeAvailabilityError,
+        // availability
+        changeAvailabilityStatusEnum,
+        changeAvailabilityError,
 
-    // create booking API (existing)
-    createStatus,
-    createResponse,
-    createError,
+        // create booking API
+        createStatus,
+        createResponse,
+        createError,
 
-    // location
-    locationStatus,
-    lastLatitude,
-    lastLongitude,
-    locationError,
-
-    // other
-    findingTaskerStatus,
-  ];
+        // location
+        locationStatus,
+        lastLatitude,
+        lastLongitude,
+        locationError,
+      ];
 }

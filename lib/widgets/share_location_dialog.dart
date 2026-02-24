@@ -14,6 +14,10 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 
 const Color kPrimary = Color(0xFF5C2E91);
 const Color kTextDark = Color(0xFF3E1E69);
@@ -35,18 +39,21 @@ Future<Future<Object?>> showSharingLocationDialog(
     barrierDismissible: barrierDismissible,
     barrierColor: Colors.black.withOpacity(.55),
     transitionDuration: const Duration(milliseconds: 340),
-    pageBuilder: (_, __, ___) {
-      return Center(
-        child: _SharingLocationDialogBody(
-          emergencyNumber: emergencyNumber,
-          title: title,
-          subtitle: subtitle,
-          locationText: locationText,
-          onCall: onCall,
-          onStopSharing: onStopSharing,
-        ),
-      );
-    },
+ pageBuilder: (_, __, ___) {
+  return Center(
+    child: Material( // ✅ provides Material ancestor for InkWell
+      color: Colors.transparent,
+      child: _SharingLocationDialogBody(
+        emergencyNumber: emergencyNumber,
+        title: title,
+        subtitle: subtitle,
+        locationText: locationText,
+        onCall: onCall,
+        onStopSharing: onStopSharing,
+      ),
+    ),
+  );
+},
     transitionBuilder: (_, anim, __, child) {
       // Smooth scale + fade + slight slide
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
