@@ -7,6 +7,7 @@ import 'package:taskoon/Models/add_booking_request_model.dart';
 import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/service_document_model.dart';
@@ -53,6 +54,9 @@ class ApiConfig {
   //payment
    static const String createPaymentIntent = '/api/payment/create-intent';
 
+   //dashboard 
+   static const String taskerDashboardEndpoint = '/api/Tasker/dashboard';
+
 }
 
 extension on String {
@@ -65,6 +69,10 @@ extension on String {
 }
 
 abstract class AuthRepository {
+//dashboard
+  Future<Result<TaskerDashboardResponse>> fetchTaskerDashboard({
+    required String userId,
+  });
 
   //Payment
   Future<Result<PaymentIntentResponse>> createPaymentIntent({
@@ -273,6 +281,68 @@ class AuthRepositoryHttp implements AuthRepository {
     }
     return null;
   }
+
+  //dashboard
+
+
+
+@override
+Future<Result<TaskerDashboardResponse>> fetchTaskerDashboard({
+  required String userId,
+}) async {
+  final base = '${ApiConfig.baseUrl}${ApiConfig.taskerDashboardEndpoint}';
+  final uri = Uri.parse(base).replace(queryParameters: {'userId': userId});
+
+  try {
+    debugPrint('>>> TASKER DASHBOARD GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< TASKER DASHBOARD STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER DASHBOARD BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(Failure(code: 'empty', message: 'Empty response from server'));
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(Failure(code: 'parse', message: 'Invalid response format'));
+      }
+
+      final resp = TaskerDashboardResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Dashboard failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(Failure(code: 'validation', message: msg, statusCode: res.statusCode));
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) message = err['message'].toString();
+      } catch (_) {}
+    }
+
+    return Result.fail(Failure(code: 'server', message: message, statusCode: res.statusCode));
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
 
 //Payment
 

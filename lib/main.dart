@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Realtime/app_lifecycle_watcher.dart';
 import 'package:taskoon/Routes/routes.dart';
 import 'package:taskoon/theme.dart';
@@ -137,7 +138,30 @@ class _RealtimeBootstrapState extends State<_RealtimeBootstrap> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
+      final box = GetStorage();
+final userId = box.read('userId')?.toString().trim();
+final role = box.read('role')?.toString().trim();
+
+if (userId != null && userId.isNotEmpty) {
+  try {
+    await SignalRService.I.connect(
+      baseUrl: ApiConfig.baseUrl,
+      userId: userId,
+    );
+  } catch (e) {
+    debugPrint("❌ SignalR connect failed: $e");
+  }
+
+  // ✅ NEW: fetch tasker dashboard on app start if Tasker
+  if (role == "Tasker") {
+    context.read<UserBookingBloc>().add(
+          FetchTaskerDashboardRequested(userId: userId),
+        );
+  }
+} else {
+  debugPrint("ℹ️ SignalR not started (userId missing)");
+}
+  /*    if (!mounted) return;
       if (_started) return;
       _started = true;
 
@@ -155,7 +179,7 @@ class _RealtimeBootstrapState extends State<_RealtimeBootstrap> {
         }
       } else {
         debugPrint("ℹ️ SignalR not started (userId missing)");
-      }
+      }*/
     });
   }
 

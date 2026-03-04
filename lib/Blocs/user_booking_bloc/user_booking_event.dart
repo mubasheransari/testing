@@ -174,3 +174,19 @@ class CreatePaymentIntentRequested extends UserBookingEvent {
   List<Object?> get props => [bookingDetailId];
 }
 class StopSosRequested extends UserBookingEvent {}
+
+
+//dashboard
+// ✅ Dashboard Fetch
+class FetchTaskerDashboardRequested extends UserBookingEvent {
+  final String userId;
+  const FetchTaskerDashboardRequested({required this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+// ✅ Optional: clear dashboard error/response after showing snackbar
+class ClearTaskerDashboardStatus extends UserBookingEvent {
+  const ClearTaskerDashboardStatus();
+}

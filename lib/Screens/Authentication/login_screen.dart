@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Screens/Authentication/forgot_password_screen.dart';
 import 'package:taskoon/Screens/Authentication/otp_verification_screen.dart';
 import 'package:taskoon/Screens/Authentication/role_selection_screen.dart';
@@ -96,6 +98,11 @@ class _LoginScreenState extends State<LoginScreen> {
               email: emailController.text.trim(),
             ),
           );
+          if (role == "Tasker") {
+  context.read<UserBookingBloc>().add(
+        FetchTaskerDashboardRequested(userId: userId),
+      );
+}
 
           toastWidget('OTP Send to ${emailController.text.trim()}', Colors.green);
 

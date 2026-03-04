@@ -10,6 +10,9 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    //dashboard
+      on<FetchTaskerDashboardRequested>(_onFetchTaskerDashboard);
+    on<ClearTaskerDashboardStatus>(_onClearTaskerDashboardStatus);
     on<StartSosRequested>(_startSosRequested);
     on<UpdateSosLocationRequested>(_updateSosLocationRequested);
     on<CreatePaymentIntentRequested>(_createPaymentIntentRequested);
@@ -65,6 +68,56 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     _sosLocationTimer?.cancel();
     _sosLocationTimer = null;
     _activeSosId = null;
+  }
+
+  Future<void> _onFetchTaskerDashboard(
+    FetchTaskerDashboardRequested event,
+    Emitter<UserBookingState> emit,
+  ) async {
+    emit(state.copyWith(
+      taskerDashboardStatus: TaskerDashboardStatus.loading,
+      clearTaskerDashboardError: true,
+      clearTaskerDashboardResponse: true,
+    ));
+
+    final r = await repo.fetchTaskerDashboard(userId: event.userId);
+
+    if (!r.isSuccess) {
+      emit(state.copyWith(
+        taskerDashboardStatus: TaskerDashboardStatus.failure,
+        taskerDashboardError: r.failure?.message ?? "Failed to load dashboard",
+      ));
+      return;
+    }
+
+   final resp = r.data!;
+    if (resp.isSuccess != true || resp.result == null) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? "Dashboard failed");
+      emit(state.copyWith(
+        taskerDashboardStatus: TaskerDashboardStatus.failure,
+        taskerDashboardError: msg,
+        taskerDashboardResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerDashboardStatus: TaskerDashboardStatus.success,
+      taskerDashboardResponse: resp,
+      clearTaskerDashboardError: true,
+    ));
+  }
+
+  void _onClearTaskerDashboardStatus(
+    ClearTaskerDashboardStatus event,
+    Emitter<UserBookingState> emit,
+  ) {
+    emit(state.copyWith(
+      taskerDashboardStatus: TaskerDashboardStatus.initial,
+      clearTaskerDashboardError: true,
+    ));
   }
 
   Future<void> _startSosRequested(
