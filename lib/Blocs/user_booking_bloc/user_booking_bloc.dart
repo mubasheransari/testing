@@ -10,6 +10,14 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    on<FetchTaskerEarningsChartRequested>(_onFetchTaskerEarningsChart);
+on<ClearTaskerEarningsChartStatus>((event, emit) {
+  emit(state.copyWith(
+    taskerEarningsChartStatus: TaskerEarningsChartStatus.initial,
+    clearTaskerEarningsChartError: true,
+    clearTaskerEarningsChartResponse: true,
+  ));
+});
     //dashboard
       on<FetchTaskerDashboardRequested>(_onFetchTaskerDashboard);
     on<ClearTaskerDashboardStatus>(_onClearTaskerDashboardStatus);
@@ -31,6 +39,77 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+
+Future<void> _onFetchTaskerEarningsChart(
+  FetchTaskerEarningsChartRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(
+    state.copyWith(
+      taskerEarningsChartStatus: TaskerEarningsChartStatus.loading,
+      clearTaskerEarningsChartError: true,
+      clearTaskerEarningsChartResponse: true,
+    ),
+  );
+
+  try {
+    // ✅ event.period is String? -> make it non-null
+    final period = (event.period ?? 'today').trim();
+
+    // ✅ repo returns Result<TaskerEarningsChartResponse>
+    final result = await repo.fetchTaskerEarningsChart(
+      userId: event.userId,
+      period: period,
+    );
+
+    // ✅ unwrap Result<T>
+    final resp = result.data; // <--- IMPORTANT
+
+    // If Result failed (network/server/timeout etc)
+    if (!result.isSuccess || resp == null) {
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
+          taskerEarningsChartError:
+              result.failure?.message ?? 'Failed to fetch earnings chart',
+        ),
+      );
+      return;
+    }
+
+    // If API model itself says isSuccess=false
+    if (resp.isSuccess != true) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to fetch earnings chart');
+
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
+          taskerEarningsChartError: msg,
+          taskerEarningsChartResponse: resp,
+        ),
+      );
+      return;
+    }
+
+    // ✅ success
+    emit(
+      state.copyWith(
+        taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
+        taskerEarningsChartResponse: resp,
+        clearTaskerEarningsChartError: true,
+      ),
+    );
+  } catch (e) {
+    emit(
+      state.copyWith(
+        taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
+        taskerEarningsChartError: e.toString(),
+      ),
+    );
+  }
+}
   void _startSosTimer() {
     // ✅ cancel only timer, DO NOT null sosId here
     _sosLocationTimer?.cancel();

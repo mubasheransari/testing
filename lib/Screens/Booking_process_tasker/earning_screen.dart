@@ -5,6 +5,18 @@ import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
+
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
+
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
+
+import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
@@ -25,7 +37,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
     _Period.month: [420, 180, 220, 560, 380, 760, 620, 940, 860, 1120, 980, 1280],
   };
 
-  final Map<_Period, ChartData> chart = {
+  // ✅ local fallback (used only if API chart not loaded yet)
+  final Map<_Period, ChartData> chartFallback = {
     _Period.today: ChartData(labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p'], values: [15, 20, 40, 35, 55, 28, 7]),
     _Period.week: ChartData(labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], values: [120, 40, 80, 140, 60, 220, 160]),
     _Period.month: ChartData(labels: ['W1', 'W2', 'W3', 'W4'], values: [820, 620, 940, 900]),
@@ -53,17 +66,45 @@ class _EarningsScreenState extends State<EarningsScreen> {
     }
   }
 
+  // ✅ Convert API -> ChartData used by UI chart
+  ChartData _toChartData(TaskerEarningsChartResponse? resp, _Period p) {
+    final list = resp?.result?.chartData ?? const <TaskerEarningsChartPoint>[];
+
+    if (list.isEmpty) {
+      return chartFallback[p] ?? const ChartData(labels: [], values: []);
+    }
+
+    final labels = <String>[];
+    final values = <double>[];
+
+    for (final e in list) {
+      labels.add(e.label);
+      values.add(e.amount.toDouble());
+    }
+
+    return ChartData(labels: labels, values: values);
+  }
+
   void _fetch() {
     final box = GetStorage();
     final userId = (box.read('userId') ?? '').toString().trim();
     if (userId.isEmpty) return;
 
+    // ✅ NEW: chart
     context.read<UserBookingBloc>().add(
-          FetchTaskerEarningsStatsRequested(
+          FetchTaskerEarningsChartRequested(
             userId: userId,
             period: _apiPeriod(period),
           ),
         );
+
+    // If you still want to fetch stats in same screen, keep your stats event here too.
+    // context.read<UserBookingBloc>().add(
+    //       FetchTaskerEarningsStatsRequested(
+    //         userId: userId,
+    //         period: _apiPeriod(period),
+    //       ),
+    //     );
   }
 
   @override
@@ -78,24 +119,22 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
     return BlocConsumer<UserBookingBloc, UserBookingState>(
       listenWhen: (p, n) =>
-          p.taskerEarningsStatsStatus != n.taskerEarningsStatsStatus ||
-          p.taskerEarningsStatsError != n.taskerEarningsStatsError,
+          p.taskerEarningsChartStatus != n.taskerEarningsChartStatus ||
+          p.taskerEarningsChartError != n.taskerEarningsChartError,
       listener: (context, state) {
-        if (state.taskerEarningsStatsStatus == TaskerEarningsStatsStatus.failure &&
-            (state.taskerEarningsStatsError ?? '').trim().isNotEmpty) {
+        if (state.taskerEarningsChartStatus == TaskerEarningsChartStatus.failure &&
+            (state.taskerEarningsChartError ?? '').trim().isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.taskerEarningsStatsError!)),
+            SnackBar(content: Text(state.taskerEarningsChartError!)),
           );
-          context.read<UserBookingBloc>().add(const ClearTaskerEarningsStatsStatus());
+          context.read<UserBookingBloc>().add(ClearTaskerEarningsChartStatus());
         }
       },
       builder: (context, state) {
-        final stats = state.taskerEarningsStatsResponse?.result;
+        // ✅ Use API chart data (fallback if not available)
+        final apiChart = _toChartData(state.taskerEarningsChartResponse, period);
 
-        final amount = (stats?.earnings ?? 0).toDouble();
-        final tasksCompleted = stats?.tasksCompleted ?? 0;
-        final onlineTime = stats?.onlineTime ?? '0h 0m';
-        final rating = stats?.rating ?? 0;
+        final isLoading = state.taskerEarningsChartStatus == TaskerEarningsChartStatus.loading;
 
         return Stack(
           children: [
@@ -111,11 +150,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           children: [
                             _SummaryCard(
                               period: period,
-                              amount: amount,
+                              amount: _sum(apiChart.values), // ✅ uses chart sum as total
                               data: sparkData[period] ?? const [],
-                              tasksCompleted: tasksCompleted,
-                              onlineTime: onlineTime,
-                              rating: rating,
+                              tasksCompleted: 0,
+                              onlineTime: '0h 0m',
+                              rating: 0.0,
                               onChange: (p) {
                                 setState(() => period = p);
                                 _fetch();
@@ -124,7 +163,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             const SizedBox(height: 14),
                             _EarningsGraphCard(
                               period: period,
-                              data: chart[period]!,
+                              data: apiChart,
                               onChangePeriod: (p) {
                                 setState(() => period = p);
                                 _fetch();
@@ -133,8 +172,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             const SizedBox(height: 14),
                             const _PayoutCard(available: 540),
                             const SizedBox(height: 18),
-                            _SectionTitle(
-                              title: '$tasksCompleted tasks completed',
+                            const _SectionTitle(
+                              title: 'Tasks completed',
                               subtitle: 'Keep going — your stats update live',
                             ),
                             const SizedBox(height: 10),
@@ -166,8 +205,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 ),
               ),
             ),
-
-            if (state.taskerEarningsStatsStatus == TaskerEarningsStatsStatus.loading)
+            if (isLoading)
               Positioned.fill(
                 child: IgnorePointer(
                   ignoring: false,
@@ -181,6 +219,14 @@ class _EarningsScreenState extends State<EarningsScreen> {
         );
       },
     );
+  }
+
+  double _sum(List<double> v) {
+    double t = 0;
+    for (final x in v) {
+      t += x;
+    }
+    return t;
   }
 }
 
@@ -893,7 +939,11 @@ class _SparklinePainter extends CustomPainter {
     for (int i = 0; i < values.length; i++) {
       final x = i * dx;
       final y = size.height - ((values[i] - minV) / range) * size.height;
-      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
 
     final paint = Paint()
@@ -972,6 +1022,18 @@ class _GlassCard extends StatelessWidget {
 }
 
 
+// class ChartPoint {
+//   final String label;
+//   final num amount;
+
+//   ChartPoint({required this.label, required this.amount});
+
+//   factory ChartPoint.fromJson(Map<String, dynamic> json) => ChartPoint(
+//         label: (json['label'] ?? '').toString(),
+//         amount: (json['amount'] ?? 0) as num,
+//       );
+// }
+
 // class EarningsScreen extends StatefulWidget {
 //   const EarningsScreen({super.key});
 
@@ -984,34 +1046,18 @@ class _GlassCard extends StatelessWidget {
 // class _EarningsScreenState extends State<EarningsScreen> {
 //   _Period period = _Period.today;
 
-//   // Totals
-//   final Map<_Period, double> totals = {
-//     _Period.today: 200,
-//     _Period.week: 820,
-//     _Period.month: 3280,
-//   };
-
-//   // Small spark data for the summary
+//   // keep your existing dummy chart until backend provides breakdown
 //   final Map<_Period, List<double>> sparkData = {
 //     _Period.today: [20, 0, 40, 30, 50, 60, 0, 0],
 //     _Period.week: [120, 40, 80, 140, 60, 220, 160],
 //     _Period.month: [420, 180, 220, 560, 380, 760, 620, 940, 860, 1120, 980, 1280],
 //   };
 
-//   // Big chart datasets (labels + values)
-//   final Map<_Period, ChartData> chart = {
-//     _Period.today: ChartData(
-//       labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p'],
-//       values: [15, 20, 40, 35, 55, 28, 7],
-//     ),
-//     _Period.week: ChartData(
-//       labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-//       values: [120, 40, 80, 140, 60, 220, 160],
-//     ),
-//     _Period.month: ChartData(
-//       labels: ['W1', 'W2', 'W3', 'W4'],
-//       values: [820, 620, 940, 900],
-//     ),
+//   // ✅ still keep local fallback (used only if API chart not loaded yet)
+//   final Map<_Period, ChartData> chartFallback = {
+//     _Period.today: ChartData(labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p'], values: [15, 20, 40, 35, 55, 28, 7]),
+//     _Period.week: ChartData(labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], values: [120, 40, 80, 140, 60, 220, 160]),
+//     _Period.month: ChartData(labels: ['W1', 'W2', 'W3', 'W4'], values: [820, 620, 940, 900]),
 //   };
 
 //   final List<_EarningItem> recent = List.generate(
@@ -1025,74 +1071,207 @@ class _GlassCard extends StatelessWidget {
 //     ),
 //   );
 
+//   String _apiPeriod(_Period p) {
+//     switch (p) {
+//       case _Period.today:
+//         return 'today';
+//       case _Period.week:
+//         return 'week';
+//       case _Period.month:
+//         return 'month';
+//     }
+//   }
+  
+// ChartData _toChartData(TaskerEarningsChartResponse? resp, _Period p) {
+//   final list = resp?.result?.chartData ?? [];
+
+//   if (list.isEmpty) {
+//     return chartFallback[p] ?? const ChartData(labels: [], values: []);
+//   }
+
+//   final labels = <String>[];
+//   final values = <double>[];
+
+//   for (final e in list.cast<ChartPoint>()) {
+//     labels.add(e.label);
+//     values.add(e.amount.toDouble());
+//   }
+
+//   return ChartData(labels: labels, values: values);
+// }
+  
+// /*
+//   // ✅ Convert API -> ChartData used by the UI chart
+//   ChartData _toChartData(TaskerEarningsChartResponse? resp, _Period p) {
+//     final list = resp?.result?.chartData ??  <ChartPoint>[];
+//     if (list.isEmpty) return chartFallback[p] ?? const ChartData(labels: [], values: []);
+
+//     final labels = <String>[];
+//     final values = <double>[];
+//     for (final e in list) {
+//       labels.add((e.label ?? '').toString());
+//       values.add((e.amount ?? 0).toDouble());
+//     }
+//     return ChartData(labels: labels, values: values);
+//   }
+// */
+//   void _fetch() {
+//     final box = GetStorage();
+//     final userId = (box.read('userId') ?? '').toString().trim();
+//     if (userId.isEmpty) return;
+
+//     // ✅ stats (already)
+//     context.read<UserBookingBloc>().add(
+//           FetchTaskerEarningsStatsRequested(
+//             userId: userId,
+//             period: _apiPeriod(period),
+//           ),
+//         );
+
+//     // ✅ NEW: chart
+//     context.read<UserBookingBloc>().add(
+//           FetchTaskerEarningsChartRequested(
+//             userId: userId,
+//             period: _apiPeriod(period),
+//           ),
+//         );
+//   }
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addPostFrameCallback((_) => _fetch());
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     final c = _Colors.Constants;
-//     final amount = totals[period] ?? 0;
 
-//     return Scaffold(
-//       backgroundColor: c.bg,
-//       body: SafeArea(
-//         child: CustomScrollView(
-//           slivers: [
-//             // SliverToBoxAdapter(
-//             //   child: Padding(
-//             //     padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-//             //     child: _HeaderBar(title: 'Earnings'),
-//             //   ),
-//             // ),
-//             SliverToBoxAdapter(
-//               child: Padding(
-//                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-//                 child: Column(
-//                   children: [
-//                     _SummaryCard(
-//                       period: period,
-//                       amount: amount,
-//                       data: sparkData[period] ?? const [],
-//                       onChange: (p) => setState(() => period = p),
+//     return BlocConsumer<UserBookingBloc, UserBookingState>(
+//       listenWhen: (p, n) =>
+//           // stats
+//           p.taskerEarningsStatsStatus != n.taskerEarningsStatsStatus ||
+//           p.taskerEarningsStatsError != n.taskerEarningsStatsError ||
+//           // ✅ chart
+//           p.taskerEarningsChartStatus != n.taskerEarningsChartStatus ||
+//           p.taskerEarningsChartError != n.taskerEarningsChartError,
+//       listener: (context, state) {
+//         // stats failure
+//         if (state.taskerEarningsStatsStatus == TaskerEarningsStatsStatus.failure &&
+//             (state.taskerEarningsStatsError ?? '').trim().isNotEmpty) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             SnackBar(content: Text(state.taskerEarningsStatsError!)),
+//           );
+//           context.read<UserBookingBloc>().add(const ClearTaskerEarningsStatsStatus());
+//         }
+
+//         // ✅ chart failure
+//         if (state.taskerEarningsChartStatus == TaskerEarningsChartStatus.failure &&
+//             (state.taskerEarningsChartError ?? '').trim().isNotEmpty) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             SnackBar(content: Text(state.taskerEarningsChartError!)),
+//           );
+//           context.read<UserBookingBloc>().add( ClearTaskerEarningsChartStatus());
+//         }
+//       },
+//       builder: (context, state) {
+//         final stats = state.taskerEarningsStatsResponse?.result;
+
+//         final amount = (stats?.earnings ?? 0).toDouble();
+//         final tasksCompleted = stats?.tasksCompleted ?? 0;
+//         final onlineTime = stats?.onlineTime ?? '0h 0m';
+//         final rating = (stats?.rating ?? 0).toDouble();
+
+//         // ✅ Use API chart data (fallback if not available)
+//         final apiChart = _toChartData(state.taskerEarningsChartResponse, period);
+
+//         final isLoading =
+//             state.taskerEarningsStatsStatus == TaskerEarningsStatsStatus.loading ||
+//             state.taskerEarningsChartStatus == TaskerEarningsChartStatus.loading;
+
+//         return Stack(
+//           children: [
+//             Scaffold(
+//               backgroundColor: c.bg,
+//               body: SafeArea(
+//                 child: CustomScrollView(
+//                   slivers: [
+//                     SliverToBoxAdapter(
+//                       child: Padding(
+//                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+//                         child: Column(
+//                           children: [
+//                             _SummaryCard(
+//                               period: period,
+//                               amount: amount,
+//                               data: sparkData[period] ?? const [],
+//                               tasksCompleted: tasksCompleted,
+//                               onlineTime: onlineTime,
+//                               rating: rating,
+//                               onChange: (p) {
+//                                 setState(() => period = p);
+//                                 _fetch();
+//                               },
+//                             ),
+//                             const SizedBox(height: 14),
+//                             _EarningsGraphCard(
+//                               period: period,
+//                               data: apiChart, // ✅ now from API
+//                               onChangePeriod: (p) {
+//                                 setState(() => period = p);
+//                                 _fetch();
+//                               },
+//                             ),
+//                             const SizedBox(height: 14),
+//                             const _PayoutCard(available: 540),
+//                             const SizedBox(height: 18),
+//                             _SectionTitle(
+//                               title: '$tasksCompleted tasks completed',
+//                               subtitle: 'Keep going — your stats update live',
+//                             ),
+//                             const SizedBox(height: 10),
+//                           ],
+//                         ),
+//                       ),
 //                     ),
-//                     const SizedBox(height: 14),
-//                     _EarningsGraphCard(
-//                       period: period,
-//                       data: chart[period]!,
-//                       onChangePeriod: (p) => setState(() => period = p),
+//                     SliverPadding(
+//                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+//                       sliver: SliverList(
+//                         delegate: SliverChildBuilderDelegate(
+//                           (context, index) {
+//                             final itemIndex = index ~/ 2;
+//                             if (index.isOdd) {
+//                               return Divider(
+//                                 height: 18,
+//                                 thickness: 1,
+//                                 color: Colors.black.withOpacity(.06),
+//                               );
+//                             }
+//                             return _EarningRow(item: recent[itemIndex]);
+//                           },
+//                           childCount: recent.isEmpty ? 0 : (recent.length * 2 - 1),
+//                         ),
+//                       ),
 //                     ),
-//                     const SizedBox(height: 14),
-//                     const _PayoutCard(available: 540),
-//                     const SizedBox(height: 18),
-//                     _SectionTitle(
-//                       title: '${recent.length} tasks completed',
-//                       subtitle: 'Last task ended 5 mins ago',
-//                     ),
-//                     const SizedBox(height: 10),
+//                     const SliverToBoxAdapter(child: SizedBox(height: 110)),
 //                   ],
 //                 ),
 //               ),
 //             ),
-//             SliverPadding(
-//               padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-//               sliver: SliverList(
-//                 delegate: SliverChildBuilderDelegate(
-//                   (context, index) {
-//                     final itemIndex = index ~/ 2;
-//                     if (index.isOdd) {
-//                       return Divider(
-//                         height: 18,
-//                         thickness: 1,
-//                         color: Colors.black.withOpacity(.06),
-//                       );
-//                     }
-//                     return _EarningRow(item: recent[itemIndex]);
-//                   },
-//                   childCount: recent.isEmpty ? 0 : (recent.length * 2 - 1),
+
+//             if (isLoading)
+//               Positioned.fill(
+//                 child: IgnorePointer(
+//                   ignoring: false,
+//                   child: Container(
+//                     color: Colors.black.withOpacity(.08),
+//                     child: const Center(child: CircularProgressIndicator()),
+//                   ),
 //                 ),
 //               ),
-//             ),
-//             const SliverToBoxAdapter(child: SizedBox(height: 110)),
 //           ],
-//         ),
-//       ),
+//         );
+//       },
 //     );
 //   }
 // }
@@ -1106,75 +1285,14 @@ class _GlassCard extends StatelessWidget {
 // class _ColorConstants {
 //   const _ColorConstants();
 
-//   final Color primaryDark = const Color(0xFF5C2E91); // main purple
-//   final Color primaryText = const Color(0xFF3E1E69); // dark purple text
-//   final Color mutedText = const Color(0xFF75748A); // muted gray
-//   final Color bg = const Color(0xFFF8F7FB); // scaffold bg
-//   final Color gold = const Color(0xFFF4C847); // accent gold
+//   final Color primaryDark = const Color(0xFF5C2E91);
+//   final Color primaryText = const Color(0xFF3E1E69);
+//   final Color mutedText = const Color(0xFF75748A);
+//   final Color bg = const Color(0xFFF8F7FB);
+//   final Color gold = const Color(0xFFF4C847);
 
-//   // neutrals
 //   final Color card = Colors.white;
 //   final Color border = const Color(0xFFF0ECF6);
-// }
-
-// /* ============================== HEADER ============================== */
-
-// class _HeaderBar extends StatelessWidget {
-//   const _HeaderBar({required this.title});
-//   final String title;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final c = _Colors.Constants;
-
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-//       decoration: BoxDecoration(
-//         color: c.card,
-//         borderRadius: BorderRadius.circular(22),
-//         border: Border.all(color: c.primaryDark.withOpacity(.08)),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(.06),
-//             blurRadius: 18,
-//             offset: const Offset(0, 10),
-//           ),
-//         ],
-//       ),
-//       child: Row(
-//         children: [
-//           Container(
-//             width: 42,
-//             height: 42,
-//             decoration: BoxDecoration(
-//               gradient: LinearGradient(
-//                 begin: Alignment.topLeft,
-//                 end: Alignment.bottomRight,
-//                 colors: [
-//                   c.primaryDark.withOpacity(.18),
-//                   c.primaryDark.withOpacity(.06),
-//                 ],
-//               ),
-//               borderRadius: BorderRadius.circular(14),
-//             ),
-//             child: Icon(Icons.payments_rounded, color: c.primaryDark),
-//           ),
-//           const SizedBox(width: 12),
-//           Text(
-//             title,
-//             style: TextStyle(
-//               fontFamily: 'Poppins',
-//               color: c.primaryText,
-//               fontSize: 22,
-//               fontWeight: FontWeight.w900,
-//               letterSpacing: .2,
-//             ),
-//           ),
-//           const Spacer(),
-//         ],
-//       ),
-//     );
-//   }
 // }
 
 // /* ============================== SUMMARY CARD ============================== */
@@ -1185,12 +1303,19 @@ class _GlassCard extends StatelessWidget {
 //     required this.amount,
 //     required this.data,
 //     required this.onChange,
+//     required this.tasksCompleted,
+//     required this.onlineTime,
+//     required this.rating,
 //   });
 
 //   final _Period period;
 //   final double amount;
 //   final List<double> data;
 //   final ValueChanged<_Period> onChange;
+
+//   final int tasksCompleted;
+//   final String onlineTime;
+//   final double rating;
 
 //   String get _subtitle {
 //     switch (period) {
@@ -1272,10 +1397,10 @@ class _GlassCard extends StatelessWidget {
 //                 Wrap(
 //                   spacing: 8,
 //                   runSpacing: 8,
-//                   children: const [
-//                     _KpiChip(icon: Icons.task_alt_rounded, label: '12 tasks'),
-//                     _KpiChip(icon: Icons.schedule_rounded, label: 'Online 5h 12m'),
-//                     _KpiChip(icon: Icons.star_rounded, label: '4.9 rating'),
+//                   children: [
+//                     _KpiChip(icon: Icons.task_alt_rounded, label: '$tasksCompleted tasks'),
+//                     _KpiChip(icon: Icons.schedule_rounded, label: 'Online $onlineTime'),
+//                     _KpiChip(icon: Icons.star_rounded, label: '${rating.toStringAsFixed(1)} rating'),
 //                   ],
 //                 ),
 //               ],
@@ -1328,8 +1453,7 @@ class _GlassCard extends StatelessWidget {
 //                     fontSize: 14.0,
 //                   ),
 //                 ),
-//                 SizedBox(width: 2,),
-//               //  const Spacer(),  const Spacer(),
+//                 const SizedBox(width: 2),
 //                 _SegmentSwitch<_Period>(
 //                   value: period,
 //                   onChanged: onChangePeriod,
@@ -1376,11 +1500,7 @@ class _GlassCard extends StatelessWidget {
 
 //   @override
 //   Widget build(BuildContext context) {
-//     return Container(
-//       width: 10,
-//       height: 10,
-//       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-//     );
+//     return Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
 //   }
 // }
 
@@ -1469,9 +1589,7 @@ class _GlassCard extends StatelessWidget {
 //     double yAt(double v) => chartRect.bottom - ((v - minV) / range) * chartRect.height;
 
 //     if (showGrid) {
-//       final gridPaint = Paint()
-//         ..color = Colors.black12
-//         ..style = PaintingStyle.stroke;
+//       final gridPaint = Paint()..color = Colors.black12..style = PaintingStyle.stroke;
 //       const lines = 4;
 //       for (int g = 0; g <= lines; g++) {
 //         final y = chartRect.top + g * (chartRect.height / lines);
@@ -1483,10 +1601,7 @@ class _GlassCard extends StatelessWidget {
 //     for (int i = 1; i < values.length; i++) {
 //       area.lineTo(xAt(i), yAt(values[i]));
 //     }
-//     area
-//       ..lineTo(chartRect.right, chartRect.bottom)
-//       ..lineTo(chartRect.left, chartRect.bottom)
-//       ..close();
+//     area..lineTo(chartRect.right, chartRect.bottom)..lineTo(chartRect.left, chartRect.bottom)..close();
 
 //     final fill = Paint()
 //       ..style = PaintingStyle.fill
@@ -1513,7 +1628,6 @@ class _GlassCard extends StatelessWidget {
 //       ).createShader(chartRect);
 //     canvas.drawPath(path, stroke);
 
-//     // X labels
 //     final tp = TextPainter(textDirection: TextDirection.ltr);
 //     for (int i = 0; i < labels.length; i++) {
 //       tp.text = TextSpan(
@@ -1529,14 +1643,11 @@ class _GlassCard extends StatelessWidget {
 //       tp.paint(canvas, Offset(dx, chartRect.bottom + 2));
 //     }
 
-//     // Hover indicator
 //     if (hoverIndex != null) {
 //       final hx = xAt(hoverIndex!);
 //       final hy = yAt(values[hoverIndex!]);
 
-//       final vline = Paint()
-//         ..color = color.withOpacity(.35)
-//         ..strokeWidth = 1.5;
+//       final vline = Paint()..color = color.withOpacity(.35)..strokeWidth = 1.5;
 //       canvas.drawLine(Offset(hx, chartRect.top), Offset(hx, chartRect.bottom), vline);
 
 //       final dotPaint = Paint()..color = color;
@@ -1546,12 +1657,7 @@ class _GlassCard extends StatelessWidget {
 //       final bubble = TextPainter(
 //         text: TextSpan(
 //           text: valueStr,
-//           style: const TextStyle(
-//             fontFamily: 'Poppins',
-//             fontSize: 12,
-//             color: Colors.white,
-//             fontWeight: FontWeight.w900,
-//           ),
+//           style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.white, fontWeight: FontWeight.w900),
 //         ),
 //         textDirection: TextDirection.ltr,
 //       )..layout();
@@ -1570,11 +1676,7 @@ class _GlassCard extends StatelessWidget {
 
 //   @override
 //   bool shouldRepaint(covariant _LineChartPainter old) {
-//     return old.values != values ||
-//         old.labels != labels ||
-//         old.color != color ||
-//         old.hoverIndex != hoverIndex ||
-//         old.showGrid != showGrid;
+//     return old.values != values || old.labels != labels || old.color != color || old.hoverIndex != hoverIndex || old.showGrid != showGrid;
 //   }
 // }
 
@@ -1592,52 +1694,24 @@ class _GlassCard extends StatelessWidget {
 //       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
 //       decoration: BoxDecoration(
 //         borderRadius: BorderRadius.circular(22),
-//         gradient: LinearGradient(
-//           begin: Alignment.topLeft,
-//           end: Alignment.bottomRight,
-//           colors: [
-//             c.primaryDark,
-//             c.primaryDark.withOpacity(.86),
-//           ],
-//         ),
-//         boxShadow: [
-//           BoxShadow(
-//             color: c.primaryDark.withOpacity(.26),
-//             blurRadius: 22,
-//             offset: const Offset(0, 12),
-//           ),
-//         ],
+//         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.primaryDark, c.primaryDark.withOpacity(.86)]),
+//         boxShadow: [BoxShadow(color: c.primaryDark.withOpacity(.26), blurRadius: 22, offset: const Offset(0, 12))],
 //       ),
 //       child: Row(
 //         children: [
 //           Expanded(
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 const Text(
-//                   'Available for payout',
-//                   style: TextStyle(
-//                     fontFamily: 'Poppins',
-//                     color: Colors.white70,
-//                     fontWeight: FontWeight.w700,
-//                   ),
+//             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+//               const Text('Available for payout', style: TextStyle(fontFamily: 'Poppins', color: Colors.white70, fontWeight: FontWeight.w700)),
+//               const SizedBox(height: 8),
+//               FittedBox(
+//                 fit: BoxFit.scaleDown,
+//                 alignment: Alignment.centerLeft,
+//                 child: Text(
+//                   '\$${available.toStringAsFixed(0)}',
+//                   style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.w900, fontSize: 28),
 //                 ),
-//                 const SizedBox(height: 8),
-//                 FittedBox(
-//                   fit: BoxFit.scaleDown,
-//                   alignment: Alignment.centerLeft,
-//                   child: Text(
-//                     '\$${available.toStringAsFixed(0)}',
-//                     style: const TextStyle(
-//                       fontFamily: 'Poppins',
-//                       color: Colors.white,
-//                       fontWeight: FontWeight.w900,
-//                       fontSize: 28,
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
+//               ),
+//             ]),
 //           ),
 //           const SizedBox(width: 12),
 //           ConstrainedBox(
@@ -1681,24 +1755,9 @@ class _GlassCard extends StatelessWidget {
 //         child: Column(
 //           crossAxisAlignment: CrossAxisAlignment.start,
 //           children: [
-//             Text(
-//               title,
-//               style: TextStyle(
-//                 fontFamily: 'Poppins',
-//                 color: c.primaryText,
-//                 fontWeight: FontWeight.w900,
-//                 fontSize: 18,
-//               ),
-//             ),
+//             Text(title, style: TextStyle(fontFamily: 'Poppins', color: c.primaryText, fontWeight: FontWeight.w900, fontSize: 18)),
 //             const SizedBox(height: 6),
-//             Text(
-//               subtitle,
-//               style: TextStyle(
-//                 fontFamily: 'Poppins',
-//                 color: c.mutedText,
-//                 fontWeight: FontWeight.w600,
-//               ),
-//             ),
+//             Text(subtitle, style: TextStyle(fontFamily: 'Poppins', color: c.mutedText, fontWeight: FontWeight.w600)),
 //           ],
 //         ),
 //       ),
@@ -1748,26 +1807,10 @@ class _GlassCard extends StatelessWidget {
 //           ),
 //           child: Icon(Icons.receipt_long_rounded, color: c.primaryDark),
 //         ),
-//         title: Text(
-//           item.name,
-//           style: TextStyle(
-//             fontFamily: 'Poppins',
-//             color: c.primaryText,
-//             fontWeight: FontWeight.w900,
-//             fontSize: 15.5,
-//           ),
-//         ),
+//         title: Text(item.name, style: TextStyle(fontFamily: 'Poppins', color: c.primaryText, fontWeight: FontWeight.w900, fontSize: 15.5)),
 //         subtitle: Padding(
 //           padding: const EdgeInsets.only(top: 4),
-//           child: Text(
-//             '${item.service}\n${item.time}',
-//             style: TextStyle(
-//               fontFamily: 'Poppins',
-//               color: c.mutedText,
-//               height: 1.35,
-//               fontWeight: FontWeight.w600,
-//             ),
-//           ),
+//           child: Text('${item.service}\n${item.time}', style: TextStyle(fontFamily: 'Poppins', color: c.mutedText, height: 1.35, fontWeight: FontWeight.w600)),
 //         ),
 //         isThreeLine: true,
 //         trailing: ConstrainedBox(
@@ -1778,15 +1821,7 @@ class _GlassCard extends StatelessWidget {
 //             children: [
 //               FittedBox(
 //                 fit: BoxFit.scaleDown,
-//                 child: Text(
-//                   '\$${item.amount.toStringAsFixed(0)}',
-//                   style: TextStyle(
-//                     fontFamily: 'Poppins',
-//                     color: c.primaryDark,
-//                     fontWeight: FontWeight.w900,
-//                     fontSize: 16,
-//                   ),
-//                 ),
+//                 child: Text('\$${item.amount.toStringAsFixed(0)}', style: TextStyle(fontFamily: 'Poppins', color: c.primaryDark, fontWeight: FontWeight.w900, fontSize: 16)),
 //               ),
 //               const SizedBox(height: 8),
 //               _StatusChip(item.status),
@@ -1828,19 +1863,8 @@ class _GlassCard extends StatelessWidget {
 
 //     return Container(
 //       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-//       decoration: BoxDecoration(
-//         color: bg,
-//         borderRadius: BorderRadius.circular(18),
-//       ),
-//       child: Text(
-//         label,
-//         style: TextStyle(
-//           fontFamily: 'Poppins',
-//           color: fg,
-//           fontWeight: FontWeight.w900,
-//           fontSize: 11.5,
-//         ),
-//       ),
+//       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18)),
+//       child: Text(label, style: TextStyle(fontFamily: 'Poppins', color: fg, fontWeight: FontWeight.w900, fontSize: 11.5)),
 //     );
 //   }
 // }
@@ -1868,14 +1892,7 @@ class _GlassCard extends StatelessWidget {
 //         children: [
 //           Icon(icon, size: 18, color: c.primaryDark),
 //           const SizedBox(width: 6),
-//           Text(
-//             label,
-//             style: TextStyle(
-//               fontFamily: 'Poppins',
-//               fontWeight: FontWeight.w900,
-//               color: c.primaryText,
-//             ),
-//           ),
+//           Text(label, style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w900, color: c.primaryText)),
 //         ],
 //       ),
 //     );
@@ -1891,11 +1908,7 @@ class _GlassCard extends StatelessWidget {
 // }
 
 // class _SegmentSwitch<T> extends StatelessWidget {
-//   const _SegmentSwitch({
-//     required this.value,
-//     required this.onChanged,
-//     required this.items,
-//   });
+//   const _SegmentSwitch({required this.value, required this.onChanged, required this.items});
 
 //   final T value;
 //   final ValueChanged<T> onChanged;
@@ -1950,9 +1963,7 @@ class _GlassCard extends StatelessWidget {
 //   final Color color;
 
 //   @override
-//   Widget build(BuildContext context) {
-//     return CustomPaint(painter: _SparklinePainter(values, color));
-//   }
+//   Widget build(BuildContext context) => CustomPaint(painter: _SparklinePainter(values, color));
 // }
 
 // class _SparklinePainter extends CustomPainter {
@@ -1991,10 +2002,7 @@ class _GlassCard extends StatelessWidget {
 //         end: Alignment.centerRight,
 //       ).createShader(Offset.zero & size);
 
-//     final fillPath = Path.from(path)
-//       ..lineTo(size.width, size.height)
-//       ..lineTo(0, size.height)
-//       ..close();
+//     final fillPath = Path.from(path)..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
 
 //     final fillPaint = Paint()
 //       ..style = PaintingStyle.fill
@@ -2009,11 +2017,10 @@ class _GlassCard extends StatelessWidget {
 //   }
 
 //   @override
-//   bool shouldRepaint(covariant _SparklinePainter old) =>
-//       old.values != values || old.color != color;
+//   bool shouldRepaint(covariant _SparklinePainter old) => old.values != values || old.color != color;
 // }
 
-
+// /* ============================== GLASS CARD ============================== */
 
 // class _GlassCard extends StatelessWidget {
 //   const _GlassCard({required this.child, this.radius = 22, this.margin});
@@ -2028,34 +2035,25 @@ class _GlassCard extends StatelessWidget {
 //     return Align(
 //       alignment: Alignment.center,
 //       child: Container(
-//         width: w * 0.90, // ✅ 90% width
+//         width: w * 0.90,
 //         margin: margin,
 //         decoration: BoxDecoration(
 //           borderRadius: BorderRadius.circular(radius),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(.06),
-//               blurRadius: 22,
-//               offset: const Offset(0, 10),
-//             ),
-//           ],
+//           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 22, offset: const Offset(0, 10))],
 //         ),
 //         child: ClipRRect(
 //           borderRadius: BorderRadius.circular(radius),
 //           child: BackdropFilter(
 //             filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
 //             child: Material(
-//               color: Colors.transparent, // ✅ IMPORTANT (prevents ink key issues)
+//               color: Colors.transparent,
 //               child: Container(
 //                 decoration: BoxDecoration(
 //                   borderRadius: BorderRadius.circular(radius),
 //                   gradient: LinearGradient(
 //                     begin: Alignment.topLeft,
 //                     end: Alignment.bottomRight,
-//                     colors: [
-//                       Colors.white.withOpacity(.92),
-//                       Colors.white.withOpacity(.78),
-//                     ],
+//                     colors: [Colors.white.withOpacity(.92), Colors.white.withOpacity(.78)],
 //                   ),
 //                   border: Border.all(color: Colors.white.withOpacity(.70)),
 //                 ),
@@ -2068,4 +2066,3 @@ class _GlassCard extends StatelessWidget {
 //     );
 //   }
 // }
-

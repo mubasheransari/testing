@@ -206,12 +206,21 @@ class ClearTaskerEarningsStatsStatus extends UserBookingEvent {
   const ClearTaskerEarningsStatsStatus();
 }
 
-
-class FetchTaskerEarningsChartRequested {
+class FetchTaskerEarningsChartRequested extends UserBookingEvent {
   final String userId;
-  final String period; // today | week | month
-  FetchTaskerEarningsChartRequested({
+  final String? period; // today/week/month
+
+  const FetchTaskerEarningsChartRequested({
     required this.userId,
-    required this.period,
+    this.period,
   });
+
+  @override
+  List<Object?> get props => [userId, period];
+}
+
+
+
+class ClearTaskerEarningsChartStatus extends UserBookingEvent {
+  const ClearTaskerEarningsChartStatus();
 }
