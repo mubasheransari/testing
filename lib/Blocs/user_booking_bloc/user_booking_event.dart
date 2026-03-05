@@ -205,3 +205,13 @@ class FetchTaskerEarningsStatsRequested extends UserBookingEvent {
 class ClearTaskerEarningsStatsStatus extends UserBookingEvent {
   const ClearTaskerEarningsStatsStatus();
 }
+
+
+class FetchTaskerEarningsChartRequested {
+  final String userId;
+  final String period; // today | week | month
+  FetchTaskerEarningsChartRequested({
+    required this.userId,
+    required this.period,
+  });
+}

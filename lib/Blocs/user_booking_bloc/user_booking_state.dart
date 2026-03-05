@@ -3,11 +3,17 @@ import 'package:taskoon/Models/auth_model.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
+import 'package:equatable/equatable.dart';
+
 
 enum TaskerEarningsStatsStatus { initial, loading, success, failure }
+
+// ✅ NEW: Earnings Chart status
+enum TaskerEarningsChartStatus { initial, loading, success, failure }
 
 enum TaskerDashboardStatus { initial, loading, success, failure }
 
@@ -27,9 +33,16 @@ class UserBookingState extends Equatable {
   final TaskerDashboardStatus taskerDashboardStatus;
   final TaskerDashboardResponse? taskerDashboardResponse;
   final String? taskerDashboardError;
+
+  // ✅ Earnings Stats
   final TaskerEarningsStatsStatus taskerEarningsStatsStatus;
   final TaskerEarningsStatsResponse? taskerEarningsStatsResponse;
   final String? taskerEarningsStatsError;
+
+  // ✅ NEW: Earnings Chart
+  final TaskerEarningsChartStatus taskerEarningsChartStatus;
+  final TaskerEarningsChartResponse? taskerEarningsChartResponse;
+  final String? taskerEarningsChartError;
 
   // ✅ SOS
   final StartSosStatus startSosStatus;
@@ -84,9 +97,16 @@ class UserBookingState extends Equatable {
     this.taskerDashboardStatus = TaskerDashboardStatus.initial,
     this.taskerDashboardResponse,
     this.taskerDashboardError,
-      this.taskerEarningsStatsStatus = TaskerEarningsStatsStatus.initial,
-  this.taskerEarningsStatsResponse,
-  this.taskerEarningsStatsError,
+
+    // ✅ earnings stats
+    this.taskerEarningsStatsStatus = TaskerEarningsStatsStatus.initial,
+    this.taskerEarningsStatsResponse,
+    this.taskerEarningsStatsError,
+
+    // ✅ NEW: earnings chart
+    this.taskerEarningsChartStatus = TaskerEarningsChartStatus.initial,
+    this.taskerEarningsChartResponse,
+    this.taskerEarningsChartError,
 
     // ✅ SOS
     this.startSosStatus = StartSosStatus.initial,
@@ -142,11 +162,20 @@ class UserBookingState extends Equatable {
     String? taskerDashboardError,
     bool clearTaskerDashboardResponse = false,
     bool clearTaskerDashboardError = false,
-      TaskerEarningsStatsStatus? taskerEarningsStatsStatus,
-  TaskerEarningsStatsResponse? taskerEarningsStatsResponse,
-  String? taskerEarningsStatsError,
-  bool clearTaskerEarningsStatsResponse = false,
-  bool clearTaskerEarningsStatsError = false,
+
+    // ✅ earnings stats
+    TaskerEarningsStatsStatus? taskerEarningsStatsStatus,
+    TaskerEarningsStatsResponse? taskerEarningsStatsResponse,
+    String? taskerEarningsStatsError,
+    bool clearTaskerEarningsStatsResponse = false,
+    bool clearTaskerEarningsStatsError = false,
+
+    // ✅ NEW: earnings chart
+    TaskerEarningsChartStatus? taskerEarningsChartStatus,
+    TaskerEarningsChartResponse? taskerEarningsChartResponse,
+    String? taskerEarningsChartError,
+    bool clearTaskerEarningsChartResponse = false,
+    bool clearTaskerEarningsChartError = false,
 
     // ✅ SOS
     StartSosStatus? startSosStatus,
@@ -223,60 +252,104 @@ class UserBookingState extends Equatable {
           ? null
           : (taskerDashboardError ?? this.taskerDashboardError),
 
+      // ✅ earnings stats
+      taskerEarningsStatsStatus:
+          taskerEarningsStatsStatus ?? this.taskerEarningsStatsStatus,
+      taskerEarningsStatsResponse: clearTaskerEarningsStatsResponse
+          ? null
+          : (taskerEarningsStatsResponse ?? this.taskerEarningsStatsResponse),
+      taskerEarningsStatsError: clearTaskerEarningsStatsError
+          ? null
+          : (taskerEarningsStatsError ?? this.taskerEarningsStatsError),
+
+      // ✅ NEW: earnings chart
+      taskerEarningsChartStatus:
+          taskerEarningsChartStatus ?? this.taskerEarningsChartStatus,
+      taskerEarningsChartResponse: clearTaskerEarningsChartResponse
+          ? null
+          : (taskerEarningsChartResponse ?? this.taskerEarningsChartResponse),
+      taskerEarningsChartError: clearTaskerEarningsChartError
+          ? null
+          : (taskerEarningsChartError ?? this.taskerEarningsChartError),
+
       // ✅ SOS
       startSosStatus: startSosStatus ?? this.startSosStatus,
-      startSosResult: clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
-      startSosError: clearStartSosError ? null : (startSosError ?? this.startSosError),
+      startSosResult:
+          clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
+      startSosError:
+          clearStartSosError ? null : (startSosError ?? this.startSosError),
 
-      updateSosLocationStatus: updateSosLocationStatus ?? this.updateSosLocationStatus,
+      updateSosLocationStatus:
+          updateSosLocationStatus ?? this.updateSosLocationStatus,
       updateSosLocationError: clearUpdateSosLocationError
           ? null
           : (updateSosLocationError ?? this.updateSosLocationError),
 
-      startSosResponse: clearStartSosResponse ? null : (startSosResponse ?? this.startSosResponse),
-      updateSosLocationResponse:
-          clearUpdateSosLocationResponse ? null : (updateSosLocationResponse ?? this.updateSosLocationResponse),
+      startSosResponse: clearStartSosResponse
+          ? null
+          : (startSosResponse ?? this.startSosResponse),
+      updateSosLocationResponse: clearUpdateSosLocationResponse
+          ? null
+          : (updateSosLocationResponse ?? this.updateSosLocationResponse),
 
       // ✅ payment
-      createPaymentIntentStatus: createPaymentIntentStatus ?? this.createPaymentIntentStatus,
+      createPaymentIntentStatus:
+          createPaymentIntentStatus ?? this.createPaymentIntentStatus,
       paymentIntentResponse: clearPaymentIntentResponse
           ? null
           : (paymentIntentResponse ?? this.paymentIntentResponse),
-      paymentIntentError: clearPaymentIntentError ? null : (paymentIntentError ?? this.paymentIntentError),
+      paymentIntentError: clearPaymentIntentError
+          ? null
+          : (paymentIntentError ?? this.paymentIntentError),
 
       // ✅ statuses
       acceptBookingEnum: acceptBookingEnum ?? this.acceptBookingEnum,
-      changeAvailabilityStatusEnum: changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
+      changeAvailabilityStatusEnum:
+          changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
       findingTaskerStatus: findingTaskerStatus ?? this.findingTaskerStatus,
       createStatus: createStatus ?? this.createStatus,
-      userBookingCancelStatus: userBookingCancelStatus ?? this.userBookingCancelStatus,
+      userBookingCancelStatus:
+          userBookingCancelStatus ?? this.userBookingCancelStatus,
 
       // booking create response
-      bookingCreateResponse: clearBookingCreateResponse ? null : (bookingCreateResponse ?? this.bookingCreateResponse),
+      bookingCreateResponse: clearBookingCreateResponse
+          ? null
+          : (bookingCreateResponse ?? this.bookingCreateResponse),
 
       // find tasker
-      bookingFindResponse: clearBookingFindResponse ? null : (bookingFindResponse ?? this.bookingFindResponse),
-      findingTaskerError: clearFindingTaskerError ? null : (findingTaskerError ?? this.findingTaskerError),
+      bookingFindResponse: clearBookingFindResponse
+          ? null
+          : (bookingFindResponse ?? this.bookingFindResponse),
+      findingTaskerError: clearFindingTaskerError
+          ? null
+          : (findingTaskerError ?? this.findingTaskerError),
 
       // create booking API
-      createResponse: clearCreateResponse ? null : (createResponse ?? this.createResponse),
+      createResponse:
+          clearCreateResponse ? null : (createResponse ?? this.createResponse),
       createError: clearCreateError ? null : (createError ?? this.createError),
 
       // location
       locationStatus: locationStatus ?? this.locationStatus,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
-      locationError: clearLocationError ? null : (locationError ?? this.locationError),
+      locationError:
+          clearLocationError ? null : (locationError ?? this.locationError),
 
       // accept booking
-      acceptBookingError: clearAcceptBookingError ? null : (acceptBookingError ?? this.acceptBookingError),
-      acceptBookingResponse:
-          clearAcceptBookingResponse ? null : (acceptBookingResponse ?? this.acceptBookingResponse),
-      acceptBookingMessage:
-          clearAcceptBookingMessage ? null : (acceptBookingMessage ?? this.acceptBookingMessage),
+      acceptBookingError: clearAcceptBookingError
+          ? null
+          : (acceptBookingError ?? this.acceptBookingError),
+      acceptBookingResponse: clearAcceptBookingResponse
+          ? null
+          : (acceptBookingResponse ?? this.acceptBookingResponse),
+      acceptBookingMessage: clearAcceptBookingMessage
+          ? null
+          : (acceptBookingMessage ?? this.acceptBookingMessage),
 
       // availability
-      changeAvailabilityError: changeAvailabilityError ?? this.changeAvailabilityError,
+      changeAvailabilityError:
+          changeAvailabilityError ?? this.changeAvailabilityError,
     );
   }
 
@@ -286,9 +359,16 @@ class UserBookingState extends Equatable {
         taskerDashboardStatus,
         taskerDashboardResponse,
         taskerDashboardError,
-          taskerEarningsStatsStatus,
-  taskerEarningsStatsResponse,
-  taskerEarningsStatsError,
+
+        // earnings stats
+        taskerEarningsStatsStatus,
+        taskerEarningsStatsResponse,
+        taskerEarningsStatsError,
+
+        // ✅ NEW earnings chart
+        taskerEarningsChartStatus,
+        taskerEarningsChartResponse,
+        taskerEarningsChartError,
 
         // payment
         createPaymentIntentStatus,
@@ -337,8 +417,7 @@ class UserBookingState extends Equatable {
         locationError,
       ];
 }
-
-// //dashboard
+// enum TaskerEarningsStatsStatus { initial, loading, success, failure }
 
 // enum TaskerDashboardStatus { initial, loading, success, failure }
 
@@ -354,12 +433,15 @@ class UserBookingState extends Equatable {
 // enum AcceptBookingEnum { initial, updating, success, failure }
 
 // class UserBookingState extends Equatable {
-
-//   //dashboard
+//   // ✅ Dashboard
 //   final TaskerDashboardStatus taskerDashboardStatus;
-// final TaskerDashboardResponse? taskerDashboardResponse;
-// final String? taskerDashboardError;
+//   final TaskerDashboardResponse? taskerDashboardResponse;
+//   final String? taskerDashboardError;
+//   final TaskerEarningsStatsStatus taskerEarningsStatsStatus;
+//   final TaskerEarningsStatsResponse? taskerEarningsStatsResponse;
+//   final String? taskerEarningsStatsError;
 
+//   // ✅ SOS
 //   final StartSosStatus startSosStatus;
 //   final StartSosResult? startSosResult;
 //   final String? startSosError;
@@ -370,43 +452,53 @@ class UserBookingState extends Equatable {
 //   final RegistrationResponse? startSosResponse;
 //   final RegistrationResponse? updateSosLocationResponse;
 
-
+//   // ✅ payment
 //   final CreatePaymentIntentStatus createPaymentIntentStatus;
 //   final PaymentIntentResponse? paymentIntentResponse;
 //   final String? paymentIntentError;
 
-
+//   // booking create
 //   final BookingCreateResponse? bookingCreateResponse;
 
+//   // find tasker
 //   final BookingFindResponse? bookingFindResponse;
 //   final String? findingTaskerError;
 
+//   // statuses
 //   final UserBookingCreateStatus createStatus;
 //   final UserBookingCancelStatus userBookingCancelStatus;
-//   final ChangeAvailabilityStatusEnum changeAvailabilityStatusEnum;
+//   final UserLocationUpdateStatus locationStatus;
 //   final FindingTaskerStatus findingTaskerStatus;
+//   final ChangeAvailabilityStatusEnum changeAvailabilityStatusEnum;
 //   final AcceptBookingEnum acceptBookingEnum;
 
+//   // create booking API
 //   final RegistrationResponse? createResponse;
 //   final String? createError;
 
-//   final UserLocationUpdateStatus locationStatus;
+//   // location
 //   final double? lastLatitude;
 //   final double? lastLongitude;
 //   final String? locationError;
 
+//   // availability
 //   final String? changeAvailabilityError;
 
+//   // accept booking
 //   final String? acceptBookingError;
 //   final RegistrationResponse? acceptBookingResponse;
 //   final String? acceptBookingMessage;
 
 //   const UserBookingState({
-//     //dashboard
+//     // ✅ dashboard
 //     this.taskerDashboardStatus = TaskerDashboardStatus.initial,
-// this.taskerDashboardResponse,
-// this.taskerDashboardError,
-//     // SOS
+//     this.taskerDashboardResponse,
+//     this.taskerDashboardError,
+//       this.taskerEarningsStatsStatus = TaskerEarningsStatsStatus.initial,
+//   this.taskerEarningsStatsResponse,
+//   this.taskerEarningsStatsError,
+
+//     // ✅ SOS
 //     this.startSosStatus = StartSosStatus.initial,
 //     this.startSosResult,
 //     this.startSosError,
@@ -415,12 +507,12 @@ class UserBookingState extends Equatable {
 //     this.startSosResponse,
 //     this.updateSosLocationResponse,
 
-//     // payment
+//     // ✅ payment
 //     this.createPaymentIntentStatus = CreatePaymentIntentStatus.initial,
 //     this.paymentIntentResponse,
 //     this.paymentIntentError,
 
-//     // booking create
+//     // booking create response
 //     this.bookingCreateResponse,
 
 //     // find tasker
@@ -428,40 +520,45 @@ class UserBookingState extends Equatable {
 //     this.findingTaskerError,
 
 //     // statuses
-//     this.acceptBookingEnum = AcceptBookingEnum.initial,
-//     this.changeAvailabilityStatusEnum = ChangeAvailabilityStatusEnum.initial,
 //     this.createStatus = UserBookingCreateStatus.initial,
-//     this.findingTaskerStatus = FindingTaskerStatus.initial,
 //     this.userBookingCancelStatus = UserBookingCancelStatus.initial,
+//     this.locationStatus = UserLocationUpdateStatus.initial,
+//     this.findingTaskerStatus = FindingTaskerStatus.initial,
+//     this.changeAvailabilityStatusEnum = ChangeAvailabilityStatusEnum.initial,
+//     this.acceptBookingEnum = AcceptBookingEnum.initial,
 
 //     // create booking API
 //     this.createResponse,
 //     this.createError,
 
 //     // location
-//     this.locationStatus = UserLocationUpdateStatus.initial,
 //     this.lastLatitude,
 //     this.lastLongitude,
 //     this.locationError,
+
+//     // availability
+//     this.changeAvailabilityError,
 
 //     // accept booking
 //     this.acceptBookingError,
 //     this.acceptBookingResponse,
 //     this.acceptBookingMessage,
-
-//     // availability
-//     this.changeAvailabilityError,
 //   });
 
 //   UserBookingState copyWith({
+//     // ✅ dashboard
 //     TaskerDashboardStatus? taskerDashboardStatus,
-// TaskerDashboardResponse? taskerDashboardResponse,
-// String? taskerDashboardError,
-// bool clearTaskerDashboardResponse = false,
-// bool clearTaskerDashboardError = false,
-//     // =========================
+//     TaskerDashboardResponse? taskerDashboardResponse,
+//     String? taskerDashboardError,
+//     bool clearTaskerDashboardResponse = false,
+//     bool clearTaskerDashboardError = false,
+//       TaskerEarningsStatsStatus? taskerEarningsStatsStatus,
+//   TaskerEarningsStatsResponse? taskerEarningsStatsResponse,
+//   String? taskerEarningsStatsError,
+//   bool clearTaskerEarningsStatsResponse = false,
+//   bool clearTaskerEarningsStatsError = false,
+
 //     // ✅ SOS
-//     // =========================
 //     StartSosStatus? startSosStatus,
 //     StartSosResult? startSosResult,
 //     String? startSosError,
@@ -472,25 +569,20 @@ class UserBookingState extends Equatable {
 //     String? updateSosLocationError,
 //     bool clearUpdateSosLocationError = false,
 
-//     // optional legacy RegistrationResponse
 //     RegistrationResponse? startSosResponse,
 //     bool clearStartSosResponse = false,
 
 //     RegistrationResponse? updateSosLocationResponse,
 //     bool clearUpdateSosLocationResponse = false,
 
-//     // =========================
-//     // ✅ Payment Intent
-//     // =========================
+//     // ✅ payment
 //     CreatePaymentIntentStatus? createPaymentIntentStatus,
 //     PaymentIntentResponse? paymentIntentResponse,
 //     String? paymentIntentError,
 //     bool clearPaymentIntentResponse = false,
 //     bool clearPaymentIntentError = false,
 
-//     // =========================
-//     // ✅ Booking statuses
-//     // =========================
+//     // ✅ statuses
 //     AcceptBookingEnum? acceptBookingEnum,
 //     ChangeAvailabilityStatusEnum? changeAvailabilityStatusEnum,
 //     FindingTaskerStatus? findingTaskerStatus,
@@ -532,115 +624,88 @@ class UserBookingState extends Equatable {
 //     String? changeAvailabilityError,
 //   }) {
 //     return UserBookingState(
+//       // ✅ dashboard
 //       taskerDashboardStatus: taskerDashboardStatus ?? this.taskerDashboardStatus,
-// taskerDashboardResponse: clearTaskerDashboardResponse
-//     ? null
-//     : (taskerDashboardResponse ?? this.taskerDashboardResponse),
-// taskerDashboardError: clearTaskerDashboardError
-//     ? null
-//     : (taskerDashboardError ?? this.taskerDashboardError),
-//       // =========================
+//       taskerDashboardResponse: clearTaskerDashboardResponse
+//           ? null
+//           : (taskerDashboardResponse ?? this.taskerDashboardResponse),
+//       taskerDashboardError: clearTaskerDashboardError
+//           ? null
+//           : (taskerDashboardError ?? this.taskerDashboardError),
+
 //       // ✅ SOS
-//       // =========================
 //       startSosStatus: startSosStatus ?? this.startSosStatus,
-//       startSosResult:
-//           clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
+//       startSosResult: clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
 //       startSosError: clearStartSosError ? null : (startSosError ?? this.startSosError),
 
-//       updateSosLocationStatus:
-//           updateSosLocationStatus ?? this.updateSosLocationStatus,
+//       updateSosLocationStatus: updateSosLocationStatus ?? this.updateSosLocationStatus,
 //       updateSosLocationError: clearUpdateSosLocationError
 //           ? null
 //           : (updateSosLocationError ?? this.updateSosLocationError),
 
-//       startSosResponse: clearStartSosResponse
-//           ? null
-//           : (startSosResponse ?? this.startSosResponse),
+//       startSosResponse: clearStartSosResponse ? null : (startSosResponse ?? this.startSosResponse),
+//       updateSosLocationResponse:
+//           clearUpdateSosLocationResponse ? null : (updateSosLocationResponse ?? this.updateSosLocationResponse),
 
-//       updateSosLocationResponse: clearUpdateSosLocationResponse
-//           ? null
-//           : (updateSosLocationResponse ?? this.updateSosLocationResponse),
-
-//       // =========================
-//       // ✅ Payment intent
-//       // =========================
-//       createPaymentIntentStatus:
-//           createPaymentIntentStatus ?? this.createPaymentIntentStatus,
-
+//       // ✅ payment
+//       createPaymentIntentStatus: createPaymentIntentStatus ?? this.createPaymentIntentStatus,
 //       paymentIntentResponse: clearPaymentIntentResponse
 //           ? null
 //           : (paymentIntentResponse ?? this.paymentIntentResponse),
+//       paymentIntentError: clearPaymentIntentError ? null : (paymentIntentError ?? this.paymentIntentError),
 
-//       paymentIntentError: clearPaymentIntentError
-//           ? null
-//           : (paymentIntentError ?? this.paymentIntentError),
-
-//       // =========================
-//       // ✅ Other statuses
-//       // =========================
+//       // ✅ statuses
 //       acceptBookingEnum: acceptBookingEnum ?? this.acceptBookingEnum,
-//       changeAvailabilityStatusEnum:
-//           changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
+//       changeAvailabilityStatusEnum: changeAvailabilityStatusEnum ?? this.changeAvailabilityStatusEnum,
 //       findingTaskerStatus: findingTaskerStatus ?? this.findingTaskerStatus,
 //       createStatus: createStatus ?? this.createStatus,
-//       userBookingCancelStatus:
-//           userBookingCancelStatus ?? this.userBookingCancelStatus,
+//       userBookingCancelStatus: userBookingCancelStatus ?? this.userBookingCancelStatus,
 
 //       // booking create response
-//       bookingCreateResponse: clearBookingCreateResponse
-//           ? null
-//           : (bookingCreateResponse ?? this.bookingCreateResponse),
+//       bookingCreateResponse: clearBookingCreateResponse ? null : (bookingCreateResponse ?? this.bookingCreateResponse),
 
 //       // find tasker
-//       bookingFindResponse: clearBookingFindResponse
-//           ? null
-//           : (bookingFindResponse ?? this.bookingFindResponse),
-//       findingTaskerError: clearFindingTaskerError
-//           ? null
-//           : (findingTaskerError ?? this.findingTaskerError),
+//       bookingFindResponse: clearBookingFindResponse ? null : (bookingFindResponse ?? this.bookingFindResponse),
+//       findingTaskerError: clearFindingTaskerError ? null : (findingTaskerError ?? this.findingTaskerError),
 
 //       // create booking API
-//       createResponse:
-//           clearCreateResponse ? null : (createResponse ?? this.createResponse),
+//       createResponse: clearCreateResponse ? null : (createResponse ?? this.createResponse),
 //       createError: clearCreateError ? null : (createError ?? this.createError),
 
 //       // location
 //       locationStatus: locationStatus ?? this.locationStatus,
 //       lastLatitude: lastLatitude ?? this.lastLatitude,
 //       lastLongitude: lastLongitude ?? this.lastLongitude,
-//       locationError:
-//           clearLocationError ? null : (locationError ?? this.locationError),
+//       locationError: clearLocationError ? null : (locationError ?? this.locationError),
 
 //       // accept booking
-//       acceptBookingError: clearAcceptBookingError
-//           ? null
-//           : (acceptBookingError ?? this.acceptBookingError),
-
-//       acceptBookingResponse: clearAcceptBookingResponse
-//           ? null
-//           : (acceptBookingResponse ?? this.acceptBookingResponse),
-
-//       acceptBookingMessage: clearAcceptBookingMessage
-//           ? null
-//           : (acceptBookingMessage ?? this.acceptBookingMessage),
+//       acceptBookingError: clearAcceptBookingError ? null : (acceptBookingError ?? this.acceptBookingError),
+//       acceptBookingResponse:
+//           clearAcceptBookingResponse ? null : (acceptBookingResponse ?? this.acceptBookingResponse),
+//       acceptBookingMessage:
+//           clearAcceptBookingMessage ? null : (acceptBookingMessage ?? this.acceptBookingMessage),
 
 //       // availability
-//       changeAvailabilityError:
-//           changeAvailabilityError ?? this.changeAvailabilityError,
+//       changeAvailabilityError: changeAvailabilityError ?? this.changeAvailabilityError,
 //     );
 //   }
 
 //   @override
 //   List<Object?> get props => [
-//     taskerDashboardStatus,
-// taskerDashboardResponse,
-// taskerDashboardError,
+//         // dashboard
+//         taskerDashboardStatus,
+//         taskerDashboardResponse,
+//         taskerDashboardError,
+//           taskerEarningsStatsStatus,
+//   taskerEarningsStatsResponse,
+//   taskerEarningsStatsError,
+
 //         // payment
 //         createPaymentIntentStatus,
 //         paymentIntentResponse,
 //         paymentIntentError,
 
-//         // ✅ SOS
+//         // SOS
 //         startSosStatus,
 //         startSosResult,
 //         startSosError,
@@ -652,7 +717,7 @@ class UserBookingState extends Equatable {
 //         // cancel
 //         userBookingCancelStatus,
 
-//         // create booking
+//         // booking create response
 //         bookingCreateResponse,
 
 //         // find tasker

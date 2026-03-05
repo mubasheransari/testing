@@ -8,6 +8,7 @@ import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
@@ -58,6 +59,7 @@ class ApiConfig {
    //dashboard 
    static const String taskerDashboardEndpoint = '/api/Tasker/dashboard';
    static const String taskerEarningsStatsEndpoint = '/api/Tasker/earnings-stats';
+   static const String taskerEarningsChartEndpoint = '/api/Tasker/earnings-chart';
 
 }
 
@@ -77,6 +79,11 @@ abstract class AuthRepository {
   });
 
   Future<Result<TaskerEarningsStatsResponse>> fetchTaskerEarningsStats({
+  required String userId,
+  required String period, // today | week | month
+});
+
+Future<Result<TaskerEarningsChartResponse>> fetchTaskerEarningsChart({
   required String userId,
   required String period, // today | week | month
 });
@@ -290,6 +297,80 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
   //dashboard
+
+  @override
+Future<Result<TaskerEarningsChartResponse>> fetchTaskerEarningsChart({
+  required String userId,
+  required String period,
+}) async {
+  final base = '${ApiConfig.baseUrl}${ApiConfig.taskerEarningsChartEndpoint}';
+
+  final uri = Uri.parse(base).replace(
+    queryParameters: {
+      'UserId': userId.trim(),
+      if (period.trim().isNotEmpty) 'Period': period.trim(),
+    },
+  );
+
+  try {
+    debugPrint('>>> TASKER EARNINGS CHART GET $uri');
+
+    final res = await http.get(uri).timeout(timeout);
+
+    debugPrint('<<< TASKER EARNINGS CHART STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER EARNINGS CHART BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerEarningsChartResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Earnings chart failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(code: 'validation', message: msg, statusCode: res.statusCode),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) message = err['message'].toString();
+        if (err is Map && err['errors'] is List) message = (err['errors'] as List).join(' • ');
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
 
 
   @override
