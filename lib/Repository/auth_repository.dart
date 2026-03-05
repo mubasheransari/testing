@@ -8,6 +8,7 @@ import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/service_document_model.dart';
@@ -56,6 +57,7 @@ class ApiConfig {
 
    //dashboard 
    static const String taskerDashboardEndpoint = '/api/Tasker/dashboard';
+   static const String taskerEarningsStatsEndpoint = '/api/Tasker/earnings-stats';
 
 }
 
@@ -73,6 +75,11 @@ abstract class AuthRepository {
   Future<Result<TaskerDashboardResponse>> fetchTaskerDashboard({
     required String userId,
   });
+
+  Future<Result<TaskerEarningsStatsResponse>> fetchTaskerEarningsStats({
+  required String userId,
+  required String period, // today | week | month
+});
 
   //Payment
   Future<Result<PaymentIntentResponse>> createPaymentIntent({
@@ -283,6 +290,103 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
   //dashboard
+
+
+  @override
+Future<Result<TaskerEarningsStatsResponse>> fetchTaskerEarningsStats({
+  required String userId,
+  required String period,
+}) async {
+  final base = '${ApiConfig.baseUrl}${ApiConfig.taskerEarningsStatsEndpoint}';
+
+  // keep query param keys same as your API: UserId / Period
+  final uri = Uri.parse(base).replace(queryParameters: {
+    'UserId': userId.trim(),
+    if (period.trim().isNotEmpty) 'Period': period.trim(),
+  });
+
+  try {
+    debugPrint('>>> TASKER EARNINGS STATS GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< TASKER EARNINGS STATS STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER EARNINGS STATS BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerEarningsStatsResponse.fromJson(parsed);
+
+      // API uses isSuccess/message/errors
+      if (resp.isSuccess != true) {
+        String msg = resp.message ?? 'Earnings stats failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(code: 'validation', message: msg, statusCode: res.statusCode),
+        );
+      }
+
+      // also guard null result if your UI expects it
+      if (resp.result == null) {
+        return Result.fail(
+          Failure(
+            code: 'empty_result',
+            message: resp.message ?? 'No earnings stats found',
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    // non-2xx
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          // if backend returns errors as list of strings
+          message = (err['errors'] as List).map((e) => e.toString()).join(' • ');
+        } else if (err is Map && err['errors'] is Map) {
+          // ASP.NET validation: { errors: { field: ["msg"] } }
+          final m = (err['errors'] as Map).entries
+              .map((e) => '${e.key}: ${(e.value as List).join(', ')}')
+              .join(' • ');
+          if (m.isNotEmpty) message = m;
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
 
 
 

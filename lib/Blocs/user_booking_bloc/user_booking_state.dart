@@ -3,10 +3,11 @@ import 'package:taskoon/Models/auth_model.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
 
-
+enum TaskerEarningsStatsStatus { initial, loading, success, failure }
 
 enum TaskerDashboardStatus { initial, loading, success, failure }
 
@@ -26,6 +27,9 @@ class UserBookingState extends Equatable {
   final TaskerDashboardStatus taskerDashboardStatus;
   final TaskerDashboardResponse? taskerDashboardResponse;
   final String? taskerDashboardError;
+  final TaskerEarningsStatsStatus taskerEarningsStatsStatus;
+  final TaskerEarningsStatsResponse? taskerEarningsStatsResponse;
+  final String? taskerEarningsStatsError;
 
   // ✅ SOS
   final StartSosStatus startSosStatus;
@@ -80,6 +84,9 @@ class UserBookingState extends Equatable {
     this.taskerDashboardStatus = TaskerDashboardStatus.initial,
     this.taskerDashboardResponse,
     this.taskerDashboardError,
+      this.taskerEarningsStatsStatus = TaskerEarningsStatsStatus.initial,
+  this.taskerEarningsStatsResponse,
+  this.taskerEarningsStatsError,
 
     // ✅ SOS
     this.startSosStatus = StartSosStatus.initial,
@@ -135,6 +142,11 @@ class UserBookingState extends Equatable {
     String? taskerDashboardError,
     bool clearTaskerDashboardResponse = false,
     bool clearTaskerDashboardError = false,
+      TaskerEarningsStatsStatus? taskerEarningsStatsStatus,
+  TaskerEarningsStatsResponse? taskerEarningsStatsResponse,
+  String? taskerEarningsStatsError,
+  bool clearTaskerEarningsStatsResponse = false,
+  bool clearTaskerEarningsStatsError = false,
 
     // ✅ SOS
     StartSosStatus? startSosStatus,
@@ -274,6 +286,9 @@ class UserBookingState extends Equatable {
         taskerDashboardStatus,
         taskerDashboardResponse,
         taskerDashboardError,
+          taskerEarningsStatsStatus,
+  taskerEarningsStatsResponse,
+  taskerEarningsStatsError,
 
         // payment
         createPaymentIntentStatus,

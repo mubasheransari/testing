@@ -13,6 +13,13 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     //dashboard
       on<FetchTaskerDashboardRequested>(_onFetchTaskerDashboard);
     on<ClearTaskerDashboardStatus>(_onClearTaskerDashboardStatus);
+        on<FetchTaskerEarningsStatsRequested>(_onFetchTaskerEarningsStats);
+    on<ClearTaskerEarningsStatsStatus>((event, emit) {
+      emit(state.copyWith(
+        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.initial,
+        clearTaskerEarningsStatsError: true,
+      ));
+    });
     on<StartSosRequested>(_startSosRequested);
     on<UpdateSosLocationRequested>(_updateSosLocationRequested);
     on<CreatePaymentIntentRequested>(_createPaymentIntentRequested);
@@ -69,6 +76,63 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     _sosLocationTimer = null;
     _activeSosId = null;
   }
+
+Future<void> _onFetchTaskerEarningsStats(
+  FetchTaskerEarningsStatsRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerEarningsStatsStatus: TaskerEarningsStatsStatus.loading,
+    clearTaskerEarningsStatsError: true,
+    clearTaskerEarningsStatsResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchTaskerEarningsStats(
+      userId: event.userId,
+      period: event.period,
+    );
+
+    // repository failure
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+        taskerEarningsStatsError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    // API failure
+    if (resp.isSuccess != true || resp.result == null) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load earnings');
+
+      emit(state.copyWith(
+        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+        taskerEarningsStatsError: msg,
+        taskerEarningsStatsResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerEarningsStatsStatus: TaskerEarningsStatsStatus.success,
+      taskerEarningsStatsResponse: resp,
+      clearTaskerEarningsStatsError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+      taskerEarningsStatsError: e.toString(),
+    ));
+  }
+}
+
+
+
 
   Future<void> _onFetchTaskerDashboard(
     FetchTaskerDashboardRequested event,
