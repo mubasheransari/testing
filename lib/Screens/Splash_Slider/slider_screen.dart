@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../Authentication/login_screen.dart';
 
@@ -208,32 +207,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ),
                     ),
-
-                    // CTA Button
-                /*    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _next,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          elevation: 6,
-                          shadowColor: primary.withOpacity(.35),
-                        ),
-                        child: Text(
-                          isLast ? 'Get Started' : 'Next',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: .2,
-                          ),
-                        ),
-                      ),
-                    ),*/
                   ],
                 ),
               ),
@@ -251,16 +224,7 @@ class _SlideData {
       {required this.title, required this.subtitle, required this.image});
 }
 
-// class _OnbData {
-//   final String title;
-//   final String asset;
-//   final bool underline;
-//   const _OnbData({
-//     required this.title,
-//     required this.asset,
-//     this.underline = false,
-//   });
-// }
+
 
 class _OnboardPage extends StatelessWidget {
   final _SlideData data;
