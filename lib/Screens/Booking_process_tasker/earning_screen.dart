@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
+import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart';
+
+
 
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});

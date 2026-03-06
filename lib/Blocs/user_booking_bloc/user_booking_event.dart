@@ -10,7 +10,6 @@ abstract class UserBookingEvent extends Equatable {
 
 
 class CreateUserBookingRequested extends UserBookingEvent {
-  // ----- required -----
   final String userId;
   final int subCategoryId;
   final int bookingTypeId; // 1=ASAP, 2=Future, 3=Recurrence, 4=MultiDays
@@ -237,6 +236,22 @@ class ClearTaskerEarningsChartStatus extends UserBookingEvent {
   List<Object?> get props => [];
 }
 
-// class ClearTaskerEarningsChartStatus extends UserBookingEvent {
-//   const ClearTaskerEarningsChartStatus();
-// }
+
+class FetchTaskerEarningsTasksRequested extends UserBookingEvent {
+  final String userId;
+
+  const FetchTaskerEarningsTasksRequested({
+    required this.userId,
+  });
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class ClearTaskerEarningsTasksStatus extends UserBookingEvent {
+  const ClearTaskerEarningsTasksStatus();
+
+  @override
+  List<Object?> get props => [];
+}
+

@@ -11,23 +11,36 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    on<FetchTaskerEarningsTasksRequested>(_onFetchTaskerEarningsTasks);
+    on<ClearTaskerEarningsTasksStatus>((event, emit) {
+      emit(
+        state.copyWith(
+          taskerEarningsTasksStatus: TaskerEarningsTasksStatus.initial,
+          clearTaskerEarningsTasksError: true,
+        ),
+      );
+    });
     on<FetchTaskerEarningsChartRequested>(_onFetchTaskerEarningsChart);
-on<ClearTaskerEarningsChartStatus>((event, emit) {
-  emit(state.copyWith(
-    taskerEarningsChartStatus: TaskerEarningsChartStatus.initial,
-    clearTaskerEarningsChartError: true,
-    clearTaskerEarningsChartResponse: true,
-  ));
-});
+    on<ClearTaskerEarningsChartStatus>((event, emit) {
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.initial,
+          clearTaskerEarningsChartError: true,
+          clearTaskerEarningsChartResponse: true,
+        ),
+      );
+    });
     //dashboard
-      on<FetchTaskerDashboardRequested>(_onFetchTaskerDashboard);
+    on<FetchTaskerDashboardRequested>(_onFetchTaskerDashboard);
     on<ClearTaskerDashboardStatus>(_onClearTaskerDashboardStatus);
-        on<FetchTaskerEarningsStatsRequested>(_onFetchTaskerEarningsStats);
+    on<FetchTaskerEarningsStatsRequested>(_onFetchTaskerEarningsStats);
     on<ClearTaskerEarningsStatsStatus>((event, emit) {
-      emit(state.copyWith(
-        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.initial,
-        clearTaskerEarningsStatsError: true,
-      ));
+      emit(
+        state.copyWith(
+          taskerEarningsStatsStatus: TaskerEarningsStatsStatus.initial,
+          clearTaskerEarningsStatsError: true,
+        ),
+      );
     });
     on<StartSosRequested>(_startSosRequested);
     on<UpdateSosLocationRequested>(_updateSosLocationRequested);
@@ -41,166 +54,154 @@ on<ClearTaskerEarningsChartStatus>((event, emit) {
     on<StopSosRequested>(_stopSosRequested);
   }
 
-Future<void> _onFetchTaskerEarningsChart(
-  FetchTaskerEarningsChartRequested event,
-  Emitter<UserBookingState> emit,
-) async {
-  final userId = event.userId.trim();
-  final period = (event.period ?? 'today').trim(); // ✅ fix String? -> String
-
-  if (userId.isEmpty) return;
-
-  // ✅ Optional: if you already have cached data for this period, don't refetch
-  final cached = state.taskerEarningsChartByPeriod[period];
-  if (cached != null) {
-    emit(state.copyWith(
-      taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
-      taskerEarningsChartResponse: cached,
-      clearTaskerEarningsChartError: true,
-    ));
-    return;
-  }
-
-  // ✅ No UI loading (per your requirement)
-  // emit(state.copyWith(taskerEarningsChartStatus: TaskerEarningsChartStatus.loading));
-
-  try {
-    final result = await repo.fetchTaskerEarningsChart(
-      userId: userId,
-      period: period,
+  Future<void> _onFetchTaskerEarningsTasks(
+    FetchTaskerEarningsTasksRequested event,
+    Emitter<UserBookingState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        taskerEarningsTasksStatus: TaskerEarningsTasksStatus.loading,
+        clearTaskerEarningsTasksError: true,
+        clearTaskerEarningsTasksResponse: true,
+      ),
     );
 
-    // ✅ Unwrap Result<T>
-    // Adjust these field names to match YOUR Result class:
-    // common names: data / value / result / response, error / message
-    final TaskerEarningsChartResponse? resp =
-        (result is dynamic) ? (result.data as TaskerEarningsChartResponse?) : null;
+    try {
+      final result = await repo.fetchTaskerEarningsTasks(userId: event.userId);
 
-    // If your Result uses `value` instead of `data`, use this line instead:
-    // final TaskerEarningsChartResponse? resp = (result as dynamic).value as TaskerEarningsChartResponse?;
+      if (result.failure != null) {
+        emit(
+          state.copyWith(
+            taskerEarningsTasksStatus: TaskerEarningsTasksStatus.failure,
+            taskerEarningsTasksError: result.failure!.message,
+          ),
+        );
+        return;
+      }
 
-    if (resp != null && resp.isSuccess == true) {
-      final updatedMap = Map<String, TaskerEarningsChartResponse>.from(
-        state.taskerEarningsChartByPeriod,
-      )..[period] = resp;
+      final resp = result.data!;
 
-      emit(state.copyWith(
-        taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
-        taskerEarningsChartResponse: resp,
-        taskerEarningsChartByPeriod: updatedMap,
-        clearTaskerEarningsChartError: true,
-      ));
+      if (resp.isSuccess != true || resp.result == null) {
+        final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+            ? resp.errors!.join(' • ')
+            : (resp.message ?? 'Failed to load earnings tasks');
+
+        emit(
+          state.copyWith(
+            taskerEarningsTasksStatus: TaskerEarningsTasksStatus.failure,
+            taskerEarningsTasksError: msg,
+            taskerEarningsTasksResponse: resp,
+          ),
+        );
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          taskerEarningsTasksStatus: TaskerEarningsTasksStatus.success,
+          taskerEarningsTasksResponse: resp,
+          clearTaskerEarningsTasksError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          taskerEarningsTasksStatus: TaskerEarningsTasksStatus.failure,
+          taskerEarningsTasksError: e.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onFetchTaskerEarningsChart(
+    FetchTaskerEarningsChartRequested event,
+    Emitter<UserBookingState> emit,
+  ) async {
+    final userId = event.userId.trim();
+    final period = (event.period ?? 'today').trim();
+
+    if (userId.isEmpty) return;
+
+    final cached = state.taskerEarningsChartByPeriod[period];
+    if (cached != null) {
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
+          taskerEarningsChartResponse: cached,
+          clearTaskerEarningsChartError: true,
+        ),
+      );
       return;
     }
 
-    // ✅ failure: use API response message/errors if available
-    final apiMsg = resp?.message?.trim();
-    final apiErrors = (resp?.errors ?? const []).join('\n').trim();
+    try {
+      final result = await repo.fetchTaskerEarningsChart(
+        userId: userId,
+        period: period,
+      );
 
-    // ✅ Result-level error (if your Result exposes it)
-    final resultMsg =
-        (result is dynamic && (result.data?.message != null)) ? (result.data?.message as String).trim() : '';
+      final TaskerEarningsChartResponse? resp = (result is dynamic)
+          ? (result.data as TaskerEarningsChartResponse?)
+          : null;
 
-    emit(state.copyWith(
-      taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
-      taskerEarningsChartError: apiMsg?.isNotEmpty == true
-          ? apiMsg
-          : (apiErrors.isNotEmpty
-              ? apiErrors
-              : (resultMsg.isNotEmpty ? resultMsg : "Failed to fetch earnings chart")),
-    ));
-  } catch (e) {
-    emit(state.copyWith(
-      taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
-      taskerEarningsChartError: e.toString(),
-    ));
+      if (resp != null && resp.isSuccess == true) {
+        final updatedMap = Map<String, TaskerEarningsChartResponse>.from(
+          state.taskerEarningsChartByPeriod,
+        )..[period] = resp;
+
+        emit(
+          state.copyWith(
+            taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
+            taskerEarningsChartResponse: resp,
+            taskerEarningsChartByPeriod: updatedMap,
+            clearTaskerEarningsChartError: true,
+          ),
+        );
+        return;
+      }
+
+      final apiMsg = resp?.message?.trim();
+      final apiErrors = (resp?.errors ?? const []).join('\n').trim();
+
+      final resultMsg = (result is dynamic && (result.data?.message != null))
+          ? (result.data?.message as String).trim()
+          : '';
+
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
+          taskerEarningsChartError: apiMsg?.isNotEmpty == true
+              ? apiMsg
+              : (apiErrors.isNotEmpty
+                    ? apiErrors
+                    : (resultMsg.isNotEmpty
+                          ? resultMsg
+                          : "Failed to fetch earnings chart")),
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
+          taskerEarningsChartError: e.toString(),
+        ),
+      );
+    }
   }
-}
 
-void _onClearTaskerEarningsChartStatus(
-  ClearTaskerEarningsChartStatus event,
-  Emitter<UserBookingState> emit,
-) {
-  emit(state.copyWith(
-    taskerEarningsChartStatus: TaskerEarningsChartStatus.initial,
-    clearTaskerEarningsChartError: true,
-  ));
-}
-
-// Future<void> _onFetchTaskerEarningsChart(
-//   FetchTaskerEarningsChartRequested event,
-//   Emitter<UserBookingState> emit,
-// ) async {
-//   emit(
-//     state.copyWith(
-//       taskerEarningsChartStatus: TaskerEarningsChartStatus.loading,
-//       clearTaskerEarningsChartError: true,
-//       clearTaskerEarningsChartResponse: true,
-//     ),
-//   );
-
-//   try {
-//     // ✅ event.period is String? -> make it non-null
-//     final period = (event.period ?? 'today').trim();
-
-//     // ✅ repo returns Result<TaskerEarningsChartResponse>
-//     final result = await repo.fetchTaskerEarningsChart(
-//       userId: event.userId,
-//       period: period,
-//     );
-
-//     // ✅ unwrap Result<T>
-//     final resp = result.data; // <--- IMPORTANT
-
-//     // If Result failed (network/server/timeout etc)
-//     if (!result.isSuccess || resp == null) {
-//       emit(
-//         state.copyWith(
-//           taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
-//           taskerEarningsChartError:
-//               result.failure?.message ?? 'Failed to fetch earnings chart',
-//         ),
-//       );
-//       return;
-//     }
-
-//     // If API model itself says isSuccess=false
-//     if (resp.isSuccess != true) {
-//       final msg = (resp.errors != null && resp.errors!.isNotEmpty)
-//           ? resp.errors!.join(' • ')
-//           : (resp.message ?? 'Failed to fetch earnings chart');
-
-//       emit(
-//         state.copyWith(
-//           taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
-//           taskerEarningsChartError: msg,
-//           taskerEarningsChartResponse: resp,
-//         ),
-//       );
-//       return;
-//     }
-
-//     // ✅ success
-//     emit(
-//       state.copyWith(
-//         taskerEarningsChartStatus: TaskerEarningsChartStatus.success,
-//         taskerEarningsChartResponse: resp,
-//         clearTaskerEarningsChartError: true,
-//       ),
-//     );
-//   } catch (e) {
-//     emit(
-//       state.copyWith(
-//         taskerEarningsChartStatus: TaskerEarningsChartStatus.failure,
-//         taskerEarningsChartError: e.toString(),
-//       ),
-//     );
-//   }
-// }
-
+  void _onClearTaskerEarningsChartStatus(
+    ClearTaskerEarningsChartStatus event,
+    Emitter<UserBookingState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        taskerEarningsChartStatus: TaskerEarningsChartStatus.initial,
+        clearTaskerEarningsChartError: true,
+      ),
+    );
+  }
 
   void _startSosTimer() {
-    // ✅ cancel only timer, DO NOT null sosId here
     _sosLocationTimer?.cancel();
     _sosLocationTimer = null;
 
@@ -244,112 +245,131 @@ void _onClearTaskerEarningsChartStatus(
     _sosLocationTimer = null;
     _activeSosId = null;
   }
-// i also want to call FetchTaskerEarningsStatsRequested event in  main.dart file so it loads the loads before we navigate for efficicency
-Future<void> _onFetchTaskerEarningsStats(
-  FetchTaskerEarningsStatsRequested event,
-  Emitter<UserBookingState> emit,
-) async {
-  emit(state.copyWith(
-    taskerEarningsStatsStatus: TaskerEarningsStatsStatus.loading,
-    clearTaskerEarningsStatsError: true,
-    clearTaskerEarningsStatsResponse: true,
-  ));
 
-  try {
-    final result = await repo.fetchTaskerEarningsStats(
-      userId: event.userId,
-      period: event.period,
+  // i also want to call FetchTaskerEarningsStatsRequested event in  main.dart file so it loads the loads before we navigate for efficicency
+  Future<void> _onFetchTaskerEarningsStats(
+    FetchTaskerEarningsStatsRequested event,
+    Emitter<UserBookingState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.loading,
+        clearTaskerEarningsStatsError: true,
+        clearTaskerEarningsStatsResponse: true,
+      ),
     );
 
-    // repository failure
-    if (result.failure != null) {
-      emit(state.copyWith(
-        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
-        taskerEarningsStatsError: result.failure!.message,
-      ));
-      return;
+    try {
+      final result = await repo.fetchTaskerEarningsStats(
+        userId: event.userId,
+        period: event.period,
+      );
+
+      // repository failure
+      if (result.failure != null) {
+        emit(
+          state.copyWith(
+            taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+            taskerEarningsStatsError: result.failure!.message,
+          ),
+        );
+        return;
+      }
+
+      final resp = result.data!;
+
+      // API failure
+      if (resp.isSuccess != true || resp.result == null) {
+        final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+            ? resp.errors!.join(' • ')
+            : (resp.message ?? 'Failed to load earnings');
+
+        emit(
+          state.copyWith(
+            taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+            taskerEarningsStatsError: msg,
+            taskerEarningsStatsResponse: resp,
+          ),
+        );
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          taskerEarningsStatsStatus: TaskerEarningsStatsStatus.success,
+          taskerEarningsStatsResponse: resp,
+          clearTaskerEarningsStatsError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
+          taskerEarningsStatsError: e.toString(),
+        ),
+      );
     }
-
-    final resp = result.data!;
-
-    // API failure
-    if (resp.isSuccess != true || resp.result == null) {
-      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
-          ? resp.errors!.join(' • ')
-          : (resp.message ?? 'Failed to load earnings');
-
-      emit(state.copyWith(
-        taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
-        taskerEarningsStatsError: msg,
-        taskerEarningsStatsResponse: resp,
-      ));
-      return;
-    }
-
-    emit(state.copyWith(
-      taskerEarningsStatsStatus: TaskerEarningsStatsStatus.success,
-      taskerEarningsStatsResponse: resp,
-      clearTaskerEarningsStatsError: true,
-    ));
-  } catch (e) {
-    emit(state.copyWith(
-      taskerEarningsStatsStatus: TaskerEarningsStatsStatus.failure,
-      taskerEarningsStatsError: e.toString(),
-    ));
   }
-}
-
-
-
 
   Future<void> _onFetchTaskerDashboard(
     FetchTaskerDashboardRequested event,
     Emitter<UserBookingState> emit,
   ) async {
-    emit(state.copyWith(
-      taskerDashboardStatus: TaskerDashboardStatus.loading,
-      clearTaskerDashboardError: true,
-      clearTaskerDashboardResponse: true,
-    ));
+    emit(
+      state.copyWith(
+        taskerDashboardStatus: TaskerDashboardStatus.loading,
+        clearTaskerDashboardError: true,
+        clearTaskerDashboardResponse: true,
+      ),
+    );
 
     final r = await repo.fetchTaskerDashboard(userId: event.userId);
 
     if (!r.isSuccess) {
-      emit(state.copyWith(
-        taskerDashboardStatus: TaskerDashboardStatus.failure,
-        taskerDashboardError: r.failure?.message ?? "Failed to load dashboard",
-      ));
+      emit(
+        state.copyWith(
+          taskerDashboardStatus: TaskerDashboardStatus.failure,
+          taskerDashboardError:
+              r.failure?.message ?? "Failed to load dashboard",
+        ),
+      );
       return;
     }
 
-   final resp = r.data!;
+    final resp = r.data!;
     if (resp.isSuccess != true || resp.result == null) {
       final msg = (resp.errors != null && resp.errors!.isNotEmpty)
           ? resp.errors!.join(' • ')
           : (resp.message ?? "Dashboard failed");
-      emit(state.copyWith(
-        taskerDashboardStatus: TaskerDashboardStatus.failure,
-        taskerDashboardError: msg,
-        taskerDashboardResponse: resp,
-      ));
+      emit(
+        state.copyWith(
+          taskerDashboardStatus: TaskerDashboardStatus.failure,
+          taskerDashboardError: msg,
+          taskerDashboardResponse: resp,
+        ),
+      );
       return;
     }
 
-    emit(state.copyWith(
-      taskerDashboardStatus: TaskerDashboardStatus.success,
-      taskerDashboardResponse: resp,
-      clearTaskerDashboardError: true,
-    ));
+    emit(
+      state.copyWith(
+        taskerDashboardStatus: TaskerDashboardStatus.success,
+        taskerDashboardResponse: resp,
+        clearTaskerDashboardError: true,
+      ),
+    );
   }
 
   void _onClearTaskerDashboardStatus(
     ClearTaskerDashboardStatus event,
     Emitter<UserBookingState> emit,
   ) {
-    emit(state.copyWith(
-      taskerDashboardStatus: TaskerDashboardStatus.initial,
-      clearTaskerDashboardError: true,
-    ));
+    emit(
+      state.copyWith(
+        taskerDashboardStatus: TaskerDashboardStatus.initial,
+        clearTaskerDashboardError: true,
+      ),
+    );
   }
 
   Future<void> _startSosRequested(
@@ -384,7 +404,6 @@ Future<void> _onFetchTaskerEarningsStats(
       final sosId = r.data!.result!.sosId;
       _activeSosId = sosId;
 
-      // ✅ start 10s loop (with fallback initial location)
       _startSosTimer();
 
       emit(
