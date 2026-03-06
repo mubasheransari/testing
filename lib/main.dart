@@ -161,6 +161,24 @@ if (userId != null && userId.isNotEmpty) {
 context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "today"));
 context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "week"));
 context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "month"));
+
+context.read<UserBookingBloc>().add(
+          FetchTaskerEarningsStatsRequested(
+            userId: userId,
+            period: "today",
+          ),
+        );
+        context.read<UserBookingBloc>().add(
+          FetchTaskerEarningsStatsRequested(
+            userId: userId,
+            period: "week",
+          ),
+        );
+        context.read<UserBookingBloc>().add(
+          FetchTaskerEarningsStatsRequested(
+            userId: userId,
+            period: "month",
+          ));
   }
 } else {
   debugPrint("ℹ️ SignalR not started (userId missing)");

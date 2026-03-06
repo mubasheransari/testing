@@ -244,7 +244,7 @@ void _onClearTaskerEarningsChartStatus(
     _sosLocationTimer = null;
     _activeSosId = null;
   }
-
+// i also want to call FetchTaskerEarningsStatsRequested event in  main.dart file so it loads the loads before we navigate for efficicency
 Future<void> _onFetchTaskerEarningsStats(
   FetchTaskerEarningsStatsRequested event,
   Emitter<UserBookingState> emit,
