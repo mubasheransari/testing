@@ -6,16 +6,13 @@ import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
-
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_state.dart';
-
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 
 class EarningsScreen extends StatefulWidget {
@@ -150,7 +147,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           children: [
                             _SummaryCard(
                               period: period,
-                              amount: _sum(apiChart.values), // ✅ uses chart sum as total
+                              amount: _sum(apiChart.values),
                               data: sparkData[period] ?? const [],
                               tasksCompleted: 0,
                               onlineTime: '0h 0m',

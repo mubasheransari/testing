@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
@@ -157,6 +156,11 @@ if (userId != null && userId.isNotEmpty) {
     context.read<UserBookingBloc>().add(
           FetchTaskerDashboardRequested(userId: userId),
         );
+
+
+context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "today"));
+context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "week"));
+context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "month"));
   }
 } else {
   debugPrint("ℹ️ SignalR not started (userId missing)");
