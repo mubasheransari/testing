@@ -140,6 +140,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Column(
                       children: [
+                       // Text(""),
                         _SummaryCard(
                           period: period,
                           amount: amount,

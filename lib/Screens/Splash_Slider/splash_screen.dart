@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_bloc.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_state.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
+import 'package:taskoon/Blocs/user_booking_bloc/user_booking_event.dart';
 import 'package:taskoon/Screens/Authentication/login_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/bottom_nav_root_screen.dart';
+import 'package:taskoon/Screens/User_booking/user_booking_home.dart';
 import 'dart:math' as math;
 import 'package:taskoon/Screens/User_booking/user_booking_nav_bar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -121,7 +124,48 @@ class _SplashScreenState extends State<SplashScreen>
     _pillCtrl.stop();
 
     final role = storage.read("role");
+       final userID = storage.read("userId");
     debugPrint("ROLE $role");
+
+    if (role == "Tasker") {
+  print("Tasker print");
+   print("Tasker print");
+    print("Tasker print");
+     print("Tasker print");
+      print("Tasker print");
+       print("Tasker print");
+
+  final bookingBloc = context.read<UserBookingBloc>();
+
+  bookingBloc.add(
+    FetchTaskerDashboardRequested(userId: userID),
+  );
+
+  bookingBloc.add(
+    FetchTaskerEarningsChartRequested(userId: userID, period: "today"),
+  );
+  bookingBloc.add(
+    FetchTaskerEarningsChartRequested(userId: userID, period: "week"),
+  );
+  bookingBloc.add(
+    FetchTaskerEarningsChartRequested(userId: userID, period: "month"),
+  );
+
+  bookingBloc.add(
+    FetchTaskerEarningsStatsRequested(userId: userID, period: "today"),
+  );
+  bookingBloc.add(
+    FetchTaskerEarningsStatsRequested(userId: userID, period: "week"),
+  );
+  bookingBloc.add(
+    FetchTaskerEarningsStatsRequested(userId: userID, period: "month"),
+  );
+
+  // ✅ new api preload
+  bookingBloc.add(
+    FetchTaskerEarningsTasksRequested(userId: userID),
+  );
+}
 
     Navigator.of(context).pushReplacement(
       _fadeRoute(

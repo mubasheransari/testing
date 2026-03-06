@@ -16,7 +16,6 @@ import 'Service/internet_connectivity_banner.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 @pragma('vm:entry-point')
@@ -40,9 +39,9 @@ Future<void> _initFcmSafely() async {
     await FirebaseMessaging.instance.requestPermission();
 
     // Don't let getToken hang forever
-    final token = await FirebaseMessaging.instance
-        .getToken()
-        .timeout(const Duration(seconds: 8));
+    final token = await FirebaseMessaging.instance.getToken().timeout(
+      const Duration(seconds: 8),
+    );
 
     debugPrint("✅ FCM TOKEN: $token");
 
@@ -111,9 +110,7 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: const _RealtimeBootstrap(
-          child: AppLifecycleWatcher(
-            child: _TaskoonMaterialApp(),
-          ),
+          child: AppLifecycleWatcher(child: _TaskoonMaterialApp()),
         ),
       ),
     );
@@ -138,52 +135,58 @@ class _RealtimeBootstrapState extends State<_RealtimeBootstrap> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final box = GetStorage();
-final userId = box.read('userId')?.toString().trim();
-final role = box.read('role')?.toString().trim();
+      final userId = box.read('userId')?.toString().trim();
+      final role = box.read('role')?.toString().trim();
 
-if (userId != null && userId.isNotEmpty) {
-  try {
-    await SignalRService.I.connect(
-      baseUrl: ApiConfig.baseUrl,
-      userId: userId,
-    );
-  } catch (e) {
-    debugPrint("❌ SignalR connect failed: $e");
-  }
-
-  // ✅ NEW: fetch tasker dashboard on app start if Tasker
-  if (role == "Tasker") {
-    context.read<UserBookingBloc>().add(
-          FetchTaskerDashboardRequested(userId: userId),
-        );
-
-
-context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "today"));
-context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "week"));
-context.read<UserBookingBloc>().add(FetchTaskerEarningsChartRequested(userId: userId, period: "month"));
-
-context.read<UserBookingBloc>().add(
-          FetchTaskerEarningsStatsRequested(
+      if (userId != null && userId.isNotEmpty) {
+        try {
+          await SignalRService.I.connect(
+            baseUrl: ApiConfig.baseUrl,
             userId: userId,
-            period: "today",
-          ),
-        );
-        context.read<UserBookingBloc>().add(
-          FetchTaskerEarningsStatsRequested(
-            userId: userId,
-            period: "week",
-          ),
-        );
-        context.read<UserBookingBloc>().add(
-          FetchTaskerEarningsStatsRequested(
-            userId: userId,
-            period: "month",
-          ));
-  }
-} else {
-  debugPrint("ℹ️ SignalR not started (userId missing)");
-}
-  /*    if (!mounted) return;
+          );
+        } catch (e) {
+          debugPrint("❌ SignalR connect failed: $e");
+        }
+
+        // ✅ NEW: fetch tasker dashboard on app start if Tasker
+        if (role == "Tasker") {
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          print("Tasker print");
+          context.read<UserBookingBloc>().add(
+            FetchTaskerDashboardRequested(userId: userId),
+          );
+
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsChartRequested(userId: userId, period: "today"),
+          );
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsChartRequested(userId: userId, period: "week"),
+          );
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsChartRequested(userId: userId, period: "month"),
+          );
+
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsStatsRequested(userId: userId, period: "today"),
+          );
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsStatsRequested(userId: userId, period: "week"),
+          );
+          context.read<UserBookingBloc>().add(
+            FetchTaskerEarningsStatsRequested(userId: userId, period: "month"),
+          );
+        }
+      } else {
+        debugPrint("ℹ️ SignalR not started (userId missing)");
+      }
+      /*    if (!mounted) return;
       if (_started) return;
       _started = true;
 
