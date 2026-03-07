@@ -165,6 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
   bookingBloc.add(
     FetchTaskerEarningsTasksRequested(userId: userID),
   );
+
 }
 
     Navigator.of(context).pushReplacement(
