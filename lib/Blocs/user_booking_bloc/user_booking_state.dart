@@ -5,31 +5,48 @@ import 'package:taskoon/Models/booking_find_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
-import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart' show TaskerEarningsTasksResponse;
+import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart'
+    show TaskerEarningsTasksResponse;
+import 'package:taskoon/Models/dashboard/tasker_history_response.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
 
 enum TaskerEarningsTasksStatus { initial, loading, success, failure }
+
 enum TaskerEarningsStatsStatus { initial, loading, success, failure }
+
 enum TaskerEarningsChartStatus { initial, loading, success, failure }
+
 enum TaskerDashboardStatus { initial, loading, success, failure }
 
+enum TaskerHistoryStatus { initial, loading, success, failure }
+
 enum StartSosStatus { initial, submitting, success, failure }
+
 enum UpdateSosLocationStatus { initial, submitting, success, failure }
+
 enum CreatePaymentIntentStatus { initial, submitting, success, failure }
 
 enum UserBookingCreateStatus { initial, submitting, success, failure }
+
 enum UserBookingCancelStatus { initial, submitting, success, failure }
+
 enum UserLocationUpdateStatus { initial, updating, success, failure }
+
 enum FindingTaskerStatus { initial, updating, success, failure }
+
 enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
+
 enum AcceptBookingEnum { initial, updating, success, failure }
 
 class UserBookingState extends Equatable {
   // ✅ Dashboard
+  final TaskerHistoryStatus taskerHistoryStatus;
+  final TaskerHistoryResponse? taskerHistoryResponse;
+  final String? taskerHistoryError;
   final TaskerEarningsTasksStatus taskerEarningsTasksStatus;
-final TaskerEarningsTasksResponse? taskerEarningsTasksResponse;
-final String? taskerEarningsTasksError;
+  final TaskerEarningsTasksResponse? taskerEarningsTasksResponse;
+  final String? taskerEarningsTasksError;
   final TaskerDashboardStatus taskerDashboardStatus;
   final TaskerDashboardResponse? taskerDashboardResponse;
   final String? taskerDashboardError;
@@ -100,9 +117,12 @@ final String? taskerEarningsTasksError;
 
   const UserBookingState({
     // Dashboard
+    this.taskerHistoryStatus = TaskerHistoryStatus.initial,
+    this.taskerHistoryResponse,
+    this.taskerHistoryError,
     this.taskerEarningsTasksStatus = TaskerEarningsTasksStatus.initial,
-this.taskerEarningsTasksResponse,
-this.taskerEarningsTasksError,
+    this.taskerEarningsTasksResponse,
+    this.taskerEarningsTasksError,
     this.taskerDashboardStatus = TaskerDashboardStatus.initial,
     this.taskerDashboardResponse,
     this.taskerDashboardError,
@@ -168,11 +188,16 @@ this.taskerEarningsTasksError,
 
   UserBookingState copyWith({
     // Dashboard
+    TaskerHistoryStatus? taskerHistoryStatus,
+    TaskerHistoryResponse? taskerHistoryResponse,
+    String? taskerHistoryError,
+    bool clearTaskerHistoryResponse = false,
+    bool clearTaskerHistoryError = false,
     TaskerEarningsTasksStatus? taskerEarningsTasksStatus,
-TaskerEarningsTasksResponse? taskerEarningsTasksResponse,
-String? taskerEarningsTasksError,
-bool clearTaskerEarningsTasksResponse = false,
-bool clearTaskerEarningsTasksError = false,
+    TaskerEarningsTasksResponse? taskerEarningsTasksResponse,
+    String? taskerEarningsTasksError,
+    bool clearTaskerEarningsTasksResponse = false,
+    bool clearTaskerEarningsTasksError = false,
     TaskerDashboardStatus? taskerDashboardStatus,
     TaskerDashboardResponse? taskerDashboardResponse,
     String? taskerDashboardError,
@@ -262,15 +287,23 @@ bool clearTaskerEarningsTasksError = false,
   }) {
     return UserBookingState(
       // Dashboard
+      taskerHistoryStatus: taskerHistoryStatus ?? this.taskerHistoryStatus,
+      taskerHistoryResponse: clearTaskerHistoryResponse
+          ? null
+          : (taskerHistoryResponse ?? this.taskerHistoryResponse),
+      taskerHistoryError: clearTaskerHistoryError
+          ? null
+          : (taskerHistoryError ?? this.taskerHistoryError),
       taskerEarningsTasksStatus:
-    taskerEarningsTasksStatus ?? this.taskerEarningsTasksStatus,
-taskerEarningsTasksResponse: clearTaskerEarningsTasksResponse
-    ? null
-    : (taskerEarningsTasksResponse ?? this.taskerEarningsTasksResponse),
-taskerEarningsTasksError: clearTaskerEarningsTasksError
-    ? null
-    : (taskerEarningsTasksError ?? this.taskerEarningsTasksError),
-      taskerDashboardStatus: taskerDashboardStatus ?? this.taskerDashboardStatus,
+          taskerEarningsTasksStatus ?? this.taskerEarningsTasksStatus,
+      taskerEarningsTasksResponse: clearTaskerEarningsTasksResponse
+          ? null
+          : (taskerEarningsTasksResponse ?? this.taskerEarningsTasksResponse),
+      taskerEarningsTasksError: clearTaskerEarningsTasksError
+          ? null
+          : (taskerEarningsTasksError ?? this.taskerEarningsTasksError),
+      taskerDashboardStatus:
+          taskerDashboardStatus ?? this.taskerDashboardStatus,
       taskerDashboardResponse: clearTaskerDashboardResponse
           ? null
           : (taskerDashboardResponse ?? this.taskerDashboardResponse),
@@ -304,10 +337,12 @@ taskerEarningsTasksError: clearTaskerEarningsTasksError
 
       // SOS
       startSosStatus: startSosStatus ?? this.startSosStatus,
-      startSosResult:
-          clearStartSosResult ? null : (startSosResult ?? this.startSosResult),
-      startSosError:
-          clearStartSosError ? null : (startSosError ?? this.startSosError),
+      startSosResult: clearStartSosResult
+          ? null
+          : (startSosResult ?? this.startSosResult),
+      startSosError: clearStartSosError
+          ? null
+          : (startSosError ?? this.startSosError),
 
       updateSosLocationStatus:
           updateSosLocationStatus ?? this.updateSosLocationStatus,
@@ -355,16 +390,18 @@ taskerEarningsTasksError: clearTaskerEarningsTasksError
           : (findingTaskerError ?? this.findingTaskerError),
 
       // Create booking API
-      createResponse:
-          clearCreateResponse ? null : (createResponse ?? this.createResponse),
+      createResponse: clearCreateResponse
+          ? null
+          : (createResponse ?? this.createResponse),
       createError: clearCreateError ? null : (createError ?? this.createError),
 
       // Location
       locationStatus: locationStatus ?? this.locationStatus,
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
-      locationError:
-          clearLocationError ? null : (locationError ?? this.locationError),
+      locationError: clearLocationError
+          ? null
+          : (locationError ?? this.locationError),
 
       // Accept booking
       acceptBookingError: clearAcceptBookingError
@@ -385,70 +422,73 @@ taskerEarningsTasksError: clearTaskerEarningsTasksError
 
   @override
   List<Object?> get props => [
-        // Dashboard
-        taskerEarningsTasksStatus,
-taskerEarningsTasksResponse,
-taskerEarningsTasksError,
-        taskerDashboardStatus,
-        taskerDashboardResponse,
-        taskerDashboardError,
+    // Dashboard
+    taskerHistoryStatus,
+    taskerHistoryResponse,
+    taskerHistoryError,
+    taskerEarningsTasksStatus,
+    taskerEarningsTasksResponse,
+    taskerEarningsTasksError,
+    taskerDashboardStatus,
+    taskerDashboardResponse,
+    taskerDashboardError,
 
-        // Earnings stats
-        taskerEarningsStatsStatus,
-        taskerEarningsStatsResponse,
-        taskerEarningsStatsError,
-        taskerEarningsStatsByPeriod,
+    // Earnings stats
+    taskerEarningsStatsStatus,
+    taskerEarningsStatsResponse,
+    taskerEarningsStatsError,
+    taskerEarningsStatsByPeriod,
 
-        // Earnings chart
-        taskerEarningsChartStatus,
-        taskerEarningsChartResponse,
-        taskerEarningsChartError,
-        taskerEarningsChartByPeriod,
+    // Earnings chart
+    taskerEarningsChartStatus,
+    taskerEarningsChartResponse,
+    taskerEarningsChartError,
+    taskerEarningsChartByPeriod,
 
-        // Payment
-        createPaymentIntentStatus,
-        paymentIntentResponse,
-        paymentIntentError,
+    // Payment
+    createPaymentIntentStatus,
+    paymentIntentResponse,
+    paymentIntentError,
 
-        // SOS
-        startSosStatus,
-        startSosResult,
-        startSosError,
-        updateSosLocationStatus,
-        updateSosLocationError,
-        startSosResponse,
-        updateSosLocationResponse,
+    // SOS
+    startSosStatus,
+    startSosResult,
+    startSosError,
+    updateSosLocationStatus,
+    updateSosLocationError,
+    startSosResponse,
+    updateSosLocationResponse,
 
-        // Cancel
-        userBookingCancelStatus,
+    // Cancel
+    userBookingCancelStatus,
 
-        // Booking create
-        bookingCreateResponse,
+    // Booking create
+    bookingCreateResponse,
 
-        // Find tasker
-        bookingFindResponse,
-        findingTaskerError,
-        findingTaskerStatus,
+    // Find tasker
+    bookingFindResponse,
+    findingTaskerError,
+    findingTaskerStatus,
 
-        // Accept booking
-        acceptBookingEnum,
-        acceptBookingError,
-        acceptBookingResponse,
-        acceptBookingMessage,
+    // Accept booking
+    acceptBookingEnum,
+    acceptBookingError,
+    acceptBookingResponse,
+    acceptBookingMessage,
 
-        // Availability
-        changeAvailabilityStatusEnum,
-        changeAvailabilityError,
+    // Availability
+    changeAvailabilityStatusEnum,
+    changeAvailabilityError,
 
-        // Create booking API
-        createStatus,
-        createResponse,
-        createError,
+    // Create booking API
+    createStatus,
+    createResponse,
+    createError,
 
-        // Location
-        locationStatus,
-        lastLatitude,
-        lastLongitude,
-        locationError,
-      ];
+    // Location
+    locationStatus,
+    lastLatitude,
+    lastLongitude,
+    locationError,
+  ];
 }

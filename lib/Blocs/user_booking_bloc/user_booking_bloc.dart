@@ -11,6 +11,13 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    on<FetchTaskerHistoryRequested>(_onFetchTaskerHistory);
+on<ClearTaskerHistoryStatus>((event, emit) {
+  emit(state.copyWith(
+    taskerHistoryStatus: TaskerHistoryStatus.initial,
+    clearTaskerHistoryError: true,
+  ));
+});
     on<FetchTaskerEarningsTasksRequested>(_onFetchTaskerEarningsTasks);
     on<ClearTaskerEarningsTasksStatus>((event, emit) {
       emit(
@@ -53,6 +60,57 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+  Future<void> _onFetchTaskerHistory(
+  FetchTaskerHistoryRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerHistoryStatus: TaskerHistoryStatus.loading,
+    clearTaskerHistoryError: true,
+    clearTaskerHistoryResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchTaskerHistory(
+      userId: event.userId,
+      filter: event.filter,
+    );
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerHistoryStatus: TaskerHistoryStatus.failure,
+        taskerHistoryError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    if (resp.isSuccess != true || resp.result == null) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load history');
+
+      emit(state.copyWith(
+        taskerHistoryStatus: TaskerHistoryStatus.failure,
+        taskerHistoryError: msg,
+        taskerHistoryResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerHistoryStatus: TaskerHistoryStatus.success,
+      taskerHistoryResponse: resp,
+      clearTaskerHistoryError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerHistoryStatus: TaskerHistoryStatus.failure,
+      taskerHistoryError: e.toString(),
+    ));
+  }
+}
 
   Future<void> _onFetchTaskerEarningsTasks(
     FetchTaskerEarningsTasksRequested event,

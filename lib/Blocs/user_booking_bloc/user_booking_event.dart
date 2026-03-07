@@ -255,3 +255,22 @@ class ClearTaskerEarningsTasksStatus extends UserBookingEvent {
   List<Object?> get props => [];
 }
 
+class FetchTaskerHistoryRequested extends UserBookingEvent {
+  final String userId;
+  final String? filter;
+
+  const FetchTaskerHistoryRequested({
+    required this.userId,
+    this.filter,
+  });
+
+  @override
+  List<Object?> get props => [userId, filter];
+}
+
+class ClearTaskerHistoryStatus extends UserBookingEvent {
+  const ClearTaskerHistoryStatus();
+
+  @override
+  List<Object?> get props => [];
+}
