@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:taskoon/Models/auth_model.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Models/calender/tasker_calendar_models.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
@@ -10,6 +11,14 @@ import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart'
 import 'package:taskoon/Models/dashboard/tasker_history_response.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
+
+//caldernder
+
+enum TaskerCalendarStatus { initial, loading, success, failure }
+enum TaskerCalendarByIdStatus { initial, loading, success, failure }
+enum TaskerCalendarCreateStatus { initial, submitting, success, failure }
+enum TaskerCalendarUpdateStatus { initial, submitting, success, failure }
+enum TaskerCalendarDeleteStatus { initial, submitting, success, failure }
 
 enum TaskerEarningsTasksStatus { initial, loading, success, failure }
 
@@ -40,6 +49,26 @@ enum ChangeAvailabilityStatusEnum { initial, updating, success, failure }
 enum AcceptBookingEnum { initial, updating, success, failure }
 
 class UserBookingState extends Equatable {
+  //calender
+  final TaskerCalendarStatus taskerCalendarStatus;
+final TaskerCalendarResponse? taskerCalendarResponse;
+final String? taskerCalendarError;
+
+final TaskerCalendarByIdStatus taskerCalendarByIdStatus;
+final TaskerCalendarItemResponse? taskerCalendarByIdResponse;
+final String? taskerCalendarByIdError;
+
+final TaskerCalendarCreateStatus taskerCalendarCreateStatus;
+final TaskerCalendarActionResponse? taskerCalendarCreateResponse;
+final String? taskerCalendarCreateError;
+
+final TaskerCalendarUpdateStatus taskerCalendarUpdateStatus;
+final TaskerCalendarActionResponse? taskerCalendarUpdateResponse;
+final String? taskerCalendarUpdateError;
+
+final TaskerCalendarDeleteStatus taskerCalendarDeleteStatus;
+final TaskerCalendarActionResponse? taskerCalendarDeleteResponse;
+final String? taskerCalendarDeleteError;
   // ✅ Dashboard
   final TaskerHistoryStatus taskerHistoryStatus;
   final TaskerHistoryResponse? taskerHistoryResponse;
@@ -116,6 +145,26 @@ class UserBookingState extends Equatable {
   final String? acceptBookingMessage;
 
   const UserBookingState({
+    //calender
+    this.taskerCalendarStatus = TaskerCalendarStatus.initial,
+this.taskerCalendarResponse,
+this.taskerCalendarError,
+
+this.taskerCalendarByIdStatus = TaskerCalendarByIdStatus.initial,
+this.taskerCalendarByIdResponse,
+this.taskerCalendarByIdError,
+
+this.taskerCalendarCreateStatus = TaskerCalendarCreateStatus.initial,
+this.taskerCalendarCreateResponse,
+this.taskerCalendarCreateError,
+
+this.taskerCalendarUpdateStatus = TaskerCalendarUpdateStatus.initial,
+this.taskerCalendarUpdateResponse,
+this.taskerCalendarUpdateError,
+
+this.taskerCalendarDeleteStatus = TaskerCalendarDeleteStatus.initial,
+this.taskerCalendarDeleteResponse,
+this.taskerCalendarDeleteError,
     // Dashboard
     this.taskerHistoryStatus = TaskerHistoryStatus.initial,
     this.taskerHistoryResponse,
@@ -187,6 +236,36 @@ class UserBookingState extends Equatable {
   });
 
   UserBookingState copyWith({
+    //calender
+    TaskerCalendarStatus? taskerCalendarStatus,
+TaskerCalendarResponse? taskerCalendarResponse,
+String? taskerCalendarError,
+bool clearTaskerCalendarResponse = false,
+bool clearTaskerCalendarError = false,
+
+TaskerCalendarByIdStatus? taskerCalendarByIdStatus,
+TaskerCalendarItemResponse? taskerCalendarByIdResponse,
+String? taskerCalendarByIdError,
+bool clearTaskerCalendarByIdResponse = false,
+bool clearTaskerCalendarByIdError = false,
+
+TaskerCalendarCreateStatus? taskerCalendarCreateStatus,
+TaskerCalendarActionResponse? taskerCalendarCreateResponse,
+String? taskerCalendarCreateError,
+bool clearTaskerCalendarCreateResponse = false,
+bool clearTaskerCalendarCreateError = false,
+
+TaskerCalendarUpdateStatus? taskerCalendarUpdateStatus,
+TaskerCalendarActionResponse? taskerCalendarUpdateResponse,
+String? taskerCalendarUpdateError,
+bool clearTaskerCalendarUpdateResponse = false,
+bool clearTaskerCalendarUpdateError = false,
+
+TaskerCalendarDeleteStatus? taskerCalendarDeleteStatus,
+TaskerCalendarActionResponse? taskerCalendarDeleteResponse,
+String? taskerCalendarDeleteError,
+bool clearTaskerCalendarDeleteResponse = false,
+bool clearTaskerCalendarDeleteError = false,
     // Dashboard
     TaskerHistoryStatus? taskerHistoryStatus,
     TaskerHistoryResponse? taskerHistoryResponse,
@@ -286,6 +365,50 @@ class UserBookingState extends Equatable {
     String? changeAvailabilityError,
   }) {
     return UserBookingState(
+      //calender
+      taskerCalendarStatus: taskerCalendarStatus ?? this.taskerCalendarStatus,
+taskerCalendarResponse: clearTaskerCalendarResponse
+    ? null
+    : (taskerCalendarResponse ?? this.taskerCalendarResponse),
+taskerCalendarError: clearTaskerCalendarError
+    ? null
+    : (taskerCalendarError ?? this.taskerCalendarError),
+
+taskerCalendarByIdStatus:
+    taskerCalendarByIdStatus ?? this.taskerCalendarByIdStatus,
+taskerCalendarByIdResponse: clearTaskerCalendarByIdResponse
+    ? null
+    : (taskerCalendarByIdResponse ?? this.taskerCalendarByIdResponse),
+taskerCalendarByIdError: clearTaskerCalendarByIdError
+    ? null
+    : (taskerCalendarByIdError ?? this.taskerCalendarByIdError),
+
+taskerCalendarCreateStatus:
+    taskerCalendarCreateStatus ?? this.taskerCalendarCreateStatus,
+taskerCalendarCreateResponse: clearTaskerCalendarCreateResponse
+    ? null
+    : (taskerCalendarCreateResponse ?? this.taskerCalendarCreateResponse),
+taskerCalendarCreateError: clearTaskerCalendarCreateError
+    ? null
+    : (taskerCalendarCreateError ?? this.taskerCalendarCreateError),
+
+taskerCalendarUpdateStatus:
+    taskerCalendarUpdateStatus ?? this.taskerCalendarUpdateStatus,
+taskerCalendarUpdateResponse: clearTaskerCalendarUpdateResponse
+    ? null
+    : (taskerCalendarUpdateResponse ?? this.taskerCalendarUpdateResponse),
+taskerCalendarUpdateError: clearTaskerCalendarUpdateError
+    ? null
+    : (taskerCalendarUpdateError ?? this.taskerCalendarUpdateError),
+
+taskerCalendarDeleteStatus:
+    taskerCalendarDeleteStatus ?? this.taskerCalendarDeleteStatus,
+taskerCalendarDeleteResponse: clearTaskerCalendarDeleteResponse
+    ? null
+    : (taskerCalendarDeleteResponse ?? this.taskerCalendarDeleteResponse),
+taskerCalendarDeleteError: clearTaskerCalendarDeleteError
+    ? null
+    : (taskerCalendarDeleteError ?? this.taskerCalendarDeleteError),
       // Dashboard
       taskerHistoryStatus: taskerHistoryStatus ?? this.taskerHistoryStatus,
       taskerHistoryResponse: clearTaskerHistoryResponse
@@ -422,6 +545,26 @@ class UserBookingState extends Equatable {
 
   @override
   List<Object?> get props => [
+    //calender
+    taskerCalendarStatus,
+taskerCalendarResponse,
+taskerCalendarError,
+
+taskerCalendarByIdStatus,
+taskerCalendarByIdResponse,
+taskerCalendarByIdError,
+
+taskerCalendarCreateStatus,
+taskerCalendarCreateResponse,
+taskerCalendarCreateError,
+
+taskerCalendarUpdateStatus,
+taskerCalendarUpdateResponse,
+taskerCalendarUpdateError,
+
+taskerCalendarDeleteStatus,
+taskerCalendarDeleteResponse,
+taskerCalendarDeleteError,
     // Dashboard
     taskerHistoryStatus,
     taskerHistoryResponse,

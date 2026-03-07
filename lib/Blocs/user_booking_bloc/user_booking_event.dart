@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:taskoon/Models/calender/tasker_calendar_models.dart';
 
 
 abstract class UserBookingEvent extends Equatable {
@@ -270,6 +271,64 @@ class FetchTaskerHistoryRequested extends UserBookingEvent {
 
 class ClearTaskerHistoryStatus extends UserBookingEvent {
   const ClearTaskerHistoryStatus();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class FetchTaskerCalendarRequested extends UserBookingEvent {
+  const FetchTaskerCalendarRequested();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class FetchTaskerCalendarByIdRequested extends UserBookingEvent {
+  final String id;
+
+  const FetchTaskerCalendarByIdRequested({
+    required this.id,
+  });
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class CreateTaskerCalendarRequested extends UserBookingEvent {
+  final TaskerCalendarRequest request;
+
+  const CreateTaskerCalendarRequested({
+    required this.request,
+  });
+
+  @override
+  List<Object?> get props => [request];
+}
+
+class UpdateTaskerCalendarRequested extends UserBookingEvent {
+  final TaskerCalendarUpdateRequest request;
+
+  const UpdateTaskerCalendarRequested({
+    required this.request,
+  });
+
+  @override
+  List<Object?> get props => [request];
+}
+
+class DeleteTaskerCalendarRequested extends UserBookingEvent {
+  final String id;
+
+  const DeleteTaskerCalendarRequested({
+    required this.id,
+  });
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class ClearTaskerCalendarStatus extends UserBookingEvent {
+  const ClearTaskerCalendarStatus();
 
   @override
   List<Object?> get props => [];

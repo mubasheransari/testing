@@ -7,6 +7,7 @@ import 'package:taskoon/Models/add_booking_request_model.dart';
 import 'package:taskoon/Models/add_booking_request_wrapper.dart';
 import 'package:taskoon/Models/booking_create_response.dart';
 import 'package:taskoon/Models/booking_find_response.dart';
+import 'package:taskoon/Models/calender/tasker_calendar_models.dart';
 import 'package:taskoon/Models/dashboard/tasker_dashboard.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
@@ -64,12 +65,32 @@ class ApiConfig {
    static const String taskerEarningsChartEndpoint = '/api/Tasker/earnings-chart';
    static const String taskerEarningsTasksEndpoint = '/api/Tasker/earnings-tasks';
    static const String taskerHistoryEndpoint = '/api/Tasker/history';
+   //Calender
+   static const String taskerCalendarEndpoint = '/api/TaskerCalendar';
 
 }
 
 
 
 abstract class AuthRepository {
+  //calender
+  Future<Result<TaskerCalendarResponse>> fetchTaskerCalendar();
+
+Future<Result<TaskerCalendarItemResponse>> fetchTaskerCalendarById({
+  required String id,
+});
+
+Future<Result<TaskerCalendarActionResponse>> createTaskerCalendar({
+  required TaskerCalendarRequest request,
+});
+
+Future<Result<TaskerCalendarActionResponse>> updateTaskerCalendar({
+  required TaskerCalendarUpdateRequest request,
+});
+
+Future<Result<TaskerCalendarActionResponse>> deleteTaskerCalendar({
+  required String id,
+});
 //dashboard
 Future<Result<TaskerHistoryResponse>> fetchTaskerHistory({
   required String userId,
@@ -286,19 +307,425 @@ class AuthRepositoryHttp implements AuthRepository {
     'X-Request-For': '::1',
   };
 
-  Failure? _validateEmail(String email) {
-    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-    return ok
-        ? null
-        : Failure(code: 'validation', message: 'Invalid email format');
-  }
+//calender
+@override
+Future<Result<TaskerCalendarResponse>> fetchTaskerCalendar() async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.taskerCalendarEndpoint}',
+  );
 
-  Failure? _validateRequired(String label, String value) {
-    if (value.trim().isEmpty) {
-      return Failure(code: 'validation', message: '$label is required');
+  try {
+    debugPrint('>>> TASKER CALENDAR GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< TASKER CALENDAR STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER CALENDAR BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerCalendarResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Tasker calendar failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
     }
-    return null;
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
   }
+}
+
+@override
+Future<Result<TaskerCalendarItemResponse>> fetchTaskerCalendarById({
+  required String id,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.taskerCalendarEndpoint}/${id.trim()}',
+  );
+
+  try {
+    debugPrint('>>> TASKER CALENDAR BY ID GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< TASKER CALENDAR BY ID STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER CALENDAR BY ID BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerCalendarItemResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Tasker calendar by id failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
+@override
+Future<Result<TaskerCalendarActionResponse>> createTaskerCalendar({
+  required TaskerCalendarRequest request,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.taskerCalendarEndpoint}',
+  );
+
+  try {
+    debugPrint('>>> TASKER CALENDAR CREATE POST $uri');
+    debugPrint('>>> TASKER CALENDAR CREATE BODY: ${jsonEncode(request.toJson())}');
+
+    final res = await http
+        .post(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(request.toJson()),
+        )
+        .timeout(timeout);
+
+    debugPrint('<<< TASKER CALENDAR CREATE STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER CALENDAR CREATE BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+
+      if (raw.isEmpty) {
+        return Result.ok(
+          const TaskerCalendarActionResponse(
+            isSuccess: true,
+            message: 'Calendar created successfully',
+          ),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerCalendarActionResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Tasker calendar create failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
+@override
+Future<Result<TaskerCalendarActionResponse>> updateTaskerCalendar({
+  required TaskerCalendarUpdateRequest request,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.taskerCalendarEndpoint}',
+  );
+
+  try {
+    debugPrint('>>> TASKER CALENDAR UPDATE PUT $uri');
+    debugPrint('>>> TASKER CALENDAR UPDATE BODY: ${jsonEncode(request.toJson())}');
+
+    final res = await http
+        .put(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(request.toJson()),
+        )
+        .timeout(timeout);
+
+    debugPrint('<<< TASKER CALENDAR UPDATE STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER CALENDAR UPDATE BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+
+      if (raw.isEmpty) {
+        return Result.ok(
+          const TaskerCalendarActionResponse(
+            isSuccess: true,
+            message: 'Calendar updated successfully',
+          ),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerCalendarActionResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Tasker calendar update failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
+@override
+Future<Result<TaskerCalendarActionResponse>> deleteTaskerCalendar({
+  required String id,
+}) async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.taskerCalendarEndpoint}/${id.trim()}',
+  );
+
+  try {
+    debugPrint('>>> TASKER CALENDAR DELETE $uri');
+
+    final res = await http.delete(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< TASKER CALENDAR DELETE STATUS: ${res.statusCode}');
+    debugPrint('<<< TASKER CALENDAR DELETE BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+
+      if (raw.isEmpty) {
+        return Result.ok(
+          const TaskerCalendarActionResponse(
+            isSuccess: true,
+            message: 'Calendar deleted successfully',
+          ),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = TaskerCalendarActionResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Tasker calendar delete failed';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
 
   //dashboard
 

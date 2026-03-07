@@ -11,6 +11,28 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+
+    //calender
+    on<FetchTaskerCalendarRequested>(_onFetchTaskerCalendar);
+on<FetchTaskerCalendarByIdRequested>(_onFetchTaskerCalendarById);
+on<CreateTaskerCalendarRequested>(_onCreateTaskerCalendar);
+on<UpdateTaskerCalendarRequested>(_onUpdateTaskerCalendar);
+on<DeleteTaskerCalendarRequested>(_onDeleteTaskerCalendar);
+
+on<ClearTaskerCalendarStatus>((event, emit) {
+  emit(state.copyWith(
+    taskerCalendarStatus: TaskerCalendarStatus.initial,
+    taskerCalendarByIdStatus: TaskerCalendarByIdStatus.initial,
+    taskerCalendarCreateStatus: TaskerCalendarCreateStatus.initial,
+    taskerCalendarUpdateStatus: TaskerCalendarUpdateStatus.initial,
+    taskerCalendarDeleteStatus: TaskerCalendarDeleteStatus.initial,
+    clearTaskerCalendarError: true,
+    clearTaskerCalendarByIdError: true,
+    clearTaskerCalendarCreateError: true,
+    clearTaskerCalendarUpdateError: true,
+    clearTaskerCalendarDeleteError: true,
+  ));
+});
     on<FetchTaskerHistoryRequested>(_onFetchTaskerHistory);
 on<ClearTaskerHistoryStatus>((event, emit) {
   emit(state.copyWith(
@@ -60,6 +82,206 @@ on<ClearTaskerHistoryStatus>((event, emit) {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+  //calender
+  Future<void> _onFetchTaskerCalendar(
+  FetchTaskerCalendarRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerCalendarStatus: TaskerCalendarStatus.loading,
+    clearTaskerCalendarError: true,
+    clearTaskerCalendarResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchTaskerCalendar();
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerCalendarStatus: TaskerCalendarStatus.failure,
+        taskerCalendarError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    if (resp.isSuccess != true) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load calendar');
+
+      emit(state.copyWith(
+        taskerCalendarStatus: TaskerCalendarStatus.failure,
+        taskerCalendarError: msg,
+        taskerCalendarResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerCalendarStatus: TaskerCalendarStatus.success,
+      taskerCalendarResponse: resp,
+      clearTaskerCalendarError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerCalendarStatus: TaskerCalendarStatus.failure,
+      taskerCalendarError: e.toString(),
+    ));
+  }
+}
+
+Future<void> _onFetchTaskerCalendarById(
+  FetchTaskerCalendarByIdRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerCalendarByIdStatus: TaskerCalendarByIdStatus.loading,
+    clearTaskerCalendarByIdError: true,
+    clearTaskerCalendarByIdResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchTaskerCalendarById(id: event.id);
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerCalendarByIdStatus: TaskerCalendarByIdStatus.failure,
+        taskerCalendarByIdError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    if (resp.isSuccess != true) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load calendar item');
+
+      emit(state.copyWith(
+        taskerCalendarByIdStatus: TaskerCalendarByIdStatus.failure,
+        taskerCalendarByIdError: msg,
+        taskerCalendarByIdResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerCalendarByIdStatus: TaskerCalendarByIdStatus.success,
+      taskerCalendarByIdResponse: resp,
+      clearTaskerCalendarByIdError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerCalendarByIdStatus: TaskerCalendarByIdStatus.failure,
+      taskerCalendarByIdError: e.toString(),
+    ));
+  }
+}
+
+Future<void> _onCreateTaskerCalendar(
+  CreateTaskerCalendarRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerCalendarCreateStatus: TaskerCalendarCreateStatus.submitting,
+    clearTaskerCalendarCreateError: true,
+    clearTaskerCalendarCreateResponse: true,
+  ));
+
+  try {
+    final result = await repo.createTaskerCalendar(request: event.request);
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerCalendarCreateStatus: TaskerCalendarCreateStatus.failure,
+        taskerCalendarCreateError: result.failure!.message,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerCalendarCreateStatus: TaskerCalendarCreateStatus.success,
+      taskerCalendarCreateResponse: result.data,
+      clearTaskerCalendarCreateError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerCalendarCreateStatus: TaskerCalendarCreateStatus.failure,
+      taskerCalendarCreateError: e.toString(),
+    ));
+  }
+}
+
+Future<void> _onUpdateTaskerCalendar(
+  UpdateTaskerCalendarRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerCalendarUpdateStatus: TaskerCalendarUpdateStatus.submitting,
+    clearTaskerCalendarUpdateError: true,
+    clearTaskerCalendarUpdateResponse: true,
+  ));
+
+  try {
+    final result = await repo.updateTaskerCalendar(request: event.request);
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerCalendarUpdateStatus: TaskerCalendarUpdateStatus.failure,
+        taskerCalendarUpdateError: result.failure!.message,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerCalendarUpdateStatus: TaskerCalendarUpdateStatus.success,
+      taskerCalendarUpdateResponse: result.data,
+      clearTaskerCalendarUpdateError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerCalendarUpdateStatus: TaskerCalendarUpdateStatus.failure,
+      taskerCalendarUpdateError: e.toString(),
+    ));
+  }
+}
+
+Future<void> _onDeleteTaskerCalendar(
+  DeleteTaskerCalendarRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    taskerCalendarDeleteStatus: TaskerCalendarDeleteStatus.submitting,
+    clearTaskerCalendarDeleteError: true,
+    clearTaskerCalendarDeleteResponse: true,
+  ));
+
+  try {
+    final result = await repo.deleteTaskerCalendar(id: event.id);
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        taskerCalendarDeleteStatus: TaskerCalendarDeleteStatus.failure,
+        taskerCalendarDeleteError: result.failure!.message,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      taskerCalendarDeleteStatus: TaskerCalendarDeleteStatus.success,
+      taskerCalendarDeleteResponse: result.data,
+      clearTaskerCalendarDeleteError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      taskerCalendarDeleteStatus: TaskerCalendarDeleteStatus.failure,
+      taskerCalendarDeleteError: e.toString(),
+    ));
+  }
+}
   Future<void> _onFetchTaskerHistory(
   FetchTaskerHistoryRequested event,
   Emitter<UserBookingState> emit,
