@@ -333,3 +333,6 @@ class ClearTaskerCalendarStatus extends UserBookingEvent {
   @override
   List<Object?> get props => [];
 }
+
+
+class ClearAcceptBookingState extends UserBookingEvent {}

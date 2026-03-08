@@ -8,12 +8,12 @@ plugins {
 }
 
 android {
-    namespace = "com.example.taskoon_application"
+    namespace = "com.app.taskoon"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "com.example.taskoon_application"
+        applicationId = "com.app.taskoon"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

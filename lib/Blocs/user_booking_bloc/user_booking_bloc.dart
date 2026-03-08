@@ -11,6 +11,7 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+    on<ClearAcceptBookingState>(_onClearAcceptBookingState);
 
     //calender
     on<FetchTaskerCalendarRequested>(_onFetchTaskerCalendar);
@@ -33,6 +34,8 @@ on<ClearTaskerCalendarStatus>((event, emit) {
     clearTaskerCalendarDeleteError: true,
   ));
 });
+
+
     on<FetchTaskerHistoryRequested>(_onFetchTaskerHistory);
 on<ClearTaskerHistoryStatus>((event, emit) {
   emit(state.copyWith(
@@ -82,6 +85,17 @@ on<ClearTaskerHistoryStatus>((event, emit) {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+
+  void _onClearAcceptBookingState(
+  ClearAcceptBookingState event,
+  Emitter<UserBookingState> emit,
+) {
+  emit(state.copyWith(
+    acceptBookingStatus: AcceptBookingStatus.initial,
+    acceptBookingMessage: null,
+    acceptBookingError: null,
+  ));
+}
   //calender
   Future<void> _onFetchTaskerCalendar(
   FetchTaskerCalendarRequested event,
@@ -1030,6 +1044,36 @@ Future<void> _onDeleteTaskerCalendar(
   }
 
   Future<void> _acceptBooking(
+  AcceptBooking event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    acceptBookingStatus: AcceptBookingStatus.loading,
+    acceptBookingMessage: null,
+    acceptBookingError: null,
+  ));
+
+  final response = await repo.acceptBooking(
+   userId: event.userId,
+      bookingId: event.bookingDetailId,
+  );
+
+  if (response.isSuccess == true) {
+    emit(state.copyWith(
+      acceptBookingStatus: AcceptBookingStatus.success,
+      acceptBookingMessage: response.data?.message ?? 'Booking accepted successfully.',
+      acceptBookingError: null,
+    ));
+  } else {
+    emit(state.copyWith(
+      acceptBookingStatus: AcceptBookingStatus.failure,
+      acceptBookingMessage: null,
+      acceptBookingError: response.data?.message ?? 'Failed to accept booking.',
+    ));
+  }
+}
+
+ /* Future<void> _acceptBooking(
     AcceptBooking e,
     Emitter<UserBookingState> emit,
   ) async {
@@ -1081,5 +1125,5 @@ Future<void> _onDeleteTaskerCalendar(
         ),
       );
     }
-  }
+  }*/
 }
