@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/earning_screen.dart';
+import 'package:taskoon/Screens/Booking_process_tasker/emergency_form_tabs.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/emergency_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/guidlines_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/my_account_screen.dart';
@@ -8,8 +9,7 @@ import 'package:taskoon/Screens/Booking_process_tasker/tasker_home_screen.dart';
 import 'package:taskoon/Screens/Booking_process_tasker/tasks_screen.dart';
 import 'package:taskoon/widgets/logout_popup.dart';
 import 'dart:math' as math;
-import 'dart:ui';
-import 'package:flutter/material.dart';
+
 
 class TaskoonTheme {
   TaskoonTheme._();
@@ -191,7 +191,8 @@ class _RootNavState extends State<_RootNav> {
     TasksScreen(),
     MyAccountScreen(),
     GuidelinesScreen(),
-    EmergencyScreen(),
+    EmergencyFormTabsScreen()
+    //EmergencyScreen(),
   ];
 
   final List<_MoreItem> _moreItems = const [
