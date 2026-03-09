@@ -353,3 +353,17 @@ class ClearDisputeReasonsStatus extends UserBookingEvent {
   @override
   List<Object?> get props => [];
 }
+
+class FetchDisputeReasonOutcomesRequested extends UserBookingEvent {
+  const FetchDisputeReasonOutcomesRequested();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class ClearDisputeReasonOutcomesStatus extends UserBookingEvent {
+  const ClearDisputeReasonOutcomesStatus();
+
+  @override
+  List<Object?> get props => [];
+}

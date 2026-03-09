@@ -9,12 +9,14 @@ import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart'
     show TaskerEarningsTasksResponse;
 import 'package:taskoon/Models/dashboard/tasker_history_response.dart';
+import 'package:taskoon/Models/dispute/dispute_reason_outcomes_response.dart';
 import 'package:taskoon/Models/dispute/dispute_reason_response.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/sos/start_sos_response.dart';
 
 //Dispute
 enum DisputeReasonsStatus { initial, loading, success, failure }
+enum DisputeReasonOutcomesStatus { initial, loading, success, failure }
 
 // calender
 enum TaskerCalendarStatus { initial, loading, success, failure }
@@ -47,6 +49,10 @@ class UserBookingState extends Equatable {
   final DisputeReasonsStatus disputeReasonsStatus;
 final DisputeReasonResponse? disputeReasonResponse;
 final String? disputeReasonError;
+
+final DisputeReasonOutcomesStatus disputeReasonOutcomesStatus;
+final DisputeReasonOutcomesResponse? disputeReasonOutcomesResponse;
+final String? disputeReasonOutcomesError;
   // calender
   final TaskerCalendarStatus taskerCalendarStatus;
   final TaskerCalendarResponse? taskerCalendarResponse;
@@ -151,6 +157,9 @@ final String? disputeReasonError;
     this.disputeReasonsStatus = DisputeReasonsStatus.initial,
 this.disputeReasonResponse,
 this.disputeReasonError,
+this.disputeReasonOutcomesStatus = DisputeReasonOutcomesStatus.initial,
+this.disputeReasonOutcomesResponse,
+this.disputeReasonOutcomesError,
     // calender
     this.taskerCalendarStatus = TaskerCalendarStatus.initial,
     this.taskerCalendarResponse,
@@ -245,6 +254,11 @@ DisputeReasonResponse? disputeReasonResponse,
 String? disputeReasonError,
 bool clearDisputeReasonResponse = false,
 bool clearDisputeReasonError = false,
+DisputeReasonOutcomesStatus? disputeReasonOutcomesStatus,
+DisputeReasonOutcomesResponse? disputeReasonOutcomesResponse,
+String? disputeReasonOutcomesError,
+bool clearDisputeReasonOutcomesResponse = false,
+bool clearDisputeReasonOutcomesError = false,
     // calender
     TaskerCalendarStatus? taskerCalendarStatus,
     TaskerCalendarResponse? taskerCalendarResponse,
@@ -386,6 +400,15 @@ disputeReasonResponse: clearDisputeReasonResponse
 disputeReasonError: clearDisputeReasonError
     ? null
     : (disputeReasonError ?? this.disputeReasonError),
+
+    disputeReasonOutcomesStatus:
+    disputeReasonOutcomesStatus ?? this.disputeReasonOutcomesStatus,
+disputeReasonOutcomesResponse: clearDisputeReasonOutcomesResponse
+    ? null
+    : (disputeReasonOutcomesResponse ?? this.disputeReasonOutcomesResponse),
+disputeReasonOutcomesError: clearDisputeReasonOutcomesError
+    ? null
+    : (disputeReasonOutcomesError ?? this.disputeReasonOutcomesError),
       // calender
       taskerCalendarStatus: taskerCalendarStatus ?? this.taskerCalendarStatus,
       taskerCalendarResponse: clearTaskerCalendarResponse
@@ -574,6 +597,9 @@ disputeReasonError: clearDisputeReasonError
     disputeReasonsStatus,
 disputeReasonResponse,
 disputeReasonError,
+disputeReasonOutcomesStatus,
+disputeReasonOutcomesResponse,
+disputeReasonOutcomesError,
         // calender
         taskerCalendarStatus,
         taskerCalendarResponse,

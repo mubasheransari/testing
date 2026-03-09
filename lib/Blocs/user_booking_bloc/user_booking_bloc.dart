@@ -20,6 +20,14 @@ on<ClearDisputeReasonsStatus>((event, emit) {
     clearDisputeReasonError: true,
   ));
 });
+
+on<FetchDisputeReasonOutcomesRequested>(_onFetchDisputeReasonOutcomes);
+on<ClearDisputeReasonOutcomesStatus>((event, emit) {
+  emit(state.copyWith(
+    disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.initial,
+    clearDisputeReasonOutcomesError: true,
+  ));
+});
     on<ClearAcceptBookingState>(_onClearAcceptBookingState);
 
     //calender
@@ -96,6 +104,55 @@ on<ClearTaskerHistoryStatus>((event, emit) {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+
+  Future<void> _onFetchDisputeReasonOutcomes(
+  FetchDisputeReasonOutcomesRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.loading,
+    clearDisputeReasonOutcomesError: true,
+    clearDisputeReasonOutcomesResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchDisputeReasonOutcomes();
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.failure,
+        disputeReasonOutcomesError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    if (resp.isSuccess != true) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load dispute reason outcomes');
+
+      emit(state.copyWith(
+        disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.failure,
+        disputeReasonOutcomesError: msg,
+        disputeReasonOutcomesResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.success,
+      disputeReasonOutcomesResponse: resp,
+      clearDisputeReasonOutcomesError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      disputeReasonOutcomesStatus: DisputeReasonOutcomesStatus.failure,
+      disputeReasonOutcomesError: e.toString(),
+    ));
+  }
+}
 
   Future<void> _onFetchDisputeReasons(
   FetchDisputeReasonsRequested event,
