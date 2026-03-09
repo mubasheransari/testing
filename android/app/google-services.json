@@ -1,26 +1,115 @@
 {
   "project_info": {
-    "project_number": "393646104590",
-    "project_id": "taskoon-1cf4a",
-    "storage_bucket": "taskoon-1cf4a.firebasestorage.app"
+    "project_number": "353481223721",
+    "project_id": "testapp-cf47f",
+    "storage_bucket": "testapp-cf47f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:393646104590:android:e884a8865aaa053a821c5f",
+        "mobilesdk_app_id": "1:353481223721:android:b6a336749ea100698cb638",
         "android_client_info": {
-          "package_name": "com.example.taskoon_application"
+          "package_name": "com.app.taskoon"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBpD5VjyAfGI_vjuWIN0xmdjKnKEOVWZ7Q"
+          "current_key": "AIzaSyAKytDQUvQEAEL4LG0cj1lPZLT_Vl3vhzc"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "353481223721-i1jn9ke6kpa4ef9g8gi92mgvuo7tidje.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testapp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353481223721:android:fd4840a99485f73f8cb638",
+        "android_client_info": {
+          "package_name": "com.example.new_amst_flutter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKytDQUvQEAEL4LG0cj1lPZLT_Vl3vhzc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "353481223721-i1jn9ke6kpa4ef9g8gi92mgvuo7tidje.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testapp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353481223721:android:6e0feae971a554d68cb638",
+        "android_client_info": {
+          "package_name": "com.example.voice_assistance_web_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKytDQUvQEAEL4LG0cj1lPZLT_Vl3vhzc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "353481223721-smvar8md7d0o2119ih6d9v3v18b610hr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "353481223721-i1jn9ke6kpa4ef9g8gi92mgvuo7tidje.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testapp"
+              }
+            }
+          ]
         }
       }
     }
