@@ -336,3 +336,20 @@ class ClearTaskerCalendarStatus extends UserBookingEvent {
 
 
 class ClearAcceptBookingState extends UserBookingEvent {}
+
+
+//Dispute
+
+class FetchDisputeReasonsRequested extends UserBookingEvent {
+  const FetchDisputeReasonsRequested();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class ClearDisputeReasonsStatus extends UserBookingEvent {
+  const ClearDisputeReasonsStatus();
+
+  @override
+  List<Object?> get props => [];
+}

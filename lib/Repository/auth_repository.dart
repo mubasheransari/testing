@@ -13,6 +13,7 @@ import 'package:taskoon/Models/dashboard/tasker_earnings_chart_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_stats_model.dart';
 import 'package:taskoon/Models/dashboard/tasker_earnings_tasks_response.dart';
 import 'package:taskoon/Models/dashboard/tasker_history_response.dart' show TaskerHistoryResponse;
+import 'package:taskoon/Models/dispute/dispute_reason_response.dart';
 import 'package:taskoon/Models/named_bytes.dart';
 import 'package:taskoon/Models/payment_intent_response.dart';
 import 'package:taskoon/Models/service_document_model.dart';
@@ -67,12 +68,17 @@ class ApiConfig {
    static const String taskerHistoryEndpoint = '/api/Tasker/history';
    //Calender
    static const String taskerCalendarEndpoint = '/api/TaskerCalendar';
+   //Dispute
+   static const String disputeReasonEndpoint = '/api/DisputeReason';
 
 }
 
 
 
 abstract class AuthRepository {
+
+  //dispute
+  Future<Result<DisputeReasonResponse>> fetchDisputeReasons();
   //calender
   Future<Result<TaskerCalendarResponse>> fetchTaskerCalendar();
 
@@ -363,6 +369,86 @@ Future<Result<TaskerCalendarResponse>> fetchTaskerCalendar() async {
         final err = jsonDecode(raw);
         if (err is Map && err['message'] != null) {
           message = err['message'].toString();
+        }
+      } catch (_) {}
+    }
+
+    return Result.fail(
+      Failure(code: 'server', message: message, statusCode: res.statusCode),
+    );
+  } on SocketException {
+    return Result.fail(
+      Failure(code: 'network', message: 'No internet connection'),
+    );
+  } on TimeoutException {
+    return Result.fail(
+      Failure(code: 'timeout', message: 'Request timed out'),
+    );
+  } catch (e) {
+    return Result.fail(
+      Failure(code: 'unknown', message: e.toString()),
+    );
+  }
+}
+
+@override
+Future<Result<DisputeReasonResponse>> fetchDisputeReasons() async {
+  final uri = Uri.parse(
+    '${ApiConfig.baseUrl}${ApiConfig.disputeReasonEndpoint}',
+  );
+
+  try {
+    debugPrint('>>> DISPUTE REASONS GET $uri');
+
+    final res = await http.get(uri, headers: _headers()).timeout(timeout);
+
+    debugPrint('<<< DISPUTE REASONS STATUS: ${res.statusCode}');
+    debugPrint('<<< DISPUTE REASONS BODY: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final raw = res.body.trim();
+      if (raw.isEmpty) {
+        return Result.fail(
+          Failure(code: 'empty', message: 'Empty response from server'),
+        );
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(
+          Failure(code: 'parse', message: 'Invalid response format'),
+        );
+      }
+
+      final resp = DisputeReasonResponse.fromJson(parsed);
+
+      if (!resp.isSuccess) {
+        String msg = resp.message ?? 'Failed to fetch dispute reasons';
+        if (resp.errors != null && resp.errors!.isNotEmpty) {
+          msg = resp.errors!.join(' • ');
+        }
+
+        return Result.fail(
+          Failure(
+            code: 'validation',
+            message: msg,
+            statusCode: res.statusCode,
+          ),
+        );
+      }
+
+      return Result.ok(resp);
+    }
+
+    String message = 'Server error (${res.statusCode})';
+    final raw = res.body.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final err = jsonDecode(raw);
+        if (err is Map && err['message'] != null) {
+          message = err['message'].toString();
+        } else if (err is Map && err['errors'] is List) {
+          message = (err['errors'] as List).map((e) => e.toString()).join(' • ');
         }
       } catch (_) {}
     }

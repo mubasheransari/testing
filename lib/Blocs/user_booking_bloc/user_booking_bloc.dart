@@ -11,6 +11,15 @@ class UserBookingBloc extends Bloc<UserBookingEvent, UserBookingState> {
   String? _activeSosId;
 
   UserBookingBloc(this.repo) : super(const UserBookingState()) {
+
+    //dispute
+    on<FetchDisputeReasonsRequested>(_onFetchDisputeReasons);
+on<ClearDisputeReasonsStatus>((event, emit) {
+  emit(state.copyWith(
+    disputeReasonsStatus: DisputeReasonsStatus.initial,
+    clearDisputeReasonError: true,
+  ));
+});
     on<ClearAcceptBookingState>(_onClearAcceptBookingState);
 
     //calender
@@ -34,6 +43,8 @@ on<ClearTaskerCalendarStatus>((event, emit) {
     clearTaskerCalendarDeleteError: true,
   ));
 });
+
+
 
 
     on<FetchTaskerHistoryRequested>(_onFetchTaskerHistory);
@@ -85,6 +96,55 @@ on<ClearTaskerHistoryStatus>((event, emit) {
     on<CancelBooking>(_onCancelUserBookingRequested);
     on<StopSosRequested>(_stopSosRequested);
   }
+
+  Future<void> _onFetchDisputeReasons(
+  FetchDisputeReasonsRequested event,
+  Emitter<UserBookingState> emit,
+) async {
+  emit(state.copyWith(
+    disputeReasonsStatus: DisputeReasonsStatus.loading,
+    clearDisputeReasonError: true,
+    clearDisputeReasonResponse: true,
+  ));
+
+  try {
+    final result = await repo.fetchDisputeReasons();
+
+    if (result.failure != null) {
+      emit(state.copyWith(
+        disputeReasonsStatus: DisputeReasonsStatus.failure,
+        disputeReasonError: result.failure!.message,
+      ));
+      return;
+    }
+
+    final resp = result.data!;
+
+    if (resp.isSuccess != true) {
+      final msg = (resp.errors != null && resp.errors!.isNotEmpty)
+          ? resp.errors!.join(' • ')
+          : (resp.message ?? 'Failed to load dispute reasons');
+
+      emit(state.copyWith(
+        disputeReasonsStatus: DisputeReasonsStatus.failure,
+        disputeReasonError: msg,
+        disputeReasonResponse: resp,
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      disputeReasonsStatus: DisputeReasonsStatus.success,
+      disputeReasonResponse: resp,
+      clearDisputeReasonError: true,
+    ));
+  } catch (e) {
+    emit(state.copyWith(
+      disputeReasonsStatus: DisputeReasonsStatus.failure,
+      disputeReasonError: e.toString(),
+    ));
+  }
+}
 
   void _onClearAcceptBookingState(
   ClearAcceptBookingState event,
