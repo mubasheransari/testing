@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:taskoon/Blocs/auth_bloc/auth_event.dart';
 import 'package:taskoon/Blocs/user_booking_bloc/user_booking_bloc.dart';
@@ -56,6 +57,10 @@ Future<void> _initFcmSafely() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+    Stripe.publishableKey =
+      "pk_test_51Rhmi6CVVXP18v4Eua0WuTUiosYXh8PgZqLajx16VTLLghXAA849TlrNUhbYfRnSLtWnPVlo9l7MOrzCD6hEppDM00ITluN3Gk";
+
+  await Stripe.instance.applySettings();
 
   await GetStorage.init();
 

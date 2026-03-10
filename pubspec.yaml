@@ -46,6 +46,7 @@ dependencies:
   firebase_core: any
   firebase_messaging: any
   flutter_local_notifications: any
+  flutter_stripe:
 
 
 dev_dependencies:
