@@ -52,6 +52,7 @@ class _TaskerConfirmationScreenState extends State<TaskerConfirmationScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment Successful ✅')),
       );
